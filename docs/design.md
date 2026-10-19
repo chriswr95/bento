@@ -14,12 +14,13 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 | --- | --- |
 | Storage | Proposed: Markdown files as authority with a rebuildable index |
 | Desktop shell and editor | Open; validate on Windows and macOS |
-| Todo representation | Proposed: standalone files; compare against inline managed tasks with Makena's workflow |
+| Todo representation | Every document checkbox is tracked; proposed inline authority with stable task IDs |
 | Everyday editing | Must support discoverable formatting; exact editor model remains open |
 | Content agent | Proposed: scoped query and command interface sharing application services |
 | Application agent | Proposed: external coding-agent integration with isolated trial and explicit adoption |
 | Theme system | Proposed: declarative theme packages over shared design tokens |
-| Agent providers and transport | Open; neither a hosted provider nor an embedded runtime is selected |
+| Agent providers and transport | Proposed: locally installed agent on Windows; provider, transport, and model processing location remain open |
+| Daily overview | Required: cross-project upcoming work and summaries for every active project |
 
 ## 2. Recommended initial direction
 
@@ -47,7 +48,9 @@ A desktop application can still use a local backend component to manage files an
 | Project | Stable ID, title, status, Markdown body, tags | A durable planning context with associated todos and notes |
 | Tag | User-defined string | A reusable label across entity types |
 
-Proposed todo states: `open`, `in_progress`, `done`, and `cancelled`. Proposed project states: `active`, `on_hold`, `completed`, and `archived`. The UI may simplify these initially, but transitions must be explicit and reversible.
+Todos initially represent Makena’s own work. Do not implement assignment, shared users, or collaboration yet; keep identity independent of ownership so later assignment can be added without changing task IDs.
+
+Propose initial todo states `open` and `done`, mapped directly to unchecked and checked source boxes. Additional states such as `in_progress` or `cancelled` are deferred until their checkbox mapping is designed. Proposed project states: `active`, `on_hold`, `completed`, and `archived`. Transitions must be explicit and reversible.
 
 Propose explicit source references from a todo to the note and relevant passage that prompted it. Use stable entity references and optional passage anchors; if a passage changes, preserve the note link and flag an unresolved anchor. The exact serialization remains open.
 
@@ -78,43 +81,61 @@ tags: ["site review", "follow-up"]
 Meeting notes, decisions, and follow-up actions.
 ```
 
-Example todo file:
+### Checkbox todos
+
+Every Markdown task-list checkbox is a tracked todo, including checked boxes and nested entries. Parse task-list nodes rather than matching raw text so fenced code samples are not tasks. Opening an existing note must discover its todos without rewriting the file.
+
+Propose keeping each todo's authoritative text and completion state inline in its source document. The Todos, project, and daily views project that record; they do not create a second task file. Editing a task in any view uses the same application service to update the source node and refresh the index.
+
+Illustrative meeting note:
 
 ```markdown
 ---
 bento_version: 1
-id: "todo-review-comments"
-type: todo
-title: "Review meeting comments"
-status: open
-project: "project-site-review"
-due: "2026-10-24"
-tags: ["follow-up"]
+id: "note-site-review-meeting"
+type: note
+title: "Site review meeting"
+projects: ["project-site-review"]
 ---
 
-Review the comments captured during the meeting.
+# Site review meeting
+
+Discussed comments and next steps.
+
+- [ ] Review meeting comments <!-- bento-task: todo-review-comments -->
+- [x] Collect the reference notes <!-- bento-task: todo-collect-notes -->
 ```
 
-The example IDs are illustrative; the implementation should generate opaque stable IDs. Folder structure is organizational and does not define entity identity or project membership.
+The example IDs are illustrative; generate opaque stable IDs. The comment syntax and metadata encoding are proposals, not a frozen schema. Decide where due dates, tags, and descriptions live before implementation, while keeping the source understandable outside Bento.
 
-Ordinary `.md` files without Bento metadata remain editable as notes. Assigning metadata should be an explicit action when structured features require it; opening a folder must not rewrite every file.
+When a checkbox lacks an explicit ID, index it immediately using provisional identity without an unsolicited file rewrite. Establish durable identity on an explicit edit that needs it. Exact reconciliation for external reordering, copy/paste, duplicated IDs, and added or removed markers remains open; do not claim stable identity across arbitrary edits until that contract is defined.
 
-### Todo representation decision
+A todo initially belongs to at most one project. Propose inheriting the source note's project when unambiguous; notes linked to multiple projects need an explicit task project or an unassigned state. A checkbox without project metadata is still tracked and visible centrally. Do not silently guess project membership.
 
-Propose one Markdown file per first-class todo for the first prototype: stable identity, rich descriptions, and ordinary file operations are easy to explain. A document's plain `- [ ]` checkbox initially remains a local checklist item, with an explicit action to promote it into a linked todo.
+Checking a box completes its todo; unchecking reopens it. Each nested checkbox is independent, with no implicit completion cascade. Treat checkbox removal as task removal, recoverable with the document change; finalize details for open views and external edits before implementation.
 
-The tradeoff is file count and a distinction between checklists and managed todos. Before finalizing the format, test this against an alternative where managed todos live inline with stable identifiers. Whichever representation is chosen, a single todo must have one authoritative record, and completing it must be consistent across all views.
+For a todo captured outside a document, propose inserting a checkbox into a workspace Inbox note. This preserves one task representation. An agent extracting actions from existing checkbox content must reuse those tasks rather than duplicate them. A future rich task page can edit the same record without creating competing authority.
+
+Ordinary `.md` files without Bento metadata remain editable as notes and their checkboxes are indexed. Preserve unknown metadata and unsupported syntax. Folder structure is organizational rather than an entity ID or project-membership rule.
 
 ## 5. Interface and customization
 
 Proposed application shell:
 
-- Sidebar: workspace files, Projects, Todos, Tags, and saved navigation.
+- Sidebar: daily overview, workspace files, Projects, Todos, Tags, and saved navigation.
 - Main area: document editor, project detail, task list, or search results.
 - Optional details panel: selected entity metadata and relationships.
 - Command palette: quick navigation and discoverable actions.
 
-Start with a document view, a filterable Todos list, and a Projects list with project detail pages. Add a task board after the underlying task lifecycle and filtering are reliable. Saved filters and custom views can follow initial validation.
+Open to a daily overview, with a document view, a filterable Todos list, and a Projects list with project detail pages available through navigation. Add a task board after the underlying task lifecycle and filtering are reliable. Saved filters and custom views can follow initial validation.
+
+### Daily overview and project summaries
+
+Query the applied workspace index for upcoming open work across all projects, including unassigned tasks. Propose overdue, today, upcoming, and undated groups; the upcoming horizon and exact grouping remain open. Show project and source-note context on each task.
+
+Create a summary for every active project, including those without upcoming work. Initially derive summaries from recorded project status, open/completed task counts, and next due dates, with links to details. Empty and undated states should be explicit. Counts describe recorded work rather than inferred engineering progress. These summaries do not require an agent; optional narrative summaries can be added with source references and refresh timestamps.
+
+### Theme and layout customization
 
 Use shared design tokens for color, typography, spacing, borders, focus states, and editor syntax. Themes consume a documented, versioned token schema and declare their light/dark appearance. Theme packages initially contain declarative data and permitted assets; importing a theme must not execute code.
 
@@ -158,6 +179,10 @@ Measure prototypes with a representative workspace of 10,000 Markdown files and 
 
 ### Content assistance
 
+Propose starting with an agent installed on Makena's Windows laptop, operating on an authorized local Bento workspace. This does not select the provider or require its model to run offline. Confirm the model service and permitted content before real project material is used. Local tool access, local file storage, and model processing location are separate properties.
+
+Possible integration paths are direct file edits with Bento reconciling external changes, a local command/tool adapter with validated domain operations, or an embedded Bento assistant using that adapter. Prefer validating a small external-agent workflow first; the exact transport remains open. Direct file edits must still provide inspectable changes and recovery rather than bypass the product requirements.
+
 Expose scoped queries and domain commands through an adapter usable by an agent. Keep the transport open: an in-app integration, local tool protocol, or external agent may use the same application boundary. Markdown portability also permits external file editing, but that alone does not provide the review and recovery experience required by the spec.
 
 The application services own validation and state transitions for both UI and agent operations. Candidate commands include creating notes/projects/todos, updating fields, linking source notes, tagging entities, and completing or reopening todos. Queries return stable entity references and current revision information alongside results.
@@ -194,7 +219,8 @@ The initial handoff may require developer assistance. Validate the end-to-end ex
 Use the product acceptance criteria as the release bar. Complement observation with focused technical checks:
 
 - Markdown and metadata round trips, including unknown syntax and keys.
-- Project/todo status and relationship consistency across UI and agent commands.
+- Checkbox discovery (existing, nested, completed, and unassigned tasks), code-sample exclusion, and consistent source completion across all views and agent commands.
+- Daily overview ordering and summaries for active projects with overdue, undated, or no tasks.
 - Source references surviving renames, with clear handling of changed or removed passages.
 - File-write recovery, external-edit conflicts, duplicated IDs, and malformed records.
 - Index rebuild equivalence for projects, todos, tags, and search.
@@ -207,10 +233,10 @@ Observe Makena completing the meeting-to-follow-up workflow and reviewing a prop
 
 ## 9. Delivery plan
 
-1. **Validate the workflow:** use representative meeting notes to review capture, action promotion, follow-up, and agent proposal review with Makena.
-2. **Resolve foundational choices:** storage, todo representation, source links, tag identity, and editor model; record rationale and tradeoffs.
+1. **Validate the workflow:** use representative meeting notes to review direct capture, automatically tracked checkboxes, daily review, follow-up, and agent proposal review with Makena.
+2. **Resolve foundational choices:** storage, inline task identity/metadata, source links, tag identity, and editor model; record rationale and tradeoffs.
 3. **Validate the platform:** build a Windows/macOS prototype for opening a folder, approachable Markdown editing, safe saves, and theme tokens.
-4. **Build the manual workflow:** projects, meeting notes, linked todos, tags, search, and consistent views, with conflict handling and index recovery.
+4. **Build the manual workflow:** projects, direct meeting notes, checkbox todos, tags, search, daily overview/project summaries, and consistent views, with conflict handling and index recovery.
 5. **Add content assistance:** scoped meeting-note queries, reviewable todo proposals, validated application, and recovery.
 6. **Validate application assistance:** deliver one small agent-generated change through handoff, testing, trial, adoption, and rollback.
 7. **Harden and customize:** accessibility, theme packages, layout persistence, scale measurements, and distribution.
@@ -220,7 +246,7 @@ Use small, focused commits and meaningful checks at domain, persistence, agent, 
 ## 10. Open technical decisions
 
 - Markdown authority plus index versus a database-authoritative model.
-- Standalone todo files versus inline managed entries, and how ordinary checkboxes relate to managed todos.
+- Inline task ID/metadata serialization, provisional identity reconciliation, Inbox capture, and task deletion recovery; all document checkboxes are tracked.
 - Stable ID and source-anchor formats, frontmatter preservation, and schema migration rules.
 - Todo/project states, project membership cardinality, and tag case/rename semantics.
 - Editor implementation that meets approachable formatting and Markdown fidelity requirements.
