@@ -45,7 +45,7 @@ async function paste(editor, text, html = '') {
   }, { text, html });
 }
 async function saved(page) {
-  try { await page.locator('#b-save-state').filter({ hasText: 'Saved to workspace files' }).waitFor(); }
+  try { await page.locator('#b-save-state').filter({ hasText: /^Saved$/ }).waitFor(); }
   catch (error) { console.error('Save diagnostics:', await page.locator('#b-save-state').textContent(), await page.locator('#b-file-errors').textContent()); throw error; }
 }
 (async () => {
@@ -67,6 +67,11 @@ async function saved(page) {
   await application.evaluate(({ dialog }, folder) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] }); }, workspace);
   await page.getByRole('button', { name: 'New workspace', exact: true }).click();
   await saved(page);
+  assert.equal(await page.getByRole('button', { name: 'Save files', exact: true }).isVisible(), false);
+  assert.equal(await page.getByRole('button', { name: 'Restore draft', exact: true }).isVisible(), false);
+  await page.locator('.b-workspace-menu>summary').click();
+  assert.equal(await page.getByRole('button', { name: 'Save files', exact: true }).isVisible(), true);
+  await page.keyboard.press('Escape');
   console.log('Created workspace through the native dialog.');
   await page.getByRole('button', { name: 'Profile', exact: true }).click();
   await page.getByLabel('First name', { exact: true }).fill('Maki');
@@ -212,11 +217,14 @@ async function saved(page) {
   await page.getByRole('textbox', { name: 'Todo Markdown', exact: true }).press('ControlOrMeta+a');
   await paste(page.getByRole('textbox', { name: 'Todo Markdown', exact: true }), 'Unsaved local detail');
   await fs.appendFile(path.join(workspace, 'todos', filename), '\nExternal detail\n');
-  await page.getByRole('button', { name: 'Save files', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Todo Markdown', exact: true }).press('ControlOrMeta+s');
   await page.locator('#b-file-errors').filter({ hasText: 'changed on disk' }).waitFor();
   raw = await fs.readFile(path.join(workspace, 'todos', filename), 'utf8');
   assert.match(raw, /External detail/); assert.doesNotMatch(raw, /Unsaved local detail/);
   assert.equal(await page.evaluate(() => Object.keys(localStorage).some(key => key.startsWith('bento.desktop.draft.') && localStorage.getItem(key).includes('Unsaved local detail'))), true);
+  await page.getByRole('button', { name: 'Draft kept', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Download draft', exact: true }).isVisible(), true);
+  await page.keyboard.press('Escape');
   console.log('Passed native create/open, typed checkbox → Markdown files, grouped status, todo notes, restart, completion propagation, sandbox bridge, external-change protection, and retained draft.');
   await stop(application); application = null;
   const movedWorkspace = path.join(temporary, 'Reconnected workspace');

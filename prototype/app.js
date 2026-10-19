@@ -389,11 +389,11 @@ import BentoFileSession from './file-session.js';
     } catch (error) { notify(error.message); }
   });
   document.addEventListener('click', event => {
-    root.querySelectorAll('.b-document-actions[open]').forEach(menu => { if (!menu.contains(event.target)) menu.open = false; });
+    root.querySelectorAll('.b-document-actions[open], .b-workspace-menu[open]').forEach(menu => { if (!menu.contains(event.target) && !event.target.closest('[data-draft-notice]')) menu.open = false; });
   });
   root.addEventListener('keydown', event => {
     if (event.key !== 'Escape') return;
-    const menu = root.querySelector('.b-document-actions[open]');
+    const menu = root.querySelector('.b-document-actions[open], .b-workspace-menu[open]');
     if (menu) { menu.open = false; menu.querySelector('summary').focus(); event.preventDefault(); }
   });
   root.addEventListener('toggle', event => {
@@ -463,14 +463,15 @@ import BentoFileSession from './file-session.js';
     await loadPersonal();
     root.dataset.desktop = 'true';
     root.querySelector('.b-demo').textContent = 'Markdown workspace';
-    root.querySelector('.b-chrome').insertAdjacentHTML('beforeend', `<div class="b-file-controls"><details class="b-workspace-menu"><summary>Workspace</summary><div><button class="b-button" type="button" data-files="open">Open workspace</button><button class="b-button" type="button" data-files="create">New workspace</button><button class="b-button" type="button" data-files="reload" disabled>Reload files</button></div></details><button class="b-button" type="button" data-files="save" disabled>Save files</button><button class="b-button" type="button" data-files="restore" hidden>Restore draft</button><button class="b-button" type="button" data-files="draft" hidden>Download draft</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
+    root.querySelector('.b-demo').hidden = true;
+    root.querySelector('.b-theme-toggle').insertAdjacentHTML('beforebegin', `<div class="b-file-controls"><details class="b-workspace-menu"><summary aria-label="Workspace actions"><span data-workspace-name>Workspace</span><span aria-hidden="true">⌄</span></summary><div><button type="button" data-files="open">Open workspace</button><button type="button" data-files="create">New workspace</button><button type="button" data-files="reload" disabled>Reload files</button><button type="button" data-files="save" disabled>Save files</button><button type="button" data-files="restore" hidden>Restore draft</button><button type="button" data-files="draft" hidden>Download draft</button></div></details><button type="button" class="b-draft-notice" data-draft-notice hidden>Draft available</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
     root.querySelector('.b-shell').insertAdjacentHTML('beforebegin', '<p id="b-file-errors" class="b-issues" role="alert" hidden></p>');
 
     const errors = root.querySelector('#b-file-errors');
     files = new BentoFileSession(desktop, {
       workspace,
       activate(view) {
-        root.querySelector('.b-demo').textContent = view.title;
+        root.querySelector('[data-workspace-name]').textContent = view.title;
         document.title = view.title + ' · Bento';
         const treeKey = 'bento.sidebar.tree.v1:' + view.folder;
         if (directoryState?.key !== treeKey) directoryState = new DirectoryState(treeKey);
@@ -486,21 +487,37 @@ import BentoFileSession from './file-session.js';
         render();
       },
       error(message) { errors.hidden = !message; errors.textContent = message; },
-      status(message) { root.querySelector('#b-save-state').textContent = message; },
+      status(message) {
+        const indicator = root.querySelector('#b-save-state');
+        indicator.textContent = message === 'Saved to workspace files' ? 'Saved' : message === 'Saving files…' ? 'Saving…' : message;
+        indicator.title = message;
+      },
       controls(session) {
         root.querySelector('[data-files="save"]').disabled = !session.dirty || session.saving || session.view.readOnly;
         root.querySelector('[data-files="reload"]').disabled = session.saving;
         root.querySelector('[data-files="restore"]').hidden = session.dirty || !session.hasDraft();
-        root.querySelector('[data-files="draft"]').hidden = !session.hasDraft();
+        const draft = session.hasDraft();
+        root.querySelector('[data-files="draft"]').hidden = !draft;
+        const notice = root.querySelector('[data-draft-notice]');
+        notice.hidden = !draft || (session.dirty && !session.failed);
+        notice.textContent = session.failed ? 'Draft kept' : 'Draft available';
       }
     });
     root.addEventListener('click', event => {
+      if (event.target.closest('[data-draft-notice]')) {
+        const menu = root.querySelector('.b-workspace-menu'); menu.open = true;
+        menu.querySelector('[data-files="restore"]:not([hidden]), [data-files="draft"]:not([hidden])')?.focus();
+        return;
+      }
       const action = event.target.closest('[data-files]')?.dataset.files;
       if (action) root.querySelector('.b-workspace-menu').open = false;
       if (action === 'open' || action === 'create' || action === 'reload') files.open(() => desktop[action]());
       else if (action === 'save') files.save();
       else if (action === 'restore') files.restore();
       else if (action === 'draft') files.downloadDraft();
+    });
+    document.addEventListener('keydown', event => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); files.save(); }
     });
     window.addEventListener('beforeunload', event => { if (files.dirty && !confirm('Keep your unsaved draft in Bento and close?')) { event.preventDefault(); event.returnValue = false; } });
     await files.open(async () => {
