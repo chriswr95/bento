@@ -1,7 +1,7 @@
 import { projectReview } from './project-review.js';
 import { legacyPreferences } from './personal-settings.js';
 import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
-import { propertyForm, propertyPatch } from './property-editor.js';
+import InlineProperties from './inline-properties.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
 import BentoWorkspace from './workspace.js';
 import BentoProfile from './profile.js';
@@ -108,7 +108,7 @@ import BentoFileSession from './file-session.js';
   const dueLabel = due => !due ? 'No date' : due === planDate ? 'Today'
     : new Date(due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  let liveEditor = null, creation = null;
+  let liveEditor = null, propertyEditor = null, creation = null;
 
   function notify(message) { status.textContent = storageWarning ? `${message} ${storageWarning}` : message; }
   function persist() {
@@ -273,21 +273,6 @@ import BentoFileSession from './file-session.js';
     panel.hidden = !issues.length;
     panel.textContent = issues.map(item => `Line ${item.line + 1}: ${item.message}`).join(' ');
   }
-  function taskProperties(task) {
-    const sources = model.sourcesFor(workspace(), task.id);
-    const projects = model.activeProjects(workspace());
-    if (task.project && getProject(task.project) && !projects.some(project => project.id === task.project)) projects.push(getProject(task.project));
-    const completion = model.capability(workspace(), record(), 'task').completion;
-    const statusField = workspace().databases[record().database].fields.find(field => field.id === completion.field);
-    return `<form id="b-todo-properties" class="b-properties">
-      <label class="b-field">Title<input name="title" aria-label="Todo title" maxlength="200" required value="${escape(task.title)}"></label>
-      <label class="b-field">Status<select name="status" aria-label="Status">${statusField.options.map(option => `<option value="${escape(option.id)}" ${record().properties[statusField.id] === option.id ? 'selected' : ''}>${escape(option.name)}</option>`).join('')}</select></label>
-      <label class="b-completion"><input type="checkbox" data-todo-completed aria-label="Completed" ${task.done ? 'checked' : ''}>Completed</label>
-      <div class="b-form"><label class="b-field">Due date (optional)<input name="due" type="date" aria-label="Due date" value="${escape(task.due)}"></label>
-        <label class="b-field">Project<select name="project" aria-label="Project"><option value="">Unassigned</option>${projects.map(project => `<option value="${project.id}" ${task.project === project.id ? 'selected' : ''}>${escape(project.title)}</option>`).join('')}</select></label></div>
-      <div class="b-actions"><button type="submit" class="b-button cursor-interaction">Save properties</button>${sources.map(source => `<button type="button" class="b-button cursor-interaction" data-record="${source.id}">Back to ${escape(source.title)}</button>`).join('')}</div>
-    </form>`;
-  }
   function renderDocument() {
     const doc = record(), database = workspace().databases[doc.database], task = model.taskInfo(workspace(), doc);
     const label = task ? 'Todo Markdown' : doc.database === meetingDatabase()?.id ? 'Meeting Markdown' : model.capability(workspace(), doc, 'project') ? 'Project Markdown' : 'Page Markdown';
@@ -299,12 +284,29 @@ import BentoFileSession from './file-session.js';
     ].join('');
     main.innerHTML = `<div class="b-document-header"><p class="b-eyebrow">${escape(database?.title || 'Documents')} / ${escape(doc.title)}</p>
       ${actions ? `<details class="b-document-actions"><summary aria-label="Document actions" title="Document actions">⋯</summary><div class="b-document-action-list">${actions}</div></details>` : ''}</div>
-      ${task ? `<h1>${escape(doc.title)}</h1>${taskProperties(task)}` : desktop ? propertyForm(workspace(), doc, files.view.readOnly) : ''}
+      ${task ? `<h1 data-todo-heading>${escape(doc.title)}</h1>` : ''}
+      ${desktop || task ? '<section id="b-document-properties" aria-label="Document properties"></section>' : ''}
+      ${task ? `<nav class="b-source-links" aria-label="Source notes">${model.sourcesFor(workspace(), task.id).map(source => `<button type="button" data-record="${source.id}">Back to ${escape(source.title)}</button>`).join('')}</nav>` : ''}
       <article id="b-reading" class="b-reading" aria-label="Editable Markdown document"></article>
       <p id="b-task-count" class="b-muted" role="status" aria-live="polite"></p><p id="b-document-issues" class="b-issues" role="alert" hidden></p>
       ${doc.id === 'coordination' ? `<div class="b-actions"><button class="b-button cursor-interaction" type="button" data-propose>Preview agent suggestion</button></div>
         <section id="b-proposal" class="b-proposal" hidden><h3>Sample agent suggestion</h3><p id="b-suggestion-text"></p><p class="b-muted">From this note · no due date specified · simulated assistance</p>
           <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
+    if (desktop || task) propertyEditor = new InlineProperties(main.querySelector('#b-document-properties'), {
+      workspace, record, readOnly: !!files?.view?.readOnly,
+      completed: task ? () => model.taskInfo(workspace(), record()).done : null,
+      error: notify,
+      change(patch) {
+        const next = Object.hasOwn(patch, 'completed') ? model.updateTodo(workspace(), doc.id, { done: patch.completed }) : model.updateDocument(workspace(), doc.id, patch);
+        previous = clone(state); state.workspace = next; editingSnapshot = null;
+        if (desktop && patch.title) root.querySelectorAll('aside [data-record]').forEach(button => {
+          if (button.dataset.record === doc.id) button.querySelector('span:last-child').textContent = record().title;
+        });
+        const heading = main.querySelector('[data-todo-heading]'); if (heading) heading.textContent = record().title;
+        main.querySelector('.b-document-header .b-eyebrow').textContent = `${database?.title || 'Documents'} / ${record().title}`;
+        refreshDocument(); persist(); notify('Properties saved.');
+      }
+    });
     liveEditor = new RichEditor(main.querySelector('#b-reading'), {
       body: () => record().body, label,
       change: body => editDocument(body), error: notify, openRecord,
@@ -335,6 +337,7 @@ import BentoFileSession from './file-session.js';
         <div class="b-actions"><button type="submit" class="b-button b-primary cursor-interaction">Save profile</button><button type="button" class="b-button cursor-interaction" data-view="daily">Back to overview</button></div></form>`;
   }
   function render() {
+    propertyEditor?.destroy(); propertyEditor = null;
     liveEditor?.destroy(); liveEditor = null;
     if (desktop && !files?.view) {
       root.querySelector('aside').hidden = true;
@@ -403,10 +406,7 @@ import BentoFileSession from './file-session.js';
   root.addEventListener('change', event => {
     try {
       if (event.target.dataset.task) change(() => model.updateTodo(workspace(), event.target.dataset.task, { done: event.target.checked }), 'Todo completion updated.');
-      else if (event.target.hasAttribute('data-todo-completed')) {
-        const form = main.querySelector('#b-todo-properties'), values = new FormData(form);
-        change(() => model.updateTodo(workspace(), state.document, { done: event.target.checked, title: String(values.get('title')), due: String(values.get('due')), project: String(values.get('project')), status: String(values.get('status')) }), 'Todo properties and completion updated.');
-      }
+
     } catch (error) { if (event.target.type === 'checkbox') event.target.checked = !event.target.checked; notify(error.message); }
   });
   root.addEventListener('input', event => {
@@ -426,16 +426,6 @@ import BentoFileSession from './file-session.js';
         notify('Created a Markdown document.');
         liveEditor?.focus();
       } catch (error) { const panel = main.querySelector('#b-create-error'); panel.hidden = false; panel.textContent = error.message; }
-    } else if (form.id === 'b-page-properties') {
-      try {
-        const patch = propertyPatch(workspace(), record(), values);
-        change(() => model.updateDocument(workspace(), state.document, patch), 'Page properties saved.');
-      } catch (error) {
-        const panel = form.querySelector('[data-property-error]'); panel.hidden = false; panel.textContent = error.message;
-      }
-    } else if (form.id === 'b-todo-properties') {
-      try { change(() => model.updateTodo(workspace(), state.document, { title: String(values.get('title')), due: String(values.get('due')), project: String(values.get('project')), status: String(values.get('status')) }), 'Todo properties saved.'); }
-      catch (error) { notify(error.message); }
     } else if (form.id === 'b-profile-form') {
       const value = { version: 1, firstName: String(values.get('firstName') || '').trim(), lastName: String(values.get('lastName') || '').trim(), birthday: String(values.get('birthday') || '') };
       if (!BentoProfile.validate(value)) { form.elements.firstName.setCustomValidity('Enter a first name and a valid birthday, or leave birthday blank.'); form.reportValidity(); return; }

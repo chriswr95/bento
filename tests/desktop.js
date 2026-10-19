@@ -48,6 +48,20 @@ async function saved(page) {
   try { await page.locator('#b-save-state').filter({ hasText: /^Saved$/ }).waitFor(); }
   catch (error) { console.error('Save diagnostics:', await page.locator('#b-save-state').textContent(), await page.locator('#b-file-errors').textContent()); throw error; }
 }
+async function editProperty(page, name) {
+  const button = page.getByRole('button', { name: `Edit ${name}`, exact: true });
+  if (!await button.isVisible()) await page.locator('[data-more-properties]>summary').click();
+  await button.click();
+}
+async function setStatus(page, value) {
+  await editProperty(page, 'Status');
+  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption(value);
+}
+async function addTag(page, value) {
+  await editProperty(page, 'Tags');
+  const input = page.getByRole('textbox', { name: 'Tags', exact: true });
+  await input.fill(value); await input.press('Enter'); await input.press('Escape');
+}
 (async () => {
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-desktop-'));
   const workspace = path.join(temporary, 'Workspace'), userData = path.join(temporary, 'UserData');
@@ -86,15 +100,12 @@ async function saved(page) {
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'My first project', exact: true }).waitFor();
   await saved(page);
-  await page.locator('.b-page-properties>summary').click();
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('option-completed');
-  await page.getByRole('textbox', { name: 'Tags', exact: true }).fill('Civil engineering\nclient, internal');
-  await page.getByRole('button', { name: 'Save properties', exact: true }).click();
+  await setStatus(page, 'option-completed');
+  await addTag(page, 'Civil engineering');
+  await addTag(page, 'client, internal');
   await saved(page);
-  await page.locator('.b-page-properties>summary').click();
-  assert.equal(await page.getByRole('combobox', { name: 'Status', exact: true }).inputValue(), 'option-completed');
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('option-active');
-  await page.getByRole('button', { name: 'Save properties', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Edit Status', exact: true }).innerText(), 'Completed');
+  await setStatus(page, 'option-active');
   await saved(page);
   const projectFiles = (await fs.readdir(path.join(workspace, 'projects'))).filter(name => name.startsWith('project-'));
   assert.equal(projectFiles.length, 1);
@@ -135,11 +146,13 @@ async function saved(page) {
   await saved(page);
   const meetingFile = (await fs.readdir(path.join(workspace, 'meetings'))).find(name => name !== 'database.md');
   assert.ok(meetingFile);
-  await page.locator('.b-page-properties>summary').click();
+  await editProperty(page, 'Meeting date');
   await page.getByLabel('Meeting date', { exact: true }).fill('2026-10-20');
+  await page.getByLabel('Meeting date', { exact: true }).press('Enter');
+  await editProperty(page, 'Related projects');
   assert.equal(await page.getByRole('group', { name: 'Related projects', exact: true }).getByRole('checkbox', { name: 'My first project', exact: true }).isChecked(), true);
-  await page.getByRole('textbox', { name: 'Tags', exact: true }).fill('Follow up');
-  await page.getByRole('button', { name: 'Save properties', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Search Related projects', exact: true }).press('Escape');
+  await addTag(page, 'Follow up');
   await saved(page);
   const meetingRaw = await fs.readFile(path.join(workspace, 'meetings', meetingFile), 'utf8');
   assert.match(meetingRaw, /2026-10-20/); assert.match(meetingRaw, /Follow up/);
@@ -160,8 +173,7 @@ async function saved(page) {
   await todoEditor.click(); await todoEditor.press('ControlOrMeta+a');
   await paste(todoEditor, '# Supporting notes\n\nKeep this project detail.\n');
 
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('option-started');
-  await page.getByRole('button', { name: 'Save properties', exact: true }).click();
+  await setStatus(page, 'option-started');
   await saved(page);
   let raw = await fs.readFile(path.join(workspace, 'todos', filename), 'utf8');
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
@@ -199,16 +211,16 @@ async function saved(page) {
   assert.equal(await page.locator('#bento-workflow').getAttribute('data-theme'), 'light');
   assert.equal(await page.locator('aside details[data-directory="projects"]').getAttribute('open'), null);
   await page.locator('aside').getByRole('button', { name: 'Weekly coordination', exact: true }).click();
-  await page.locator('.b-page-properties>summary').click();
-  assert.equal(await page.getByLabel('Meeting date', { exact: true }).inputValue(), '2026-10-20');
-  assert.equal(await page.getByRole('textbox', { name: 'Tags', exact: true }).inputValue(), 'Follow up');
+  assert.equal(await page.getByRole('button', { name: 'Edit Meeting date', exact: true }).innerText(), '2026-10-20');
+  assert.equal(await page.getByRole('button', { name: 'Edit Tags', exact: true }).innerText(), 'Follow up');
+  await editProperty(page, 'Related projects');
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-meeting-properties.png') });
   assert.equal(await page.getByRole('group', { name: 'Related projects', exact: true }).getByRole('checkbox', { name: 'My first project', exact: true }).isChecked(), true);
 
   await page.locator('aside details[data-directory="todos"]>summary').click();
   await page.getByRole('navigation', { name: 'Workspace files', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).click();
   assert.match(await page.locator('#b-reading').innerText(), /Keep this project detail/);
-  assert.equal(await page.getByRole('combobox', { name: 'Status', exact: true }).inputValue(), 'option-started');
+  assert.equal(await page.getByRole('button', { name: 'Edit Status', exact: true }).innerText(), 'In progress');
   await page.getByRole('checkbox', { name: 'Completed', exact: true }).click();
   await saved(page);
   assert.match(await fs.readFile(path.join(workspace, 'meetings', meetingFile), 'utf8'), /\[x\] \[Desktop action\]/);

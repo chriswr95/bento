@@ -19,8 +19,8 @@ pnpm start
 1. Choose New workspace, then an empty folder. Create your first project by entering its title.
 2. Bento opens the project’s Markdown document immediately. Write notes, or choose New meeting note to create a note linked to that project.
 3. In the meeting, click into the document, press Enter for a new paragraph, and type `[] ` or `- [ ] `, then an action title. Bento creates a todo Markdown file with the same project and links it from the meeting.
-4. Use ↗ to open the todo. Add notes; edit title, Status, due date, and project. Save properties applies those values, then autosave persists them.
-5. On project and meeting pages, expand Properties to edit the title, tags, and schema fields. Save properties applies the edit; autosave then writes it to Markdown. Tags use one line each and may contain spaces and commas.
+4. Use ↗ to open the todo. Add notes; edit title, Status, due date, and project. Click a property value to edit it; Enter or leaving the field applies it, and Escape cancels. File autosave persists the change.
+5. Projects, meetings, and todos share compact inline properties. Empty optional fields live under More properties. Tags appear as chips: Enter adds a tag, Backspace on an empty tag input removes the last tag, and spaces and commas remain part of a tag. Relation pickers support search.
 6. Save files flushes changes immediately. The Workspace menu holds open/new/reload actions. Close and reopen the workspace to read documents and schemas from disk.
 
 The sidebar shows a collapsible workspace directory tree with database folders, nested subfolders, and Markdown pages. Folder expansion is remembered per workspace on this computer; opening a page reveals its ancestor folders. Todo folders start collapsed. Each database folder has a + creation action. Projects, Meeting Notes, and Todos are customizable starter definitions. Sample content remains available separately under `examples/document-databases`.

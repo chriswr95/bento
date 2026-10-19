@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import model from '../prototype/workspace.js';
-import { propertyForm, propertyPatch } from '../prototype/property-editor.js';
+import { propertyChoices, propertyValue, escapeProperty } from '../prototype/property-editor.js';
 
 function fixture() {
   const workspace = model.createWorkspace();
@@ -17,12 +17,6 @@ function fixture() {
   );
   return { workspace, doc, database };
 }
-function values(entries) {
-  const data = new FormData();
-  for (const [key, value] of entries) data.append(key, value);
-  return data;
-}
-
 test('property updates preserve Markdown, references, unmapped fields and input snapshots', () => {
   const { workspace, doc } = fixture(); doc.properties.unknown = { keep: true };
   const before = structuredClone(workspace);
@@ -44,46 +38,31 @@ test('invalid metadata, unknown field edits and invalid relationships reject the
   }
 });
 
-test('property form decodes typed values, preserves zero/false and accepts tags with spaces and commas', () => {
-  const { workspace, doc } = fixture();
-  const patch = propertyPatch(workspace, doc, values([
-    ['title', 'Project'], ['tags', 'client, internal\nFollow up\nFollow up'],
-    ['property:field-project-status', 'option-active'], ['property:text', 'City'],
-    ['property:number', '0'], ['property:boolean', 'false'], ['property:date', '2028-02-29'],
-    ['property:multi', 'civil'], ['property:relation', 'elm'], ['property:relation', 'park']
-  ]));
-  assert.deepEqual(patch.tags, ['client, internal', 'Follow up']);
-  assert.equal(patch.properties.number, 0); assert.equal(patch.properties.boolean, false);
-  assert.deepEqual(patch.properties.multi, ['civil']); assert.deepEqual(patch.properties.relation, ['elm', 'park']);
-  model.updateDocument(workspace, doc.id, patch);
+test('property values decode zero, false, arrays and real dates without losing their types', () => {
+  const { database } = fixture();
+  const field = id => database.fields.find(field => field.id === id);
+  assert.equal(propertyValue(field('number'), '0'), 0);
+  assert.equal(propertyValue(field('boolean'), 'false'), false);
+  assert.equal(propertyValue(field('date'), '2028-02-29'), '2028-02-29');
+  assert.deepEqual(propertyValue(field('multi'), ['civil']), ['civil']);
+  assert.deepEqual(propertyValue(field('relation'), ['elm', 'park']), ['elm', 'park']);
 });
 
-test('unchanged unset fields remain absent; clearing existing values is explicit', () => {
-  const { workspace, doc } = fixture();
-  let patch = propertyPatch(workspace, doc, values([['title', doc.title], ['property:field-project-status', 'option-active']]));
-  assert.equal(Object.hasOwn(patch.properties, 'boolean'), false);
-  doc.properties.boolean = false; doc.properties.relation = ['elm'];
-  patch = propertyPatch(workspace, doc, values([['title', doc.title], ['property:field-project-status', 'option-active']]));
-  assert.equal(patch.properties.boolean, null); assert.deepEqual(patch.properties.relation, []);
+test('empty optional values clear explicitly while required and invalid input is rejected', () => {
+  const { database } = fixture();
+  const field = id => database.fields.find(field => field.id === id);
+  assert.equal(propertyValue(field('text'), ''), null);
+  assert.deepEqual(propertyValue(field('relation'), []), []);
+  for (const [id, value] of [['number', 'NaN'], ['number', '1e309'], ['number', '-1'], ['boolean', 'yes'], ['date', '2027-02-29']]) assert.throws(() => propertyValue(field(id), value));
+  field('text').required = true;
+  assert.throws(() => propertyValue(field('text'), ''), /Client is required/);
 });
 
-test('required values, malformed numbers and impossible dates are rejected before applying form changes', () => {
-  const { workspace, doc, database } = fixture();
-  for (const [key, value] of [['number', 'NaN'], ['number', '1e309'], ['boolean', 'yes'], ['date', '2027-02-29']]) {
-    assert.throws(() => propertyPatch(workspace, doc, values([['title', 'Project'], ['property:' + key, value]])));
-  }
-  database.fields.find(field => field.id === 'text').required = true;
-  assert.throws(() => propertyPatch(workspace, doc, values([['title', 'Project']])), /Client is required/);
-});
-
-test('forms escape metadata, preserve unavailable relation IDs and disable editing for read-only workspaces', () => {
-  const { workspace, doc } = fixture(); doc.title = '<script>alert(1)</script>'; doc.tags = ['</textarea><img src=x>'];
-  doc.properties.relation = ['project-missing'];
-  const html = propertyForm(workspace, doc, true);
-  assert.doesNotMatch(html, /<script>|<img/);
-  assert.match(html, /Unavailable record \(project-missing\)/);
-  assert.match(html, /value="project-missing" checked/);
-  assert.match(html, /fieldset class="b-property-fields" disabled/);
+test('relation choices include unavailable current IDs and metadata is escaped', () => {
+  const { workspace, database } = fixture();
+  const choices = propertyChoices(workspace, database.fields.find(field => field.id === 'relation'), ['project-missing']);
+  assert.ok(choices.some(option => option.id === 'project-missing' && option.name === 'Unavailable record (project-missing)'));
+  assert.doesNotMatch(escapeProperty('<script>" &'), /<script>|"/);
 });
 
 test('generic task-property updates reconcile source labels while retaining todo notes', () => {

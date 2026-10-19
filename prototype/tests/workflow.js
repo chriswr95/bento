@@ -1,3 +1,4 @@
+import { checkProperties } from './properties.js';
 import { serve } from '../../scripts/serve.js';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -185,5 +186,6 @@ async function paste(editor, text, html = '') {
  await migration.close();
  console.log('Passed saved-workspace migration with original backup, stable todo identity, and retained notes.');
  await context.close();
+ await checkProperties(browser, url);
 
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close(); await server.close();});
