@@ -1,10 +1,13 @@
-const { _electron: electron } = require('playwright');
-const assert = require('node:assert/strict');
-const fs = require('node:fs/promises');
-const os = require('node:os');
-const path = require('node:path');
-const { execFile } = require('node:child_process');
-const { promisify } = require('node:util');
+import electronPath from 'electron';
+import { fileURLToPath } from 'node:url';
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+import { _electron as electron } from 'playwright';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 const root = path.resolve(__dirname, '..');
 let application, temporary;
 async function stop(app) {
@@ -23,7 +26,7 @@ const watchdog = setTimeout(() => {
 }, 120000);
 async function launch(workspace, userData) {
   const packaged = process.env.BENTO_PACKAGED_EXECUTABLE;
-  const app = await electron.launch({ executablePath: packaged || require('electron'), args: packaged ? ['--user-data-dir=' + userData] : [root], env: { ...process.env, BENTO_TEST_MODE: '1', BENTO_TEST_USER_DATA: userData, ...(workspace ? { BENTO_TEST_WORKSPACE: workspace } : {}) } });
+  const app = await electron.launch({ executablePath: packaged || electronPath, args: packaged ? ['--user-data-dir=' + userData] : [root], env: { ...process.env, BENTO_TEST_MODE: '1', BENTO_TEST_USER_DATA: userData, ...(workspace ? { BENTO_TEST_WORKSPACE: workspace } : {}) } });
   application = app;
   const page = await app.firstWindow(); page.setDefaultTimeout(12000);
   page.on('dialog', dialog => dialog.accept().catch(() => {}));

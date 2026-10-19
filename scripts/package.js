@@ -1,6 +1,10 @@
-const fs = require('node:fs/promises');
-const path = require('node:path');
-const os = require('node:os');
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+import { fileURLToPath } from 'node:url';
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
 const root = path.resolve(__dirname, '..');
 
 async function copyDependency(name, from, into) {
@@ -12,7 +16,7 @@ async function copyDependency(name, from, into) {
 }
 async function build() {
   const { packager } = await import('@electron/packager');
-  const metadata = require('../package.json');
+  const metadata = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
   const staging = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-package-'));
   try {
     // Build a real runtime tree, independent of the development package manager's symlinks.

@@ -1,10 +1,14 @@
-const {chromium}=require('playwright');
-const assert=require('node:assert/strict');
-const path=require('node:path');
-const os=require('node:os');
-const fs=require('node:fs');
-const {pathToFileURL}=require('node:url');
-const url=pathToFileURL(path.join(__dirname,'..','index.html')).href;
+import { serve } from '../../scripts/serve.js';
+import { fileURLToPath } from 'node:url';
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs';
+import {pathToFileURL} from 'node:url';
+const server = await serve();
+const url = server.url;
 const screenshots=process.env.BENTO_SCREENSHOT_DIR || fs.mkdtempSync(path.join(os.tmpdir(),'bento-records-'));
 fs.mkdirSync(screenshots,{recursive:true});
 let browser;
@@ -116,7 +120,7 @@ let browser;
  await profilePage.getByRole('button',{name:'Save profile',exact:true}).click();
  await profilePage.getByRole('heading',{name:'hbd Makena!',exact:true}).waitFor();
  assert.match(await profilePage.locator('#b-status').innerText(),/Profile saved/);
- const saved=await profilePage.evaluate(()=>JSON.parse(localStorage.getItem(BentoProfile.key)));
+ const saved=await profilePage.evaluate(()=>JSON.parse(localStorage.getItem('bento.prototype.profile.v1')));
  assert.deepEqual(saved,{version:1,firstName:'Makena',lastName:'Example',birthday:'1990-10-19'});
  const outbound=await profilePage.evaluate(()=>JSON.stringify(window.bentoSent));
  assert.equal(outbound.includes('1990-10-19'),false);
@@ -126,7 +130,8 @@ let browser;
  await profilePage.clock.setSystemTime(new Date('2026-10-20T19:00:00Z'));
  await profilePage.clock.runFor(60_001);
  await profilePage.getByRole('heading',{name:'Hello, Makena',exact:true}).waitFor();
- const dateCases=await profilePage.evaluate(()=>{
+ const dateCases=await profilePage.evaluate(async()=>{
+  const {default: BentoProfile} = await import('./profile.js');
    const profile={version:1,firstName:'Sam',lastName:'',birthday:'2000-02-29'};
    return [
      BentoProfile.greeting(profile,new Date('2028-02-29T12:00:00')),
@@ -171,7 +176,8 @@ let browser;
  // Upgrade a persisted version 3 workspace without changing IDs or its backup copy.
  const migration=await browser.newPage();
  await migration.goto(url);
- const legacy=await migration.evaluate(()=>{
+ const legacy=await migration.evaluate(async()=>{
+  const {default: BentoWorkspace} = await import('./workspace.js');
   const workspace=BentoWorkspace.createWorkspace({coordination:'- [ ] Legacy action\n',drainage:'# Drainage\n'});
   const task=BentoWorkspace.allTasks(workspace)[0];
   workspace.records[task.id].body='Legacy supporting notes';
@@ -194,4 +200,4 @@ let browser;
  console.log('Passed saved-workspace migration with original backup, stable todo identity, and retained notes.');
  await context.close();
 
-})().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close();});
+})().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close(); await server.close();});

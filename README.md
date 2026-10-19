@@ -34,6 +34,10 @@ General database/schema editing controls, generic property forms/document creati
 
 The app is local: no model requests, HTTP backend, or remote document resources. Sample agent suggestions are simulated. Profiles and unsaved drafts use local app storage, separately from workspace Markdown. `.bento-local/` holds save journals/backups and is ignored by Git in new workspaces. Journaling is not a backup system or multi-device synchronization protocol; its remaining concurrency/power-loss limits are documented in the [data model](docs/data-model.md).
 
+## JavaScript modules
+
+Application code, scripts, and tests use `.js` ES modules. The sandboxed Electron preload remains `desktop/preload.cjs` because sandboxed preloads require CommonJS. The vendored Markdown parser retains its upstream UMD distribution.
+
 ## Check and package
 
 ```sh
@@ -50,7 +54,7 @@ Desktop tests create isolated temporary workspaces and stub only the native dire
 
 ## Browser sample and documentation
 
-`prototype/index.html` still opens directly in a modern browser without a build step. It uses an independent browser-local sample snapshot and exports individual Markdown files. It does not gain desktop filesystem access. Its fictional planning date is October 19, 2026; desktop planning and birthday greetings use the local date.
+`prototype/index.html` runs through `pnpm demo` at http://127.0.0.1:4173/. Native ES modules require HTTP serving in browser sample mode. It uses an independent browser-local sample snapshot and exports individual Markdown files. It does not gain desktop filesystem access. Its fictional planning date is October 19, 2026; desktop planning and birthday greetings use the local date.
 
 - [Product specification](docs/spec.md): audience, features, and success criteria.
 - [Design document](docs/design.md): implementation choices and remaining work.

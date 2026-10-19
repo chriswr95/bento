@@ -1,6 +1,7 @@
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
-const schema = require('../prototype/schema.js');
+import model from '../prototype/workspace.js';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import schema from '../prototype/schema.js';
 const option = { id: 'one', name: 'One' };
 test('typed values distinguish text, finite numbers, booleans, real dates, choices and cardinality', () => {
   const cases = [
@@ -31,7 +32,6 @@ test('status groups and field defaults are validated in definitions', () => {
 });
 
 test('broken project capability bindings are rejected before rendering summaries', () => {
-  const model=require('../prototype/workspace.js');
   const workspace=model.createWorkspace();
   workspace.databases['db-projects'].capabilities.project.active.field='missing';
   assert.throws(()=>model.assertWorkspace(workspace),/active-project mapping/);

@@ -1,11 +1,13 @@
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs/promises');
-const path = require('node:path');
-const os = require('node:os');
-const { WorkspaceRepository, create } = require('../files/repository.cjs');
-const markdown = require('../files/markdown.cjs');
-const model = require('../prototype/workspace.js');
+import { fileURLToPath } from 'node:url';
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { WorkspaceRepository, create } from '../files/repository.js';
+import * as markdown from '../files/markdown.js';
+import model from '../prototype/workspace.js';
 
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-files-'));

@@ -1,7 +1,9 @@
-const { app, BrowserWindow, dialog, ipcMain, session } = require('electron');
-const path = require('node:path');
-const { pathToFileURL } = require('node:url');
-const { WorkspaceRepository, create } = require('../files/repository.cjs');
+import { fileURLToPath } from 'node:url';
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { WorkspaceRepository, create } from '../files/repository.js';
 let window, repository = null, pending = Promise.resolve();
 const entry = path.join(__dirname, '..', 'prototype', 'index.html');
 const trustedURL = pathToFileURL(entry).href;

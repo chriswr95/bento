@@ -1,6 +1,6 @@
-const {test}=require('node:test');
-const assert=require('node:assert/strict');
-const model=require('../workspace.js');
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import model from '../workspace.js';
 const initial=()=>model.createWorkspace({coordination:'# Meeting\n',drainage:'# Drainage\n'});
 const edit=(workspace,body,id='coordination')=>model.applyEdit(workspace,id,body).workspace;
 const task=(workspace)=>model.allTasks(workspace)[0];

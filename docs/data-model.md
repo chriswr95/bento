@@ -155,7 +155,7 @@ Database removal must detach documents while preserving values and sufficient sc
 
 ## Save and recovery contract
 
-`files/repository.cjs` loads definitions and records. It never writes on open except to resume a previously journaled save. Definitions are interpreted from the selected folder rather than hardcoded desktop seed data. Malformed records are reported and left untouched; duplicate identities or recovery conflicts make the workspace read-only.
+`files/repository.js` loads definitions and records. It never writes on open except to resume a previously journaled save. Definitions are interpreted from the selected folder rather than hardcoded desktop seed data. Malformed records are reported and left untouched; duplicate identities or recovery conflicts make the workspace read-only.
 
 1. Mutate and validate a cloned in-memory model.
 2. Keep a local renderer draft and show Pending/Saving/Saved/Failed states.

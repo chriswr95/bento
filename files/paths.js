@@ -1,5 +1,5 @@
-const fs = require('node:fs/promises');
-const path = require('node:path');
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 function relative(value) {
   if (typeof value !== 'string' || !value || value.includes('\\') || value.includes(':') || value.includes('\0') || path.posix.isAbsolute(value)) throw new Error('Expected a relative workspace path.');
@@ -34,4 +34,4 @@ async function walk(root, directory = '', results = []) {
   }
   return results;
 }
-module.exports = { relative, inside, walk };
+export { relative, inside, walk };

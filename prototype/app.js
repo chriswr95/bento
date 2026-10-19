@@ -1,3 +1,7 @@
+import BentoWorkspace from './workspace.js';
+import BentoProfile from './profile.js';
+import BentoLiveEditor from './live-editor.js';
+import BentoFileSession from './file-session.js';
 (async () => {
   const root = document.getElementById('bento-workflow');
   const main = root.querySelector('#b-main'), status = root.querySelector('#b-status');

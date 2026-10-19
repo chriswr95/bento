@@ -1,6 +1,6 @@
-const YAML = require('yaml');
-const { isDeepStrictEqual } = require('node:util');
-const schema = require('../prototype/schema.js');
+import YAML from 'yaml';
+import { isDeepStrictEqual } from 'node:util';
+import schema from '../prototype/schema.js';
 
 function parse(raw) {
   const match = /^(?:\uFEFF)?---\r?\n([\s\S]*?)\r?\n---[\t ]*(?:\r?\n|$)/.exec(raw);
@@ -33,4 +33,4 @@ function serialize(record, original) {
   const content = body.replace(/\r\n?/g, '\n').replace(/\n/g, eol);
   return `${original?.startsWith('\uFEFF') ? '\uFEFF' : ''}---${eol}${header}---${eol}${content}`;
 }
-module.exports = { parse, serialize };
+export { parse, serialize };

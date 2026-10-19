@@ -1,6 +1,6 @@
 # Shared editor and browser sample
 
-For the native folder-backed app, see the [root README](../README.md). This document describes opening `index.html` directly in a browser. Keep this directory together: scripts, styles, and the vendored Markdown parser work offline without a build step. The fictional planning records use October 19, 2026; birthday greetings use the real local date.
+For the native folder-backed app, see the [root README](../README.md). Run `pnpm demo` from the repository root and open http://127.0.0.1:4173/. Native ES modules require HTTP serving instead of opening `index.html` directly. Keep this directory together: scripts, styles, and the vendored Markdown parser work offline without a build step. The fictional planning records use October 19, 2026; birthday greetings use the real local date.
 
 ## Try the flow
 
@@ -36,7 +36,7 @@ Open Profile to save first name, last name, and optional birthday. Settings pers
 
 ## Boundaries
 
-The [desktop repository](../files/repository.cjs) now provides real file loading/saving; the [data-model contract](../docs/data-model.md) describes it. The browser-only mode remains separate. The prototype stores structured envelopes plus Markdown bodies and can export `.md` files. It does not parse/import frontmatter, open/save a desktop workspace folder, load example schema files, expose database/schema CRUD, or implement migration history, production recovery journals, a conflict-resolution dialog, or actual agent/Copilot integration. Its sample defaults are seeded in JavaScript; desktop definitions are loaded from folder files. Arbitrary schema editing through the UI is not supported.
+The [desktop repository](../files/repository.js) now provides real file loading/saving; the [data-model contract](../docs/data-model.md) describes it. The browser-only mode remains separate. The prototype stores structured envelopes plus Markdown bodies and can export `.md` files. It does not parse/import frontmatter, open/save a desktop workspace folder, load example schema files, expose database/schema CRUD, or implement migration history, production recovery journals, a conflict-resolution dialog, or actual agent/Copilot integration. Its sample defaults are seeded in JavaScript; desktop definitions are loaded from folder files. Arbitrary schema editing through the UI is not supported.
 
 Raw document HTML is escaped, external images use their alternate text without loading, and external links display text without navigation. Marked 17.0.5 is vendored in `vendor/marked.umd.js`; attribution is in `vendor/MARKED-LICENSE.md`.
 
@@ -45,7 +45,7 @@ Raw document HTML is escaped, external images use their alternate text without l
 The record-model tests require Node.js, the vendored parser, and the shared schema module:
 
 ```sh
-node --test tests/workspace.cjs
+node --test tests/workspace.js
 ```
 
 From the repository root, browser checks additionally require Playwright:

@@ -1,12 +1,14 @@
-const fs = require('node:fs/promises');
-const path = require('node:path');
-const { createHash, randomUUID } = require('node:crypto');
-const { isDeepStrictEqual } = require('node:util');
-const markdown = require('./markdown.cjs');
-const paths = require('./paths.cjs');
-const transaction = require('./transaction.cjs');
-const model = require('../prototype/workspace.js');
-const schema = require('../prototype/schema.js');
+import { fileURLToPath } from 'node:url';
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
+import * as markdown from './markdown.js';
+import * as paths from './paths.js';
+import * as transaction from './transaction.js';
+import model from '../prototype/workspace.js';
+import schema from '../prototype/schema.js';
 
 async function snapshot(root) {
   const names = await paths.walk(root);
@@ -168,4 +170,4 @@ async function create(directory, title = 'My workspace') {
   await fs.writeFile(file, '---\n' + parsed.document.toString() + '---\n' + parsed.body, 'utf8');
   return WorkspaceRepository.open(root);
 }
-module.exports = { WorkspaceRepository, create, snapshot };
+export { WorkspaceRepository, create, snapshot };

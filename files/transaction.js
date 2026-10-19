@@ -1,8 +1,8 @@
-const fs = require('node:fs/promises');
-const path = require('node:path');
-const os = require('node:os');
-const { randomUUID, createHash } = require('node:crypto');
-const paths = require('./paths.cjs');
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { randomUUID, createHash } from 'node:crypto';
+import * as paths from './paths.js';
 const hash = text => text === null ? null : createHash('sha256').update(text).digest('hex');
 
 async function read(root, name) {
@@ -82,4 +82,4 @@ async function commit(root, entries, verify, hook) {
     await finish(root, journal, hook);
   });
 }
-module.exports = { hash, read, replace, recover, commit };
+export { hash, read, replace, recover, commit };
