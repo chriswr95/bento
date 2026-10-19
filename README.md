@@ -32,10 +32,10 @@ Open [`prototype/index.html`](prototype/index.html) in a modern browser; no inst
 
 Keep the `prototype/` directory together when opening the page; its Markdown parser is bundled for offline use.
 
-The prototype uses fictional projects and a fixed sample date of October 19, 2026. It demonstrates daily review, active-project summaries, meeting-note editing, checkbox capture, shared completion state, one-step undo, and personalized greetings through local profile settings. Document changes last only for the current page session; refreshing restores the sample workspace. Personal profile settings persist in this browser where local storage is available.
+The prototype uses fictional projects and a fixed sample date of October 19, 2026. It demonstrates daily review, active-project summaries, meeting-note editing, checkbox capture, shared completion state, one-step undo, and personalized greetings through local profile settings. Workspace documents and personal profile settings persist separately in this browser where local storage is available. The prototype reports session-only operation if browser storage is unavailable.
 
-Agent suggestions are explicitly simulated. The meeting note is one Markdown document: typing a checkbox creates a tracked todo, and changing completion from the overview updates its source. It does not read or write actual workspace files, connect to an agent, or implement Copilot integration. The production editor remains a design decision. The prototype still uses inline task authority; it does not yet implement the revised document-backed databases or todo documents described in the design.
+Agent suggestions are explicitly simulated. Typing a checkbox creates a separately editable todo document and replaces the checkbox with a stable reference. Click a todo title to open its Markdown body and properties; completion stays consistent across the note, todo, and overview. Download Markdown exports the current document with frontmatter. The browser prototype stores document envelopes and bodies in a local snapshot; it does not yet open a desktop workspace folder, import Markdown files, provide schema-management controls, connect to an agent, or implement Copilot integration.
 
 ## Development
 
-The application framework and build tooling have not been selected. The next step is to validate the meeting-to-follow-up workflow, then prototype the editor, file safety, and theme model on both platforms.
+The application framework and build tooling have not been selected. Next steps are to connect the record model to workspace files, add database/schema controls, and select the desktop shell and editor through a Windows/macOS prototype.

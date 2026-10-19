@@ -137,12 +137,15 @@ A content agent can read a definition and edit authorized record values/body thr
 
 File access remains possible, but malformed direct edits are validation problems rather than authority to bypass membership or capability rules. The application must preserve unreadable/unknown values and show repair options.
 
-## 10. Next implementation slice
+## 10. Implementation status and next slice
 
-1. Load the example definitions and records with strict frontmatter validation, including duplicate-key detection and scalar membership.
-2. Create/open/edit a todo document from a checkbox while preserving the meeting Markdown body.
-3. Toggle completion from the note, todo properties, and daily view against one authoritative record.
-4. Validate external edits using persisted reference baselines; exercise interrupted capture and repeat requests without duplicate todo documents.
-5. Add basic database/field CRUD, capability validation, and recoverable field retirement before broader query or view customization.
+The first browser slice implements create/open/edit/toggle across meeting references, todo bodies/properties, and daily review. It includes focused model tests for identity, references, validation, conflicts, and unlink retention, plus browser workflow checks.
 
-The current browser prototype remains an interaction study with inline-only task authority. These fixtures do not claim a working database engine, production reconciliation, or durable workspace persistence. Resolve the proposed reference/baseline syntax and migration semantics before treating the example as a frozen file format.
+Next steps:
+
+1. Load the example definitions and records from actual workspace files with strict frontmatter validation, duplicate-key detection, and scalar membership.
+2. Add file-level revision checks and production recovery for interrupted multi-file capture, projection, and migration operations.
+3. Extend conflict review beyond the current issue messages and verify arbitrary external-file editing against the persisted baselines.
+4. Add user-facing database/field CRUD and recoverable field retirement before broader query or view customization.
+
+The current browser prototype implements the create/open/edit/toggle record flow with stable references, reference baselines, one-record membership checks, independent todo notes, browser persistence, and individual Markdown export. Its seeded definitions and serialized record snapshots are a browser implementation, not a folder-backed database engine. The example fixtures are not yet loaded by the prototype, and schema management, production multi-file reconciliation/recovery, imports, and migrations remain unimplemented. Resolve the proposed reference/baseline syntax and migration semantics before treating the example as a frozen file format.

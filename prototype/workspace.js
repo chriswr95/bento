@@ -163,8 +163,16 @@
         reference = baseline(taskInfo(workspace, target));
         source.references[refId] = reference;
       } else if (!reference) {
-        issue(workspace, source, occurrence.line, 'Unknown reference; no new todo was created.');
-        continue;
+        const copies = Object.values(workspace.records).filter(record => record.id !== source.id)
+          .map(record => record.references[refId]).filter(candidate => candidate && occurrence.href === `${candidate.target}.md`
+            && candidate.base_title === occurrence.title && candidate.base_completed === occurrence.done);
+        if (!copies.length || new Set(copies.map(candidate => candidate.target)).size !== 1) {
+          issue(workspace, source, occurrence.line, 'Unknown reference; no new todo was created.');
+          continue;
+        }
+        refId = id('ref');
+        reference = clone(copies[0]);
+        source.references[refId] = reference;
       } else if (seen.has(refId)) {
         // Pasting a linked checkbox adds an occurrence, not another task record.
         refId = id('ref');

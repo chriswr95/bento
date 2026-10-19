@@ -1,368 +1,339 @@
 (() => {
   const root = document.getElementById('bento-workflow');
-  const main = root.querySelector('#b-main');
-  const status = root.querySelector('#b-status');
+  const main = root.querySelector('#b-main'), status = root.querySelector('#b-status');
+  const model = BentoWorkspace, clone = model.clone, storageKey = 'bento.prototype.workspace.v3';
   const planDate = '2026-10-19';
-  const projects = [
-    { id: 'creek', title: 'Creekside improvements', status: 'Active' },
-    { id: 'elm', title: 'Elm Street drainage', status: 'Active' },
-    { id: 'park', title: 'Park access review', status: 'Active' }
-  ];
-  const notes = [
-    { id: 'coordination', project: 'creek', title: 'Weekly coordination', tags: ['coordination', 'review'] },
-    { id: 'drainage', project: 'elm', title: 'Drainage review', tags: ['review'] }
-  ];
-  const defaults = {
-    version: 2, view: 'daily', project: null, note: 'coordination', editor: 'write',
-    documents: {
-      coordination: '# Weekly coordination\n\nOctober 19, 2026\n\n## Discussion & decisions\n\nDiscussed review comments and the next coordination meeting.\n\n**Decision:** use the latest marked-up plan as the working reference.\n\nNext step: prepare a short agenda for the next coordination meeting.\n\n## Action items\n\n- [ ] Review the marked-up plan comments (due 2026-10-19)\n- [ ] Draft the coordination follow-up (due 2026-10-22)\n- [x] Link the latest working plan in the notes\n',
-      drainage: '# Drainage review\n\nOctober 16, 2026\n\nReviewed the comment log before the next review.\n\n- [ ] Collect the outstanding reference notes (due 2026-10-16)\n- [ ] List questions for the next drainage review\n'
-    }
-  };
-  const clone = value => JSON.parse(JSON.stringify(value));
-  const escape = value => String(value).replace(/[&<>"']/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[char]));
-  const getNote = id => notes.find(note => note.id === id);
-  const getProject = id => projects.find(project => project.id === id);
-  const markerPattern = /<!--bento-source-line:(\d+)-->/g;
-  const taskPrefix = /^([\t ]*(?:>[\t ]*)*(?:[-+*]|\d+[.)])[\t ]+\[([ xX])\])([\t ]+|$)/;
-  const stripMarkers = text => text.replace(markerPattern, '');
-
-  const markdown = new marked.Marked({
-    renderer: {
-      html({ text }) { return escape(stripMarkers(text)); },
-      link({ tokens }) { return this.parser.parseInline(tokens); },
-      image({ text }) { return `<span>[Image: ${escape(text)}]</span>`; },
-      checkbox(token) {
-        if (!Number.isInteger(token.sourceLine)) return '';
-        return `<input type="checkbox" class="cursor-interaction" data-source-line="${token.sourceLine}" aria-label="Complete ${escape(token.taskTitle)}" ${token.checked ? 'checked' : ''}>`;
-      }
-    }
-  });
+  const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  const appearance = { theme: 'system' };
+  let previous = null, editingSnapshot = null, proposal = false, storageLocked = false, expectedStorage = null;
+  let storageWarning = '';
 
   function validSnapshot(value) {
-    return value?.version === 2 && ['daily', 'meeting', 'profile'].includes(value.view)
-      && (value.project === null || projects.some(project => project.id === value.project))
-      && getNote(value.note) && ['write', 'read'].includes(value.editor)
-      && value.documents && notes.every(note => typeof value.documents[note.id] === 'string');
+    try {
+      return value?.version === 3 && ['daily', 'document', 'profile'].includes(value.view)
+        && ['write', 'read'].includes(value.editor) && model.assertWorkspace(value.workspace)
+        && !!value.workspace.records[value.document] && (!value.project || !!value.workspace.records[value.project]);
+    } catch { return false; }
   }
-
-  function restoreWorkspace(value) {
-    if (validSnapshot(value)) return clone(value);
-    // Preserve notes/tasks from the first prototype when the inline host has saved them.
-    if (value?.bodies && Array.isArray(value.tasks)) {
-      const migrated = clone(defaults);
-      for (const note of notes) {
-        if (typeof value.bodies[note.id] !== 'string') return clone(defaults);
-        const rows = value.tasks.filter(task => task.note === note.id && typeof task.title === 'string')
-          .map(task => `- [${task.done ? 'x' : ' '}] ${task.title}${task.due ? ` (due ${task.due})` : ''}`);
-        migrated.documents[note.id] = `# ${note.title}\n\n${value.bodies[note.id]}\n\n## Action items\n\n${rows.join('\n')}\n`;
+  function loadWorkspace() {
+    const host = window.openai?.widgetState?.privateContent;
+    let local;
+    try {
+      expectedStorage = localStorage.getItem(storageKey);
+      if (expectedStorage) {
+        local = JSON.parse(expectedStorage);
+        if (!validSnapshot(local)) throw new Error('Invalid saved workspace');
       }
-      return migrated;
+    } catch {
+      if (expectedStorage) { storageLocked = true; storageWarning = 'Saved workspace needs repair; it has been left unchanged.'; }
+      else storageWarning = 'Browser storage unavailable; workspace changes will stay in this session.';
     }
-    return clone(defaults);
+    const candidates = [host, local].filter(validSnapshot).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+    if (candidates.length) return clone(candidates[0]);
+    let documents = {};
+    if (host?.version === 2 && host.documents) {
+      documents = Object.fromEntries(['coordination', 'drainage'].filter(key => typeof host.documents[key] === 'string').map(key => [key, host.documents[key]]));
+    } else if (host?.bodies && Array.isArray(host.tasks)) {
+      for (const key of ['coordination', 'drainage']) {
+        if (typeof host.bodies[key] === 'string') documents[key] = host.bodies[key] + '\n\n' + host.tasks.filter(task => task.note === key)
+          .map(task => `- [${task.done ? 'x' : ' '}] ${String(task.title)}${task.due ? ` (due ${task.due})` : ''}`).join('\n');
+      }
+    }
+    return { version: 3, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', editor: 'write', workspace: model.createWorkspace(documents) };
   }
-
-  let state = restoreWorkspace(window.openai?.widgetState?.privateContent);
+  let state = loadWorkspace();
   let profile = BentoProfile.read();
-  let previous = null;
-  let editingSnapshot = null;
-  let proposal = false;
-  const appearance = { theme: 'system' };
-
-  function validDate(value) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const date = new Date(value + 'T12:00:00');
-    return !Number.isNaN(date.valueOf()) && date.getFullYear() === Number(value.slice(0, 4))
-      && date.getMonth() + 1 === Number(value.slice(5, 7)) && date.getDate() === Number(value.slice(8, 10));
-  }
-
-  function taskDetails(item, line) {
-    const rawTitle = stripMarkers(item.text).split('\n')[0].trim();
-    const dueMatch = /\s+\(due (\d{4}-\d{2}-\d{2})\)$/.exec(rawTitle);
-    const due = dueMatch && validDate(dueMatch[1]) ? dueMatch[1] : '';
-    return { line, title: due ? rawTitle.slice(0, dueMatch.index) : rawTitle, due, done: item.checked === true };
-  }
-
-  function parseDocument(source) {
-    // Annotate a temporary parse copy, never the actual Markdown. The parser decides
-    // which candidates are real tasks (excluding fenced/indented code and HTML).
-    const annotated = source.split('\n').map((line, index) => line.replace(taskPrefix,
-      (_, prefix, checked, gap) => `${prefix}${gap || ' '}<!--bento-source-line:${index}-->`)).join('\n');
-    const tokens = markdown.lexer(annotated);
-    const tasks = [];
-    marked.walkTokens(tokens, token => {
-      if (token.type === 'code') token.text = stripMarkers(token.text);
-      if (token.type !== 'list_item' || !token.task) return;
-      const match = /^<!--bento-source-line:(\d+)-->/.exec(token.text);
-      if (!match) return;
-      const task = taskDetails(token, Number(match[1]));
-      tasks.push(task);
-      let checkbox;
-      marked.walkTokens(token.tokens, child => {
-        if (!checkbox && child.type === 'checkbox') checkbox = child;
-      });
-      if (checkbox) Object.assign(checkbox, { sourceLine: task.line, taskTitle: task.title });
-      // Generated source markers must not appear in the readable document.
-      marked.walkTokens(token.tokens, child => {
-        if (child.type === 'html' && /^<!--bento-source-line:\d+-->$/.test(child.text)) child.text = '';
-      });
-    });
-    return { tokens, tasks };
-  }
-
-  function allTasks() {
-    return notes.flatMap(note => parseDocument(state.documents[note.id]).tasks
-      .map(task => ({ ...task, id: `${note.id}:${task.line}`, note: note.id })));
-  }
-
-  const tasksFor = id => allTasks().filter(task => getNote(task.note).project === id);
+  const workspace = () => state.workspace;
+  const record = () => workspace().records[state.document];
+  const getProject = projectId => workspace().records[projectId];
+  const allTasks = () => model.allTasks(workspace());
   const dueLabel = due => !due ? 'No date' : due === planDate ? 'Today'
     : new Date(due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  function notify(message) { status.textContent = message; }
+
+  const markdown = new marked.Marked({ renderer: {
+    html({ text }) {
+      if (/^<!-- bento-ref: [\w-]+ -->$/.test(text.trim())) return '';
+      return escape(model.stripMarkers(text));
+    },
+    link({ href, tokens, referenceId }) {
+      if (referenceId) {
+        const reference = record().references[referenceId];
+        if (!reference || href !== `${reference.target}.md` || !model.taskInfo(workspace(), workspace().records[reference.target])) return this.parser.parseInline(tokens);
+      }
+      const target = /^([\w-]+)\.md$/.exec(href)?.[1];
+      return target && Object.hasOwn(workspace().records, target)
+        ? `<button class="b-document-link cursor-interaction" type="button" data-record="${target}">${this.parser.parseInline(tokens)}</button>`
+        : this.parser.parseInline(tokens);
+    },
+    image({ text }) { return `<span>[Image: ${escape(text)}]</span>`; },
+    checkbox(token) {
+      const reference = token.referenceId && record().references[token.referenceId];
+      const unresolved = token.referenceId && (!reference || token.sourceHref !== `${reference.target}.md` || !model.taskInfo(workspace(), workspace().records[reference.target]));
+      return Number.isInteger(token.sourceLine)
+        ? `<input type="checkbox" class="cursor-interaction" data-source-line="${token.sourceLine}" aria-label="Complete ${escape(token.taskTitle)}" ${token.checked ? 'checked' : ''} ${unresolved ? 'disabled' : ''}>` : '';
+    }
+  } });
+
+  function notify(message) { status.textContent = storageWarning ? `${message} ${storageWarning}` : message; }
   function persist() {
-    window.openai?.setWidgetState?.({
-      modelContent: { screen: state.view, project: state.project, openTodos: allTasks().filter(task => !task.done).length },
-      privateContent: clone(state)
-    })?.catch(() => {});
+    state.savedAt = Date.now();
+    const snapshot = JSON.stringify(state);
+    if (!storageLocked) {
+      try {
+        if (localStorage.getItem(storageKey) !== expectedStorage) {
+          storageLocked = true;
+          storageWarning = 'Another page changed the saved workspace. These edits remain in this session; the other copy was not overwritten.';
+        } else {
+          localStorage.setItem(storageKey, snapshot);
+          expectedStorage = snapshot;
+          storageWarning = '';
+        }
+      } catch { storageWarning = 'Browser storage unavailable; these changes remain in this session.'; }
+    }
+    const privateContent = new TextEncoder().encode(snapshot).byteLength < 13_000 ? clone(state) : null;
+    window.openai?.setWidgetState?.({ modelContent: {
+      screen: state.view, project: state.project, openTodos: allTasks().filter(task => !task.done).length
+    }, privateContent })?.catch(() => {});
   }
   function change(operation, message) {
+    const next = operation();
     previous = clone(state);
-    operation();
+    state.workspace = next;
     editingSnapshot = null;
-    render();
-    persist();
-    notify(message);
+    render(); persist(); notify(message);
   }
-  function navigate(view, project = null, note = 'coordination') {
-    state.view = view;
-    state.project = project;
-    state.note = note;
-    proposal = false;
-    editingSnapshot = null;
-    render();
-    persist();
+  function navigate(view, project = null, documentId = state.document) {
+    state.view = view; state.project = project; state.document = documentId;
+    if (workspace().records[documentId]?.database === 'db-meetings') state.note = documentId;
+    editingSnapshot = null; proposal = false;
+    render(); persist();
+  }
+  function openRecord(documentId) {
+    if (Object.hasOwn(workspace().records, documentId)) navigate('document', null, documentId);
   }
 
   function taskRow(task) {
-    const note = getNote(task.note), project = getProject(note.project);
+    const project = getProject(task.project), source = model.sourcesFor(workspace(), task.id)[0];
     return `<li class="b-task ${task.done ? 'b-done' : ''}">
       <input class="cursor-interaction" type="checkbox" data-task="${task.id}" aria-label="Complete ${escape(task.title)}" ${task.done ? 'checked' : ''}>
-      <div><span class="b-task-title">${escape(task.title)}</span>
-        <button class="b-source cursor-interaction" data-note="${note.id}" type="button">${escape(project.title)} · ${escape(note.title)} ↗</button>
+      <div><button class="b-task-title b-document-link cursor-interaction" type="button" data-record="${task.id}">${escape(task.title)}</button>
+        ${source ? `<button class="b-source cursor-interaction" data-record="${source.id}" type="button">${escape(project?.title || 'Unassigned')} · ${escape(source.title)} ↗</button>` : `<span class="b-source">${escape(project?.title || 'Unassigned')} · No source reference</span>`}
       </div><span class="b-date ${!task.done && task.due && task.due < planDate ? 'b-overdue' : ''}">${dueLabel(task.due)}</span>
     </li>`;
   }
-
   function projectCard(project) {
-    const tasks = tasksFor(project.id), open = tasks.filter(task => !task.done);
+    const tasks = allTasks().filter(task => task.project === project.id), open = tasks.filter(task => !task.done);
     const next = open.filter(task => task.due).sort((a, b) => a.due.localeCompare(b.due))[0];
-    return `<section class="b-project">
-      <button type="button" class="cursor-interaction" data-project="${project.id}">${escape(project.title)}</button>
-      <p>${project.status} · ${open.length} open · ${tasks.length - open.length} complete</p>
-      <p>${next ? 'Next due: ' + dueLabel(next.due) : open.length ? 'No dated work' : 'No outstanding work'}</p>
-    </section>`;
+    return `<section class="b-project"><button type="button" class="cursor-interaction" data-project="${project.id}">${escape(project.title)}</button>
+      <p>Active · ${open.length} open · ${tasks.length - open.length} complete</p>
+      <p>${next ? 'Next due: ' + dueLabel(next.due) : open.length ? 'No dated work' : 'No outstanding work'}</p></section>`;
   }
-
   function renderTaskGroups(open) {
-    const groups = [
-      ['Overdue', task => task.due && task.due < planDate],
-      ['Today', task => task.due === planDate],
-      ['Upcoming', task => task.due > planDate],
-      ['Without a date', task => !task.due]
-    ];
+    const groups = [['Overdue', task => task.due && task.due < planDate], ['Today', task => task.due === planDate],
+      ['Upcoming', task => task.due > planDate], ['Without a date', task => !task.due]];
     return groups.map(([title, test]) => {
       const tasks = open.filter(test);
       return tasks.length ? `<section><h2>${title} <span class="b-muted">${tasks.length}</span></h2><ul class="b-list">${tasks.map(taskRow).join('')}</ul></section>` : '';
     }).join('');
   }
-
   function renderDaily() {
-    const tasks = allTasks().filter(task => !state.project || getNote(task.note).project === state.project);
+    const tasks = allTasks().filter(task => !state.project || task.project === state.project);
     const open = tasks.filter(task => !task.done).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-    const selected = state.project ? getProject(state.project) : null;
+    const selected = getProject(state.project);
+    const meeting = Object.values(workspace().records).find(doc => doc.database === 'db-meetings' && (!selected || model.projectOf(workspace(), doc) === selected.id));
     main.innerHTML = `<p class="b-eyebrow">Sample plan · Monday, October 19 · ${selected ? 'Project overview' : 'All projects'}</p>
       <h1 id="b-greeting">${selected ? escape(selected.title) : escape(BentoProfile.greeting(profile))}</h1>
       <p class="b-muted">${open.length} open actions${selected ? ' in this project' : ' across your workspace'}.</p>
       <div class="b-actions">
-        ${selected?.id !== 'park' ? `<button type="button" class="b-button b-primary cursor-interaction" data-open-meeting="${selected?.id === 'elm' ? 'drainage' : 'coordination'}">Open meeting note</button>` : ''}
-        ${selected ? '<button type="button" class="b-button cursor-interaction" data-view="daily">All projects</button>' : ''}
+        ${meeting ? `<button type="button" class="b-button b-primary cursor-interaction" data-record="${meeting.id}">Open meeting note</button>` : ''}
+        ${selected ? `<button type="button" class="b-button cursor-interaction" data-record="${selected.id}">Open project document</button><button type="button" class="b-button cursor-interaction" data-view="daily">All projects</button>` : ''}
         <button type="button" class="b-button cursor-interaction" data-undo ${previous ? '' : 'disabled'}>Undo last change</button>
-      </div>
-      <h2>${selected ? 'Project summary' : 'Active projects'}</h2>
-      <div class="b-summary-grid">${projects.filter(project => !selected || project.id === selected.id).map(projectCard).join('')}</div>
-      ${renderTaskGroups(open)}
-      ${open.length ? '' : '<p class="b-muted">No outstanding work. Your project notes are still here.</p>'}
+      </div><h2>${selected ? 'Project summary' : 'Active projects'}</h2>
+      <div class="b-summary-grid">${model.activeProjects(workspace()).filter(project => !selected || project.id === selected.id).map(projectCard).join('')}</div>
+      ${renderTaskGroups(open)}${open.length ? '' : '<p class="b-muted">No outstanding work. Your project notes are still here.</p>'}
       <details><summary>Completed (${tasks.length - open.length})</summary><ul class="b-list">${tasks.filter(task => task.done).map(taskRow).join('')}</ul></details>`;
   }
 
   function resizeEditor() {
     const editor = main.querySelector('#b-markdown-editor');
     if (!editor) return;
-    editor.style.height = 'auto';
-    editor.style.height = Math.max(420, editor.scrollHeight + 4) + 'px';
+    editor.style.height = 'auto'; editor.style.height = Math.max(320, editor.scrollHeight + 4) + 'px';
   }
-
   function refreshDocument() {
-    const parsed = parseDocument(state.documents[state.note]);
+    const parsed = model.parse(record().body);
     main.querySelector('#b-reading').innerHTML = markdown.parser(parsed.tokens);
-    main.querySelector('#b-task-count').textContent = `${parsed.tasks.length} tracked todos · ${parsed.tasks.filter(task => !task.done).length} open`;
+    const targets = new Set(parsed.tasks.map(task => record().references[task.refId]?.target).filter(Boolean));
+    main.querySelector('#b-task-count').textContent = `${targets.size} linked todos in this document`;
+    const issues = workspace().issues.filter(item => item.document === record().id);
+    const panel = main.querySelector('#b-document-issues');
+    panel.hidden = !issues.length;
+    panel.textContent = issues.map(item => `Line ${item.line + 1}: ${item.message}`).join(' ');
     resizeEditor();
   }
-
-  function renderMeeting() {
-    const note = getNote(state.note), project = getProject(note.project);
-    main.innerHTML = `<p class="b-eyebrow">${escape(project.title)} / Meeting notes</p>
-      <div class="b-actions">
-        ${note.tags.map(tag => `<span class="b-tag">${tag}</span>`).join('')}
-        <button type="button" class="b-button cursor-interaction" data-project="${project.id}">View project</button>
-        <button type="button" class="b-button cursor-interaction" data-undo ${previous ? '' : 'disabled'}>Undo last change</button>
-      </div>
+  function taskProperties(task) {
+    const sources = model.sourcesFor(workspace(), task.id);
+    const projects = model.activeProjects(workspace());
+    if (task.project && getProject(task.project) && !projects.some(project => project.id === task.project)) projects.push(getProject(task.project));
+    return `<form id="b-todo-properties" class="b-properties">
+      <label class="b-field">Title<input name="title" aria-label="Todo title" maxlength="200" required value="${escape(task.title)}"></label>
+      <label class="b-completion"><input type="checkbox" data-todo-completed aria-label="Completed" ${task.done ? 'checked' : ''}>Completed</label>
+      <div class="b-form"><label class="b-field">Due date (optional)<input name="due" type="date" aria-label="Due date" value="${escape(task.due)}"></label>
+        <label class="b-field">Project<select name="project" aria-label="Project"><option value="">Unassigned</option>${projects.map(project => `<option value="${project.id}" ${task.project === project.id ? 'selected' : ''}>${escape(project.title)}</option>`).join('')}</select></label></div>
+      <div class="b-actions"><button type="submit" class="b-button cursor-interaction">Save properties</button>${sources.map(source => `<button type="button" class="b-button cursor-interaction" data-record="${source.id}">Back to ${escape(source.title)}</button>`).join('')}</div>
+    </form>`;
+  }
+  function renderDocument() {
+    const doc = record(), database = workspace().databases[doc.database], task = model.taskInfo(workspace(), doc);
+    const label = task ? 'Todo Markdown' : doc.database === 'db-meetings' ? 'Meeting Markdown' : 'Project Markdown';
+    main.innerHTML = `<p class="b-eyebrow">${escape(database?.title || 'Documents')} / ${escape(doc.title)}</p>
+      ${task ? `<h1>${escape(doc.title)}</h1>${taskProperties(task)}` : ''}
+      <div class="b-actions"><button type="button" class="b-button cursor-interaction" data-export>Download Markdown</button>
+        <button type="button" class="b-button cursor-interaction" data-undo ${previous ? '' : 'disabled'}>Undo last change</button></div>
       <div class="b-actions" role="group" aria-label="Document mode">
         <button class="b-button cursor-interaction" type="button" data-editor="write" aria-pressed="${state.editor === 'write'}">Write Markdown</button>
         <button class="b-button cursor-interaction" type="button" data-editor="read" aria-pressed="${state.editor === 'read'}">Read</button>
       </div>
-      <label id="b-editor-label" ${state.editor === 'write' ? '' : 'hidden'}>
-        <span class="b-eyebrow">Meeting Markdown</span>
-        <textarea class="b-editor" id="b-markdown-editor" aria-label="Meeting Markdown" spellcheck="false"></textarea>
-      </label>
-      <article id="b-reading" class="b-reading" aria-label="Rendered meeting note" ${state.editor === 'read' ? '' : 'hidden'}></article>
-      <p id="b-task-count" class="b-muted" role="status" aria-live="polite"></p>
-      <div class="b-actions"><button class="b-button cursor-interaction" type="button" data-propose>Preview agent suggestion</button></div>
-      <section id="b-proposal" class="b-proposal" hidden aria-label="Sample agent suggestion">
-        <h3>Sample agent suggestion</h3><p id="b-suggestion-text"></p>
-        <p class="b-muted">From this note · no due date specified · simulated assistance</p>
-        <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div>
-      </section>`;
-    main.querySelector('#b-markdown-editor').value = state.documents[note.id];
-    refreshDocument();
-    if (proposal) showProposal();
+      <label id="b-editor-label" ${state.editor === 'write' ? '' : 'hidden'}><span class="b-eyebrow">${label}</span>
+        <textarea class="b-editor" id="b-markdown-editor" aria-label="${label}" spellcheck="false" placeholder="Write notes and supporting context…"></textarea></label>
+      <article id="b-reading" class="b-reading" aria-label="Rendered document" ${state.editor === 'read' ? '' : 'hidden'}></article>
+      <p id="b-task-count" class="b-muted" role="status" aria-live="polite"></p><p id="b-document-issues" class="b-issues" role="alert" hidden></p>
+      ${doc.id === 'coordination' ? `<div class="b-actions"><button class="b-button cursor-interaction" type="button" data-propose>Preview agent suggestion</button></div>
+        <section id="b-proposal" class="b-proposal" hidden><h3>Sample agent suggestion</h3><p id="b-suggestion-text"></p><p class="b-muted">From this note · no due date specified · simulated assistance</p>
+          <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
+    main.querySelector('#b-markdown-editor').value = doc.body;
+    refreshDocument(); if (proposal && main.querySelector('#b-proposal')) showProposal();
   }
-
   const suggestion = 'Prepare an agenda for the next coordination meeting';
   function showProposal() {
-    const available = state.note === 'coordination' && state.documents[state.note].includes('prepare a short agenda')
-      && !allTasks().some(task => task.note === state.note && task.title === suggestion);
+    const available = record().body.includes('prepare a short agenda') && !allTasks().some(task => task.title === suggestion);
     main.querySelector('#b-proposal').hidden = false;
     main.querySelector('#b-suggestion-text').textContent = available ? suggestion : 'No additional sample suggestion for the current note.';
     main.querySelector('[data-apply]').hidden = !available;
   }
-
   function refreshGreeting() {
     const heading = main.querySelector('#b-greeting');
     if (heading && !state.project) heading.textContent = BentoProfile.greeting(profile);
   }
-
   function renderProfile() {
-    main.innerHTML = `<p class="b-eyebrow">Personal settings</p><h1>Your profile</h1>
-      <p class="b-muted">Make Bento feel a little more like you.</p>
-      <form id="b-profile-form">
-        <div class="b-form">
-          <label class="b-field">First name<input name="firstName" autocomplete="given-name" required maxlength="80" value="${escape(profile.firstName)}"></label>
-          <label class="b-field">Last name<input name="lastName" autocomplete="family-name" maxlength="80" value="${escape(profile.lastName)}"></label>
-          <label class="b-field">Birthday (optional)<input name="birthday" type="date" aria-label="Birthday" max="${BentoProfile.dateKey()}" value="${escape(profile.birthday)}"></label>
-        </div>
+    main.innerHTML = `<p class="b-eyebrow">Personal settings</p><h1>Your profile</h1><p class="b-muted">Make Bento feel a little more like you.</p>
+      <form id="b-profile-form"><div class="b-form">
+        <label class="b-field">First name<input name="firstName" autocomplete="given-name" required maxlength="80" value="${escape(profile.firstName)}"></label>
+        <label class="b-field">Last name<input name="lastName" autocomplete="family-name" maxlength="80" value="${escape(profile.lastName)}"></label>
+        <label class="b-field">Birthday (optional)<input name="birthday" type="date" aria-label="Birthday" max="${BentoProfile.dateKey()}" value="${escape(profile.birthday)}"></label></div>
         <p class="b-muted" style="margin-top:16px">Your birthday adds a little celebration to your daily greeting.</p>
-        <div class="b-actions"><button type="submit" class="b-button b-primary cursor-interaction">Save profile</button><button type="button" class="b-button cursor-interaction" data-view="daily">Back to overview</button></div>
-      </form>`;
+        <div class="b-actions"><button type="submit" class="b-button b-primary cursor-interaction">Save profile</button><button type="button" class="b-button cursor-interaction" data-view="daily">Back to overview</button></div></form>`;
   }
-
   function render() {
     root.dataset.theme = appearance.theme;
     root.querySelectorAll('[data-view]').forEach(button => {
-      if (button.dataset.view === state.view && !state.project) button.setAttribute('aria-current', 'page');
-      else button.removeAttribute('aria-current');
+      const selected = button.dataset.view === state.view || button.dataset.view === 'meeting' && state.view === 'document' && record().database === 'db-meetings';
+      if (selected && !state.project) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     });
-    root.querySelector('#b-project-nav').innerHTML = projects.map(project => `<button type="button" class="cursor-interaction" data-project="${project.id}" ${state.project === project.id ? 'aria-current="page"' : ''}>${project.title}</button>`).join('');
-    if (state.view === 'daily') renderDaily();
-    else if (state.view === 'profile') renderProfile();
-    else renderMeeting();
+    root.querySelector('#b-project-nav').innerHTML = model.activeProjects(workspace()).map(project => `<button type="button" class="cursor-interaction" data-project="${project.id}" ${state.project === project.id ? 'aria-current="page"' : ''}>${escape(project.title)}</button>`).join('');
+    if (state.view === 'daily') renderDaily(); else if (state.view === 'profile') renderProfile(); else renderDocument();
     if (globalThis.lucide) lucide.createIcons({ attrs: { width: 16, height: 16 } });
   }
 
-  function setTaskCompletion(noteId, line, done) {
-    const task = allTasks().find(task => task.note === noteId && task.line === line);
-    if (!task) return;
-    change(() => {
-      const lines = state.documents[noteId].split('\n');
-      lines[line] = lines[line].replace(taskPrefix, (_, prefix, checked, gap) => prefix.slice(0, -2) + (done ? 'x' : ' ') + ']' + gap);
-      state.documents[noteId] = lines.join('\n');
-    }, done ? 'Todo completed in the Markdown document.' : 'Todo reopened in the Markdown document.');
-  }
-
-  root.addEventListener('click', event => {
-    const button = event.target.closest('button');
-    if (!button) return;
-    if (button.dataset.view) navigate(button.dataset.view);
-    else if (button.dataset.project) navigate('daily', button.dataset.project);
-    else if (button.dataset.note || button.dataset.openMeeting) navigate('meeting', null, button.dataset.note || button.dataset.openMeeting);
-    else if (button.dataset.editor) { state.editor = button.dataset.editor; editingSnapshot = null; render(); persist(); }
-    else if (button.hasAttribute('data-undo') && previous) {
-      state = previous; previous = null; editingSnapshot = null; proposal = false;
-      render(); persist(); notify('Last document change undone.');
-    } else if (button.hasAttribute('data-propose')) { proposal = true; showProposal(); }
-    else if (button.hasAttribute('data-dismiss')) { proposal = false; main.querySelector('#b-proposal').hidden = true; }
-    else if (button.hasAttribute('data-apply')) change(() => {
-      state.documents[state.note] += `\n- [ ] ${suggestion}\n`;
-      proposal = false;
-    }, 'Inserted the reviewed checkbox into the Markdown document.');
-  });
-
-  root.addEventListener('change', event => {
-    if (event.target.dataset.task) {
-      const task = allTasks().find(task => task.id === event.target.dataset.task);
-      if (task) setTaskCompletion(task.note, task.line, event.target.checked);
-    } else if (event.target.hasAttribute('data-source-line')) {
-      setTaskCompletion(state.note, Number(event.target.dataset.sourceLine), event.target.checked);
+  function mapCaret(source, position, edits) {
+    let shift = 0;
+    const lines = source.split('\n');
+    for (const edit of edits.sort((a, b) => a.line - b.line)) {
+      const start = lines.slice(0, edit.line).reduce((sum, line) => sum + line.length + 1, 0), end = start + edit.old.length;
+      if (position < start) break;
+      if (edit.capture && position >= start + edit.prefixLength && position <= end) {
+        const offset = Math.min(position - start - edit.prefixLength, edit.title.length);
+        return start + shift + edit.prefixLength + 1 + model.escapeLabel(edit.title.slice(0, offset)).length;
+      }
+      if (position >= end) shift += edit.replacement.length - edit.old.length;
     }
+    return position + shift;
+  }
+  function editDocument(editor) {
+    if (!editingSnapshot) { editingSnapshot = clone(state); previous = editingSnapshot; }
+    const source = editor.value, start = editor.selectionStart, end = editor.selectionEnd;
+    const result = model.applyEdit(workspace(), state.document, source);
+    state.workspace = result.workspace;
+    const canonical = record().body;
+    if (canonical !== source) {
+      editor.value = canonical;
+      editor.setSelectionRange(mapCaret(source, start, result.edits), mapCaret(source, end, result.edits));
+    }
+    refreshDocument(); main.querySelector('[data-undo]').disabled = false;
+    persist(); notify('Document updated. Linked todos use their own records.');
+  }
+  function exportDocument() {
+    const blob = new Blob([model.serializeDocument(record())], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = `${record().id}.md`; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  root.addEventListener('click', event => {
+    const button = event.target.closest('button'); if (!button) return;
+    try {
+      if (button.dataset.view === 'meeting') openRecord(state.note);
+      else if (button.dataset.view) navigate(button.dataset.view);
+      else if (button.dataset.record) openRecord(button.dataset.record);
+      else if (button.dataset.project) navigate('daily', button.dataset.project);
+      else if (button.dataset.editor) { state.editor = button.dataset.editor; editingSnapshot = null; render(); persist(); }
+      else if (button.hasAttribute('data-undo') && previous) {
+        const snapshot = previous; previous = null; state = snapshot; editingSnapshot = null; proposal = false;
+        render(); persist(); notify('Last document change undone.');
+      } else if (button.hasAttribute('data-export')) exportDocument();
+      else if (button.hasAttribute('data-propose')) { proposal = true; showProposal(); }
+      else if (button.hasAttribute('data-dismiss')) { proposal = false; main.querySelector('#b-proposal').hidden = true; }
+      else if (button.hasAttribute('data-apply')) { proposal = false; change(() => model.applyEdit(workspace(), state.document, record().body + `\n- [ ] ${suggestion}\n`).workspace, 'Created a todo document from the reviewed checkbox.'); }
+    } catch (error) { notify(error.message); }
   });
-
+  root.addEventListener('change', event => {
+    try {
+      if (event.target.dataset.task) change(() => model.updateTodo(workspace(), event.target.dataset.task, { done: event.target.checked }), 'Todo completion updated.');
+      else if (event.target.hasAttribute('data-todo-completed')) {
+        const form = main.querySelector('#b-todo-properties'), values = new FormData(form);
+        change(() => model.updateTodo(workspace(), state.document, { done: event.target.checked, title: String(values.get('title')), due: String(values.get('due')), project: String(values.get('project')) }), 'Todo properties and completion updated.');
+      }
+      else if (event.target.hasAttribute('data-source-line')) change(() => model.setCheckbox(workspace(), state.document, Number(event.target.dataset.sourceLine), event.target.checked), 'Todo completion updated.');
+    } catch (error) { if (event.target.type === 'checkbox') event.target.checked = !event.target.checked; notify(error.message); }
+  });
   root.addEventListener('input', event => {
     if (event.target.closest('#b-profile-form')) { event.target.setCustomValidity(''); return; }
-    if (event.target.id !== 'b-markdown-editor') return;
-    if (!editingSnapshot) { editingSnapshot = clone(state); previous = editingSnapshot; }
-    state.documents[state.note] = event.target.value.replace(/\r\n?/g, '\n');
-    refreshDocument();
-    main.querySelector('[data-undo]').disabled = false;
-    persist();
-    notify('Markdown updated. Todos follow the document automatically.');
+    if (event.target.id === 'b-markdown-editor') {
+      try { editDocument(event.target); } catch (error) { notify(error.message); }
+    }
+  });
+  root.addEventListener('keydown', event => {
+    const editor = event.target;
+    if (editor.id !== 'b-markdown-editor' || event.key !== 'Enter' || editor.selectionStart !== editor.selectionEnd) return;
+    const pos = editor.selectionStart, lineEnd = editor.value.indexOf('\n', pos);
+    const end = lineEnd < 0 ? editor.value.length : lineEnd;
+    if (!editor.value.slice(pos, end).startsWith('](') || !/<!-- bento-ref: [\w-]+ -->$/.test(editor.value.slice(pos, end))) return;
+    event.preventDefault(); editor.setRangeText('\n- [ ] ', end, end, 'end');
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
   });
   root.addEventListener('submit', event => {
-    if (event.target.id !== 'b-profile-form') return;
     event.preventDefault();
-    const form = event.target;
-    const values = new FormData(form);
-    const value = {
-      version: 1, firstName: String(values.get('firstName') || '').trim(),
-      lastName: String(values.get('lastName') || '').trim(), birthday: String(values.get('birthday') || '')
-    };
-    if (!BentoProfile.validate(value)) {
-      form.elements.firstName.setCustomValidity('Enter a first name. Use a valid birthday or leave it blank.');
-      form.reportValidity();
-      return;
+    const form = event.target, values = new FormData(form);
+    if (form.id === 'b-todo-properties') {
+      try { change(() => model.updateTodo(workspace(), state.document, { title: String(values.get('title')), due: String(values.get('due')), project: String(values.get('project')) }), 'Todo properties saved.'); }
+      catch (error) { notify(error.message); }
+    } else if (form.id === 'b-profile-form') {
+      const value = { version: 1, firstName: String(values.get('firstName') || '').trim(), lastName: String(values.get('lastName') || '').trim(), birthday: String(values.get('birthday') || '') };
+      if (!BentoProfile.validate(value)) { form.elements.firstName.setCustomValidity('Enter a first name and a valid birthday, or leave birthday blank.'); form.reportValidity(); return; }
+      const result = BentoProfile.write(value); profile = result.profile; navigate('daily');
+      notify(result.saved ? 'Profile saved in this browser.' : 'Profile kept for this session. Browser storage is unavailable.');
     }
-    const result = BentoProfile.write(value);
-    profile = result.profile;
-    navigate('daily');
-    notify(result.saved ? 'Profile saved in this browser.' : 'Profile kept for this session. Browser storage is unavailable.');
   });
   window.addEventListener('storage', event => {
-    if (event.key === BentoProfile.key || event.key === null) {
-      profile = BentoProfile.read();
-      refreshGreeting();
-    }
+    if (event.key === BentoProfile.key || event.key === null) { profile = BentoProfile.read(); refreshGreeting(); }
+    if (event.key === storageKey && event.newValue !== expectedStorage) { storageLocked = true; storageWarning = 'Another page changed the saved workspace; this session will not overwrite it.'; notify('Workspace changed elsewhere.'); }
   });
   document.addEventListener('visibilitychange', refreshGreeting);
   setInterval(refreshGreeting, 60_000);
   window.addEventListener('resize', resizeEditor);
   window.addEventListener('openai:set_globals', event => {
     const saved = event.detail?.globals?.widgetState?.privateContent;
-    if (validSnapshot(saved) && JSON.stringify(saved) !== JSON.stringify(state)) {
-      state = clone(saved); previous = null; editingSnapshot = null; proposal = false; render();
-    }
+    if (validSnapshot(saved) && saved.savedAt > state.savedAt && !editingSnapshot) { state = clone(saved); previous = null; proposal = false; render(); }
   });
-  render();
+  render(); notify(storageWarning ? 'Sample workspace opened.' : 'Sample workspace ready. Edits save in this browser.');
   if (globalThis.Tweak) {
     const tweak = new Tweak({ container: root, onChange: () => { root.dataset.theme = appearance.theme; } });
     tweak.addSelect(appearance, 'theme', { label: 'Appearance', options: ['system', 'light', 'dark'] });

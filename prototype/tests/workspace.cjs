@@ -55,9 +55,9 @@ test('pasting linked occurrences deduplicates tasks and allocates independent re
 
 test('source references across notes propagate canonical status',()=>{
  let workspace=edit(initial(),'- [ ] Review\n');
- const todo=task(workspace), ref=Object.values(workspace.records.coordination.references)[0];
- workspace.records.drainage.references['ref-copy']={...ref};
- workspace=edit(workspace,workspace.records.coordination.body.replace(/bento-ref: [\w-]+/,'bento-ref: ref-copy'),'drainage');
+ const todo=task(workspace);
+ workspace=edit(workspace,workspace.records.coordination.body,'drainage');
+ assert.notEqual(Object.keys(workspace.records.coordination.references)[0],Object.keys(workspace.records.drainage.references)[0]);
  workspace=model.updateTodo(workspace,todo.id,{done:true});
  assert.match(workspace.records.coordination.body,/\[x\]/);
  assert.match(workspace.records.drainage.body,/\[x\]/);

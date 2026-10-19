@@ -63,3 +63,12 @@
 #bento-workflow .b-button[aria-pressed=true] {background:var(--b-wash);border-color:var(--b-accent)}
 
 #bento-workflow #b-profile-form .b-form {grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));max-width:560px}
+
+#bento-workflow .b-document-link {padding:0;border:0;background:none;color:var(--b-ink);text-align:left;text-decoration:underline;text-decoration-color:var(--b-line);text-underline-offset:3px;overflow-wrap:anywhere}
+#bento-workflow .b-properties {margin:20px 0;padding:16px 0;border-bottom:1px solid var(--b-line)}
+#bento-workflow .b-properties>.b-field {margin-bottom:12px}
+#bento-workflow .b-completion {display:flex;align-items:center;gap:10px;margin:12px 0}
+#bento-workflow .b-field select {display:block;width:100%;background:var(--b-paper);border:1px solid var(--b-line);border-radius:6px;padding:9px;margin-top:4px;font:inherit;color:var(--b-ink)}
+#bento-workflow .b-issues {border-left:3px solid var(--b-warn);padding:12px;color:var(--b-warn)}
+#bento-workflow .b-reading li:has(>input[type=checkbox]) > p:first-of-type {display:inline;margin:0}
+#bento-workflow #b-todo-properties .b-form {grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}

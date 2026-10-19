@@ -61,9 +61,13 @@ Removing a checkbox reference unlinks that occurrence and retains the todo docum
 
 ### Current prototype boundary
 
-The browser prototype still derives tasks directly from inline Markdown and uses document/current-line identifiers. It validates editing and daily review but does not implement record documents, database definitions, permanent IDs, or schema editing. Its checkbox-removal behavior reflects that earlier model. Do not present it as an implementation of this revised architecture.
+The browser prototype now has a separate record model (`prototype/workspace.js`): seeded declarative database definitions, one record per project/meeting/todo, scalar membership checks, stable document/reference IDs, persisted reference baselines, and todo-authoritative title/completion. Its create/open/edit/toggle flow is implemented across meeting documents, todo properties/bodies, and daily review. Removing a reference retains the todo record and notes.
 
-Before replacing that representation, validate the example schema and record files, then implement the smallest create/open/edit/toggle flow across a meeting and a todo document with recovery. Keep personal profile settings and runtime caches outside workspace content.
+The prototype stores record envelopes and Markdown bodies together in one browser-local workspace snapshot, separate from the profile key. It exports individual documents as Markdown with YAML-compatible frontmatter; it does not yet load or save a desktop folder, parse frontmatter imports, manage database/schema changes through the UI, or implement production multi-file recovery. Seed data is declared in code rather than loaded from the design fixtures. These boundaries remain implementation work.
+
+Mutations operate on cloned workspace snapshots and validate before replacing state. Browser storage writes the complete snapshot, and undo restores the preceding snapshot. Detect observed changes from another page and stop overwriting the saved copy; this is single-tab prototype persistence, not a production synchronization protocol. Invalid saved snapshots are retained unchanged, with a visible warning and session-only sample operation. Storage/quota failures are reported as session-only operation. Older inline-host snapshots migrate to record documents when possible.
+
+Markdown source edits automatically materialize linked todos; generated links preserve the editor caret while typing, and Enter at a task-label boundary continues the checkbox list. The prototype can preview reference conflicts and disable unresolved task links. It does not offer a dedicated conflict-resolution dialog or claim safe arbitrary external-file edits. Schema evolution, migrations, folder recovery, and the full database editor remain to be built. Keep personal profile settings outside workspace records and host snapshots.
 
 ## 5. Interface and customization
 

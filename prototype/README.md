@@ -1,48 +1,52 @@
-# Markdown meeting workflow study
+# Document-backed todo workflow prototype
 
-Open `index.html` in a modern browser. Keep this directory together: its local styles, application script, and vendored parser allow offline use with no build step. It uses fictional projects and a fixed sample planning date of October 19, 2026.
+Open `index.html` in a modern browser. Keep this directory together: scripts, styles, and the vendored Markdown parser work offline without a build step. The fictional planning records use October 19, 2026; birthday greetings use the real local date.
 
-## Try the workflow
+## Try the flow
 
-1. Open Meeting note. The entire note is one Markdown document.
-2. Type `- [ ] Your next action` anywhere in the document. The tracked-todo count updates immediately. Optional prototype due-date syntax is `(due YYYY-MM-DD)` at the end of the task line.
-3. Open Daily overview. Your action appears in the relevant date group with its source note and project.
-4. Complete it from the overview. Return to the note to see `[x]` in the Markdown source.
-5. Switch to Read for formatted Markdown and interactive checkboxes. Both modes use the same document.
-6. Rename, move, nest, or remove a checkbox in the source; views are derived from the current document. Code examples and HTML blocks are not tracked as tasks.
-7. Preview the sample agent suggestion, insert its Markdown checkbox, and undo it. Assistance is simulated and performs no network requests.
+1. Open Meeting note and type `- [ ] Your next action` into the Markdown document. Bento creates a todo document and inserts a linked checkbox. Continue typing within the link label; Enter at its end starts another checkbox.
+2. Switch to Read and click the todo title, or click its title from Daily overview. The todo opens with its own Markdown body, title, completion, optional due date, and project.
+3. Write context or progress notes in Todo Markdown. Use Save properties for title/date/project changes. Completion is applied immediately, together with any other valid property edits currently in the form.
+4. Return to the meeting using the source button. Completing the todo from its document, the meeting, or the overview updates the same record and linked checkbox markers.
+5. Remove the meeting reference. The todo and its notes remain accessible through the overview, including its Completed section when appropriate.
+6. Download Markdown exports the current document with its metadata and body. Todo references use stable ID filenames; keeping exported related files together preserves their relative links.
+7. Open a project from the sidebar, then Open project document to edit its Markdown body.
+
+Plain checkbox text can include `(due YYYY-MM-DD)` during initial capture. Thereafter, use the todo's due-date property. The production editor and final property syntax remain design decisions. Agent suggestions are scripted and make no model requests.
+
+## Record model and persistence
+
+`workspace.js` owns records, seeded database definitions, membership validation, checkbox capture, reference reconciliation, and serialization independently of the UI. Each record has zero or one database membership. Task fields are interpreted through capability bindings rather than display names. The UI does not implement a general database or schema editor yet.
+
+Workspace snapshots are stored under `bento.prototype.workspace.v3`, separately from the personal profile. When storage is available, notes and todo records survive reload. Writes replace one complete browser snapshot; undo restores the previous in-memory snapshot. Invalid stored data is retained unchanged with a warning. A detected competing page update stops further overwrites of that saved copy. Browser persistence is a single-tab prototype facility, not a desktop folder, backup system, or multi-device synchronization protocol.
+
+Where browser storage is unavailable or full, the prototype reports session-only operation. The conversation preview may restore small workspace snapshots through host widget state; larger snapshots rely on browser storage. Earlier inline-note host snapshots can migrate into record documents. Profile values are never included in host workspace snapshots.
+
+## References and conflicts
+
+Stable reference IDs live in source comments and resolve through per-document metadata to todo IDs. The todo owns title/completion; source labels/markers are editable projections. Last-projected baselines distinguish source intent from stale projections. Conflicting titles and missing baselines preserve both representations and display an issue. Unresolved task references do not open unrelated records.
+
+Copying an existing linked checkbox creates another reference to the same todo. Duplicating plain checkbox text creates separate todos. Removing a reference removes only that occurrence. Literal task examples inside code or HTML blocks do not create records. Renaming a body heading does not override the document's metadata title.
 
 ## Personal profile
 
-Open Profile to save a first name, last name, and optional birthday. Personal settings persist in this browser when local storage is available. The overview shows `Hello, {firstName}` normally and `hbd {firstName}!` on the birthday, using the current local date rather than the sample planning date. The prototype refreshes the greeting on visibility changes and once a minute while open.
-
-Makena's surname and birthday are deliberately blank in the sample. This profile does not create an account or assign work to other people. Clearing the birthday disables the birthday greeting; February 29 birthdays match only February 29.
-
-If browser storage is unavailable, the page keeps the profile for the session and says it could not persist it. The profile is not sent through host widget-state snapshots or included in Markdown.
-
-## Review with Makena
-
-- Does a Markdown document provide the right writing experience, or should source editing become an optional mode of a richer editor?
-- Are project summaries and the daily overview useful for deciding what needs attention?
-- Is the source context clear when completing tasks away from their notes?
-
-## Revised data model
-
-The [current design](../docs/data-model.md) gives every todo its own Markdown document and adds user-managed database schemas with zero-or-one membership per document. This prototype predates that model: its tasks are still inline and disappear when the source checkbox is removed. It does not implement database definitions, separate todo documents, stable reference IDs, or schema changes.
+Open Profile to save first name, last name, and optional birthday. Settings persist in this browser when storage is available, separately from workspace content. The daily greeting is `Hello, {firstName}` normally and `hbd {firstName}!` on the local birthday. February 29 birthdays match February 29; clearing the birthday disables the birthday greeting. Unknown sample surname and birthday stay blank.
 
 ## Boundaries
 
-Documents stay in memory for the page session and reset on refresh; personal profile settings are stored separately and persist where browser storage is available. The inline conversation preview may restore documents through optional host widget state. No actual workspace files are read or written; no agent or Copilot integration is connected.
+The [data-model design](../docs/data-model.md) goes beyond this slice. The prototype stores structured envelopes plus Markdown bodies and can export `.md` files. It does not parse/import frontmatter, open/save a desktop workspace folder, load example schema files, expose database/schema CRUD, or implement migration history, production recovery journals, a conflict-resolution dialog, or actual agent/Copilot integration. Its declarative defaults are seeded in JavaScript; arbitrary schema editing is not supported.
 
-Task references use the document and current source line. Reparse after edits before acting on a task; this prototype does not establish durable IDs across edits. Raw document HTML is escaped; images are represented by their alternate text, and links by their text, without loading external content.
+Raw document HTML is escaped, external images use their alternate text without loading, and external links display text without navigation. Marked 17.0.5 is vendored in `vendor/marked.umd.js`; attribution is in `vendor/MARKED-LICENSE.md`.
 
-Marked 17.0.5 is vendored in `vendor/marked.umd.js`; its license is preserved in `vendor/MARKED-LICENSE.md`. The production desktop framework, editor, and task identity schema remain open.
+## Checks
 
-## Validation
+The record-model tests require only Node.js and the vendored parser:
 
-Browser checks cover Markdown task capture, nested/quoted/ordered tasks, fenced and indented code exclusion, duplicate-title targeting, source completion from both views, raw HTML escaping, agent insertion, undo, and layout widths of 320, 736, and 1024 pixels. Profile checks cover save/reload, edits and birthday removal, birthday and normal greetings, local-day rollover, leap days, invalid dates, storage failure, and exclusion from host snapshots. Native desktop packaging and workspace-file persistence remain unimplemented.
+```sh
+node --test tests/workspace.cjs
+```
 
-Run the browser checks with Node.js and Playwright available:
+Browser checks additionally require Playwright:
 
 ```sh
 npm install --no-save --package-lock=false playwright@1.62.1
@@ -50,4 +54,6 @@ npx playwright install chromium
 node tests/workflow.cjs
 ```
 
-Alternatively, set `BENTO_CHROME_PATH` to an installed Chrome executable. Tests use an isolated browser profile, fictional personal details, and temporary screenshot files.
+Set `BENTO_CHROME_PATH` to use an existing Chrome executable. `BENTO_SCREENSHOT_DIR` optionally controls the screenshot destination; otherwise screenshots use a temporary directory. Tests use isolated browser contexts and fictional personal details.
+
+Checks cover separate todo documents, notes retention, stable identity after line moves, repeated references, cross-view completion, Markdown export, source unlinking, browser reload, validation/conflicts, keyboard capture, profile behavior, raw HTML handling, and widths of 320, 736, and 1024 pixels. Native desktop packaging and production persistence remain unimplemented.
