@@ -122,6 +122,7 @@
       [cap.project.field]: projectOf(workspace, source)
     });
     record.schema_version = workspace.databases[database].schema_version;
+    schema.properties(workspace.databases[database], record, workspace.records);
     workspace.records[record.id] = record;
     if (workspace.paths) workspace.paths[record.id] = `${workspace.databasePaths[database]}/${record.id}.md`;
     return record;
@@ -171,7 +172,9 @@
       let targetId = occurrence.todoId;
       if (!occurrence.href) {
         if (!capture || !occurrence.title.trim()) continue;
-        const target = createTodo(workspace, source, occurrence);
+        let target;
+        try { target = createTodo(workspace, source, occurrence); }
+        catch (error) { issue(workspace, source, occurrence.line, `Pending checkbox: ${error.message}`); continue; }
         if (!target) { issue(workspace, source, occurrence.line, 'Choose a task database to capture this checkbox.'); continue; }
         targetId = target.id;
         source.references[targetId] = baseline(taskInfo(workspace, target));

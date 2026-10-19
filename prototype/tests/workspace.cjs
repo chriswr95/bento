@@ -172,3 +172,17 @@ test('legacy migration preserves todo IDs, body notes, and checkpoints without m
  old.records.coordination.references['ref-other']={target:todo.id,base_title:'Contradictory',base_completed:false};
  assert.throws(()=>model.migrateWorkspace(old),/disagree/);
 });
+
+
+test('required values unavailable during capture preserve the checkbox as pending',()=>{
+ const workspace=initial();
+ workspace.databases['db-todos'].fields.push({id:'field-client',name:'Client',type:'text',required:true});
+ const next=edit(workspace,'- [ ] Keep this action while Client is required\n');
+ assert.equal(model.allTasks(next).length,0);
+ assert.equal(next.records.coordination.body,'- [ ] Keep this action while Client is required\n');
+ assert.match(next.issues[0].message,/Pending checkbox: Client is required/);
+ workspace.databases['db-todos'].fields.at(-1).default='Example client';
+ const captured=edit(workspace,next.records.coordination.body);
+ assert.equal(model.allTasks(captured).length,1);
+ assert.equal(captured.records[task(captured).id].properties['field-client'],'Example client');
+});
