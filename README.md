@@ -1,41 +1,58 @@
 # Bento
 
-A workspace for Markdown notes, projects, and todos, inspired by Obsidian and Notion.
+A Markdown workspace for notes, projects, and todos, inspired by Obsidian and Notion. Bento starts with Makena's civil-engineering meeting-to-follow-up workflow.
 
-Bento starts with a civil engineer’s meeting-to-follow-up workflow: capture notes, turn discussion into action, and keep project context close. Familiar editing and approachable agent assistance are central to the experience.
+Each record has its own Markdown file. A workspace contains `workspace.md`; database folders contain `database.md` definitions. Folder location determines a record's zero-or-one database membership. Projects and Todos are customizable defaults built from typed fields.
 
-Bento aims to combine portable files with a calm, Notion-inspired interface and a customizable theme system.
+## Run the desktop app
 
-## Status
+Requires Node.js 22.12+ and pnpm 11.25.0. From this repository:
 
-Planning, with an interactive workflow prototype. There is no desktop application implementation yet.
+```sh
+pnpm install --frozen-lockfile
+pnpm setup:desktop
+pnpm start
+```
 
-- [Product specification](docs/spec.md): audience, workflows, features, and success criteria.
-- [Design document](docs/design.md): implementation proposals, tradeoffs, and technical decisions.
-- [Data-model walkthrough](docs/data-model.md): proposed database definitions, record documents, and checkbox references.
+`setup:desktop` downloads the pinned Electron runtime. No server, account, or model service is required. The first startup shows Open workspace and New workspace. Choose an empty folder for a new workspace; it receives editable starter definitions and fictional notes. To explore existing data, open `examples/document-databases` (copy it first if you want to keep the example unchanged).
 
-## Initial direction
+1. Open Meeting note and choose Write a note….
+2. Type `[] ` or `- [ ] `, then the action's title. Bento creates a todo Markdown file and a relative link from the meeting after autosave.
+3. Use ↗ to open the todo. Add notes; edit title, Status, due date, and project. Save properties applies those values, then autosave persists them.
+4. Use Save files to flush changes immediately. The header distinguishes unsaved drafts, saving, saved files, and a stopped save.
+5. Close and reopen the workspace. Its documents and schema are read from disk.
 
-- Windows and macOS desktop support.
-- Markdown files that remain useful outside Bento.
-- A Markdown document for every content record, including projects and todos.
-- User-managed database schemas, with Projects and Todos as customizable defaults.
-- Zero or one database membership per document, independent of views and relationships.
-- Free-form tags.
-- Integrated document, project, and task views.
-- Configurable layouts and installable themes.
-- Agent assistance for workspace content and for changing Bento itself.
+A new workspace has Todos, Projects, and Meeting Notes folders. Status supports Todo, In progress, and Done; checking completion and editing status use the same record. The sidebar lists loaded documents and active projects.
 
-## Try the workflow prototype
+External edits are checked before save. If files changed, Bento keeps its local draft and stops instead of overwriting them. Reload files reads external changes; Restore draft is available only against an unchanged baseline. Download draft preserves the draft for manual comparison when files diverge. Opening a workspace does not rewrite untouched files, except to recover an earlier interrupted save.
 
-Open [`prototype/index.html`](prototype/index.html) in a modern browser; no install, build, account, or server is needed. Download or clone the repository first, since GitHub displays the source instead of running it.
+## Current boundary
 
-Keep the `prototype/` directory together when opening the page; its Markdown parser is bundled for offline use.
+This is an early Electron desktop implementation. It loads actual YAML schemas and Markdown files, validates all eight field types, saves through a recoverable journal, and preserves unknown metadata. It shares the live Markdown editor/model with the browser sample.
 
-The prototype uses fictional projects and a fixed sample date of October 19, 2026. It demonstrates daily review, active-project summaries, meeting-note editing, checkbox capture, shared completion state, one-step undo, and personalized greetings through local profile settings. Workspace documents and personal profile settings persist separately in this browser where local storage is available. The prototype reports session-only operation if browser storage is unavailable.
+General database/schema editing controls, generic property forms/document creation, in-app record transfers, link repair after external moves, conflict/recovery review UI, production rich-text editing/accessibility, search, agents, and Copilot integration remain future work. Definition changes can currently be made in Markdown and loaded through Reload files.
 
-Agent suggestions are explicitly simulated. Typing a checkbox creates a separately editable todo document and replaces the checkbox with a stable reference. The meeting page uses one live Markdown surface: edit formatted task labels inline and use ↗ to open a todo’s Markdown body and properties; completion stays consistent across the note, todo, and overview. Download Markdown exports the current document with frontmatter. The browser prototype stores document envelopes and bodies in a local snapshot; it does not yet open a desktop workspace folder, import Markdown files, provide schema-management controls, connect to an agent, or implement Copilot integration.
+The app is local: no model requests, HTTP backend, or remote document resources. Sample agent suggestions are simulated. Profiles and unsaved drafts use local app storage, separately from workspace Markdown. `.bento-local/` holds save journals/backups and is ignored by Git in new workspaces. Journaling is not a backup system or multi-device synchronization protocol; its remaining concurrency/power-loss limits are documented in the [data model](docs/data-model.md).
 
-## Development
+## Check and package
 
-The application framework and build tooling have not been selected. Next steps are to connect the record model to workspace files, add database/schema controls, and select the desktop shell and editor through a Windows/macOS prototype.
+```sh
+pnpm test
+pnpm test:desktop
+pnpm exec playwright install chromium
+pnpm test:browser
+pnpm package
+```
+
+Desktop tests create isolated temporary workspaces and stub only the native directory chooser. They exercise the actual Electron application, on-disk files, restart persistence, and conflict/draft behavior. Unit tests cover schemas, metadata, membership, reconciliation, and interrupted recovery. CI is configured for Windows/macOS desktop checks and packaging, plus Linux browser checks. A CI configuration is not evidence of a successful remote run.
+
+`package` builds an unsigned application bundle for the current OS/architecture under `dist/`. Signing, notarization, installers and automatic updates are not configured. The macOS ARM64 build can be tested locally; Windows execution and packaging require a Windows runner.
+
+## Browser sample and documentation
+
+`prototype/index.html` still opens directly in a modern browser without a build step. It uses an independent browser-local sample snapshot and exports individual Markdown files. It does not gain desktop filesystem access. Its fictional planning date is October 19, 2026; desktop planning and birthday greetings use the local date.
+
+- [Product specification](docs/spec.md): audience, features, and success criteria.
+- [Design document](docs/design.md): implementation choices and remaining work.
+- [Data-model contract](docs/data-model.md): folders, schemas, metadata, links and save/recovery behavior.
+- [Example workspace](examples/document-databases/README.md): inspectable schemas and fictional records.

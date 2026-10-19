@@ -1,92 +1,138 @@
-# Bento: document-backed databases
+# Bento: workspaces, folders, and typed documents
 
-Status: agreed product model with proposed encoding and reconciliation details
+Status: agreed product model; the first desktop implementation covers loading, editing, saving, and interrupted-save recovery.
 
-Date: 2026-10-19
+The [specification](spec.md) describes who Bento serves and what it must do. This document defines the current file contract and its limits.
 
-The [specification](spec.md) defines the product requirements. This document makes the three-layer model concrete and explains the design tradeoffs. The [example workspace](../examples/document-databases/README.md) contains inspectable Markdown definitions and records; it is a design fixture, not a production implementation.
+## Principles
 
-## 1. Agreed principles
+1. Every content record is an editable Markdown document.
+2. A workspace is a folder containing `workspace.md`.
+3. A database is an explicitly registered folder containing `database.md`.
+4. A record belongs to zero or one database, determined by its enclosing database folder. Ordinary subfolders inherit that membership.
+5. Relations and views do not confer database membership.
+6. Database, document, field, and option identities remain stable when labels change.
+7. Unknown values and metadata are retained. Incompatible changes must be surfaced rather than discarded.
 
-1. Each content record is its own editable Markdown document, including projects and todos.
-2. Each document has **zero or one database membership**. Multiple memberships are invalid, not a choice the application resolves implicitly.
-3. Database definitions and fields are first-class user-managed concepts. Projects and Todos are editable, removable defaults.
-4. Metadata carries structured values; the body remains free-form Markdown. Opening a todo gives the user space for notes and progress details.
-5. Views and relationships reuse records without changing database membership or copying the record.
-6. Ordinary Markdown can remain outside any database.
-7. Schema changes and removals preserve recoverable documents and values by default.
+This folder rule supersedes the earlier proposal that a record's `database` metadata independently determines membership. Membership is derived in memory and is not repeated in new record files.
 
-This scope covers content and its database definitions. Per-user profiles, credentials, caches, and recovery journals are operational state rather than database content records.
+## Three layers
 
-## 2. Three layers
+| Layer | Responsibility |
+| --- | --- |
+| Application | Supported field types, validation, Markdown editing, capability interpretation, storage and recovery |
+| Database definitions | Field names, types, options, defaults, relations and capability mappings |
+| Record documents | Identity, schema version, property values, tags and Markdown content |
 
-| Layer | Owns | What it does not imply |
+Workspace and database definition documents have Markdown bodies for descriptions and instructions. They are control documents, not records in their containing databases; their checkboxes do not create todos. They can be edited as files today. In-app database/schema controls remain future work.
+
+## Workspace layout
+
+```text
+My workspace/
+  workspace.md
+  todos/
+    database.md
+    todo-<id>.md
+  projects/
+    database.md
+    project-<id>.md
+  meetings/
+    database.md
+    meeting-<id>.md
+  Inbox/
+    ordinary-note.md
+```
+
+The [example workspace](../examples/document-databases/workspace.md) registers stable database IDs and relative folder paths:
+
+```yaml
+bento_version: 1
+kind: workspace-definition
+id: workspace-example
+title: My workspace
+databases:
+  - {id: db-todos, path: todos}
+  - {id: db-projects, path: projects}
+  - {id: db-meetings, path: meetings}
+default_task_database: db-todos
+default_project_database: db-projects
+```
+
+Defaults select existing databases; they do not make Todos or Projects mandatory. A missing task destination leaves checkboxes pending instead of recreating a database. The project default is recorded for future creation commands; current summaries use project capabilities across databases.
+
+Database folders must be distinct and non-nested. Ordinary subfolders are allowed. A new `database.md` in an unregistered location is reported as a control document needing configuration; arbitrary folders do not silently become databases. Renaming a database folder requires updating its registered path while retaining its ID. Automatic folder-rename repair is not implemented.
+
+## Typed fields
+
+Each field has a stable `id`, user-facing `name`, `type`, optional `required` flag, and optional `default`. Type-specific configuration belongs in the database definition, not every record.
+
+| UI type | Encoding | Configuration and values |
 | --- | --- | --- |
-| Application | Supported field types, Markdown editing, validation, storage, query/index execution, capability interpretation, and commands | Users must modify code to add a database |
-| Database definitions | Database/field/option IDs, field labels and types, defaults, relationships, views, and capability mappings | Each collection requires its own SQL database or server |
-| Record documents | Identity, zero-or-one membership, schema version, property values, tags, and a Markdown body | A view owns another copy of a record |
+| Text / String | `text` | A string |
+| Number | `number` | Finite integer/decimal; optional `min`, `max`, `integer` |
+| Boolean | `boolean` | `true` or `false` |
+| Date | `date` | Real calendar date, `YYYY-MM-DD`, without timezone conversion |
+| Select | `select` | One stable option ID from `options` |
+| Multi-select | `multi-select` | A list of distinct option IDs |
+| Status | `status` | One option ID, with each option assigned a semantic group |
+| Relation | `relation` | Document IDs constrained by `target_database` and `cardinality: one` or `many` |
 
-The engine needs a small fixed metamodel for reading database definitions and a small reserved envelope for record identity. Database definitions can themselves be Markdown documents without needing to belong to a user-defined database. This prevents an infinite chain of schemas defining schemas.
+Missing or null optional fields are unset. Defaults initialize new records; loading an existing document does not insert defaults or rewrite it. Unknown properties are preserved. Missing relation targets remain addressable IDs; they must not cause deletion or reassignment. General schema creation/editing UI is not implemented yet.
 
-A database name can change. A field label can change. Neither changes the stable IDs used by records and capability mappings. Document paths are navigational; they do not define identity, membership, or project association.
+Status groups are `not-started`, `in-progress`, and `complete`. Labels remain customizable:
 
-## 3. Proposed representation
+```yaml
+- id: field-task-status
+  name: Status
+  type: status
+  default: option-open
+  options:
+    - {id: option-open, name: Todo, group: not-started}
+    - {id: option-started, name: In progress, group: in-progress}
+    - {id: option-done, name: Done, group: complete}
+```
 
-See the actual [Todos definition](../examples/document-databases/.bento/databases/todos.md) and [todo record](../examples/document-databases/todos/todo-review-comments.md).
+Title and tags are intrinsic document metadata, available outside databases. Tags are free-form strings; a Multi-select field has schema-defined options. A body heading does not automatically rename the document's title metadata.
 
-- `bento_version` identifies the document-envelope format.
-- `kind` distinguishes control documents such as database/workspace definitions. Ordinary content does not need a hardcoded `type: todo` or `type: project`.
-- `id` is stable within the workspace.
-- `database` is one scalar database ID, or absent for an unclassified document. Arrays and duplicate membership keys are invalid input; do not silently select one value.
-- `schema_version` identifies the database schema used to interpret that record's properties; it is distinct from the envelope format version.
-- `title` and `tags` are intrinsic document metadata available even without membership. The UI can hide or relabel their controls, but user fields cannot redefine their identity or storage type.
-- `properties` maps stable field IDs to their values. Field display names live in the definition so a label change does not rewrite every record.
-- `references` stores reconciliation checkpoints keyed by linked todo document ID. Repeated links to one todo in a source share a checkpoint; there is no separate occurrence identity.
+## Capabilities
 
-Proposed initial field types: text, number, boolean, calendar date, select, and document relation. Tags are an intrinsic list of free-form strings. The initial vocabulary, query/view encoding, and exact frontmatter names remain design choices; arbitrary user-defined executable field types are outside schema editing.
+Database names and field labels do not identify behavior. A definition opts into task/project capabilities through stable field IDs.
 
-Markdown without Bento metadata remains editable as an unclassified document. Assign durable metadata when an explicit edit or capture requires it; opening a folder must not bulk-rewrite legacy files.
+A task capability maps its completion field, designated checked/reopening options, optional due-date value, and project relation. Status values in the complete group count as checked; Not started and In progress count as unchecked. Checking selects the designated completed option. Explicitly unchecking selects the designated reopening option. Refreshing an unchanged unchecked reference preserves In progress.
 
-Property-ID keys are less readable than display-name keys in raw YAML. The benefit is safe renaming and unambiguous agent edits. Property controls should display labels, and agents should query the schema rather than guess keys. Preserve unknown properties and metadata so a schema change or older application does not erase content.
+The [Todos definition](../examples/document-databases/todos/database.md) is customizable. The [Projects definition](../examples/document-databases/projects/database.md) separately maps active status values for summaries. Meeting Notes needs no specialized capability. Renaming labels preserves bindings. Removing or changing a bound field requires repairing its capability mapping.
 
-## 4. Membership, relationships, and views
+## Record envelope
 
-The [meeting document](../examples/document-databases/meetings/coordination.md) belongs only to `db-meetings`. Its Related projects property points to a record in `db-projects`. The [todo document](../examples/document-databases/todos/todo-review-comments.md) belongs only to `db-todos` and independently relates to the same project.
+A [todo record](../examples/document-databases/todos/todo-review-comments.md) contains:
 
-The daily overview, a project's todo list, and an open-work view of Todos can all display that same todo. None assigns another database membership. A view may query multiple databases if their mapped fields are compatible; its result is still a set of referenced documents.
+```yaml
+bento_version: 1
+id: todo-review-comments
+schema_version: 1
+title: Review drainage comments
+tags: [review]
+properties:
+  field-task-status: option-open
+  field-task-project: project-creekside
+```
 
-Moving a file to another folder does not move it to another database. An explicit database transfer validates a property mapping, previews incompatible fields, and replaces the single membership in one recoverable operation. Unmapped values remain retained in recoverable metadata rather than being silently discarded. Duplicate document IDs, missing definitions, and malformed membership stay visible as validation problems; they are not silently reclassified.
+The Markdown body follows the frontmatter. `schema_version` identifies the containing database's schema. The loader derives membership from the folder. A matching legacy scalar `database` field is accepted and removed only on an explicit save; a mismatched or array-valued legacy membership is a repair issue.
 
-## 5. Optional capabilities over customizable schemas
+New todo filenames are their stable ID plus `.md`. Other existing Markdown filenames are retained. Unclassified plain Markdown gets a provisional path-derived identity in memory; explicit editing assigns metadata without rewriting untouched files. Stable identity across external renames requires an explicit document ID.
 
-The application cannot infer that a field called Status controls task completion, particularly after it is renamed. A definition can therefore opt into a supported capability and bind it to stable fields/options.
+## Checkbox capture and reconciliation
 
-The example Todos definition maps completion to `field-task-status`, with `option-open` and `option-done` as unchecked/checked values. It separately maps due dates and project context. The Projects definition identifies which status values count as active. Meeting Notes has no specialized capability requirement.
+Authoring a nonempty task checkbox creates its own todo document. Nested checkboxes are independent. Fenced/indented code and raw HTML examples are excluded. Merely opening a workspace does not materialize existing plain checkboxes; an explicit edit/save captures them.
 
-Renaming Status to Progress preserves the field ID and bindings. Changing its type, removing a bound option, or retiring the field requires validating and updating dependent mappings. Disable a broken capability with an explanation rather than interpreting arbitrary values as done or active.
-
-Several databases may provide task capabilities. The workspace chooses one valid default capture destination; the daily overview can include every compatible task database. Do not select a new default by display name or silently recreate a removed default. If no valid destination exists, retain new checkboxes visibly as pending capture and offer configuration. Existing records remain openable as Markdown even when their specialized behavior is unavailable.
-
-## 6. A meeting checkbox becomes a todo document
-
-Proposed sequence:
-
-1. Makena types `- [ ] Review drainage comments` in the meeting document.
-2. Bento recognizes a real task-list node, excluding fenced/indented code and control documents.
-3. The capture command allocates one stable todo ID, and records the intended operation before writing multiple files.
-4. It creates the todo document in the configured task database with the unchecked status. A checked source box initializes a completed todo. Inherit project context only when unambiguous; otherwise leave it unassigned.
-5. It replaces the source line with a linked checkbox and records the projected title/completion baseline in the meeting's frontmatter.
-6. The task label is editable in place. Its open-document control opens the todo's Markdown document; the checkbox changes completion without navigation.
-
-The [meeting fixture](../examples/document-databases/meetings/coordination.md) shows the resulting line:
+The source becomes an ordinary relative Markdown link:
 
 ```markdown
 - [ ] [Review drainage comments](../todos/todo-review-comments.md)
 ```
 
-The linked filename is the stable document ID plus `.md`; the metadata `id` must agree. A relative directory prefix is allowed, but the identity-bearing basename stays stable when the title or containing folder changes. The link remains ordinary Markdown outside Bento. Bento can repair moved links through its ID index; a path resolving to a document with a different ID is an issue to repair, not permission to retarget a todo. The browser prototype exports a flat collection of ID-named files; folder repair is still future work.
-
-The source keeps a checkpoint for conflict detection, without a second ID or a redundant target field:
+There is no per-occurrence identity or comment. The source keeps one checkpoint per linked todo:
 
 ```yaml
 references:
@@ -95,69 +141,35 @@ references:
     base_completed: false
 ```
 
+The todo owns title, status and notes. The link label and checkbox are editable projections. Compare source and canonical values to the checkpoint: accept a source-only change, refresh a canonical-only change, and advance the checkpoint when both agree. Preserve differing simultaneous changes or missing checkpoints as issues. Repeated links share a checkpoint; one edited occurrence updates unchanged siblings, while conflicting sibling edits preserve the group atomically. A newly pasted link establishes a checkpoint only when it agrees with its target.
 
-The link label and checkbox marker are caches of the todo's canonical title and completion. Editing either through Bento issues a command against the todo record, then refreshes its known references. The first heading in a record body is ordinary Markdown and does not independently override the metadata title. Any heading/title synchronization needs its own editor rule.
+Removing a source link retains the todo and its body. Copying a linked checkbox refers to the same todo; copying plain checkbox text creates a new todo. The open-document control opens the todo independently of completion.
 
-A todo may be referenced from several notes without creating more task records. A plain checkbox is a new task; copying an existing linked reference intentionally refers to the same task. Copied links retain the same todo ID. Within a source document all occurrences share one checkpoint. One changed occurrence updates its unchanged siblings; conflicting edits among siblings preserve the group for review. Duplicating a task document is an explicit new-record action with a new document ID. Exact external copy/paste repair remains open.
+The current repository checks relative paths against its ID-to-path map. Moving a linked file externally can leave a broken path: this is surfaced, not automatically retargeted. General link repair and a conflict-resolution UI remain future work.
 
-Opening untouched existing Markdown only discovers provisional checkboxes. An explicit edit/save or capture action materializes their todo documents; merely browsing a folder does not rewrite it. Newly authored checkboxes inside Bento trigger capture automatically. A standalone todo-capture action can create a todo document directly; it does not need a synthetic source note. A checklist within a todo's body creates separate todos and must not recursively create the containing todo again.
+## Moves and schema evolution
 
-## 7. External edits and conflict rules
+Moving between database folders is a database transfer, not a display-only operation. The eventual in-app move should preview field mappings and incompatible values. External moves are recognized on Reload files: validate against the destination schema, retain unknown values, and report incompatible values/schema versions. There is no automatic conversion. Documents outside database folders are unclassified.
 
-Two editable Markdown representations need an explicit reconciliation contract. A rebuildable index alone is not enough: losing it must not lose the knowledge needed to distinguish a user edit from an outdated projection.
+Database removal must detach documents while preserving values and sufficient schema history. Field/option retirement and type conversion need recoverable schema revisions before they can become UI commands. Those operations are not implemented by the first file-backed slice; snapshot saves explicitly reject deletion and membership/schema changes.
 
-Propose retaining a last-projected baseline for each linked todo ID in the source document's metadata. Compare each title/completion field independently, validate the whole group, then apply it atomically:
+## Save and recovery contract
 
-| Source reference versus baseline | Todo value versus baseline | Proposed action |
-| --- | --- | --- |
-| Unchanged | Unchanged | No action |
-| Changed | Unchanged | Treat the reference edit as requested intent; validate, update the todo, then refresh references |
-| Unchanged | Changed | Refresh the stale reference from the todo |
-| Both changed to the same value | Same new value | Advance the baseline |
-| Both changed differently | Different new value | Preserve both and show a conflict |
-| Missing or invalid baseline | Any value | Keep the todo authoritative; surface the unresolved reference without guessing or silently overwriting the source |
+`files/repository.cjs` loads definitions and records. It never writes on open except to resume a previously journaled save. Definitions are interpreted from the selected folder rather than hardcoded desktop seed data. Malformed records are reported and left untouched; duplicate identities or recovery conflicts make the workspace read-only.
 
-A new link can establish a checkpoint when its label/status agrees with the canonical todo. If they disagree, preserve both and request repair. An existing association with a missing checkpoint must not silently adopt an arbitrary baseline.
+1. Mutate and validate a cloned in-memory model.
+2. Keep a local renderer draft and show Pending/Saving/Saved/Failed states.
+3. Before save, compare the visible Markdown file set and exact original contents, including definitions and workspace configuration. Any external change stops the save.
+4. Acquire a local writer lock and journal all changed file contents, including before/after versions and allocated todo IDs.
+5. Replace each file through a synced temporary file in its directory. New todo files precede source-link updates.
+6. Retain completed journals in `.bento-local/history/` and replay unfinished operations on reopen. A divergent file halts recovery without overwriting it; both planned versions remain in the journal.
 
-Use optimistic revision checks on the actual files before applying a planned update. An invalid status/capability mapping blocks a semantic task update without blocking ordinary document access. Rebuild indexes from definitions, records, and reference baselines; do not turn every stale checkbox into a new command after a rebuild.
+An interrupted operation is recoverable, not an atomic filesystem-wide transaction. Other programs do not honor Bento's lock; there remains a narrow race between the last comparison and replacement. Network shares/cloud-sync conflict coordination, power-loss guarantees across directory metadata, journal retention/pruning, and a recovery-resolution UI require further work. This slice must not be described as production multi-device synchronization or a backup system.
 
-Capture, title/status propagation, schema transfers, and schema changes can touch multiple files. Use an operation journal, allocated IDs, and per-step results to make retries idempotent and interruption recoverable. An incomplete capture must be visible; do not report a todo as durably created after only indexing it. Rollback and undo must detect later edits rather than overwrite them.
+The YAML document API retains unknown values and comments where possible, and updates changed metadata keys rather than intentionally reformatting the entire file. Serialization can normalize YAML layout; Markdown body content and original LF/CRLF style are retained.
 
-## 8. Schema evolution and deletion
+## Implementation boundary
 
-| Operation | Proposed behavior |
-| --- | --- |
-| Rename a database/field/option | Keep stable IDs; update labels without rewriting property keys |
-| Add a field | Supply an optional value or an explicit default; do not rewrite every document just to add a blank |
-| Make a field required | Preview missing values and choose a migration before activating the constraint |
-| Change a field type | Preview incompatible values and affected capabilities; provide explicit conversions and recoverable originals |
-| Remove a field/option | Retire it from active UI/schema behavior while retaining values and sufficient historical interpretation |
-| Transfer a document | Preview field mappings, replace membership once, and retain incompatible values for recovery |
-| Remove a database | Preview dependent records, relations, views, and capabilities; default to detaching documents and retaining schema history/values |
-| Remove a checkbox reference | Remove that occurrence; retain the todo and its body |
-| Delete a todo document | Explicit recoverable deletion; show broken references and offer repair without deleting source discussions |
+The Electron app creates/opens folders, discovers registered definitions, edits notes/todo bodies and title/status/date/project properties, creates todo files from checkboxes, saves, reloads, and recovers interrupted saves. The browser-only sample still uses its independent local snapshot. Profile/drafts remain in local app storage, separate from workspace content and agent context.
 
-Keep immutable schema revisions or equivalent lossless history so older records can be interpreted and changed operations can be undone. Propose active definitions under `.bento/databases/` and historical definitions under `.bento/schema-history/`; exact paths and transaction format remain open. Database removal retains a tombstone/history rather than erasing the only explanation of existing property values. Detachment clears active membership while retaining the former membership/schema provenance for recovery.
-
-For a schema migration, update the definition, capability mappings, and record versions as one planned recoverable operation. Mixed or interrupted versions must remain interpretable and visibly incomplete. Adding a harmless optional field can use defaults without immediate record rewrites; introducing an incompatible constraint cannot silently reinterpret old values.
-
-Relationships are independent of membership. Deleting a database definition does not delete the documents referenced by another database, but target-database constraints may become unresolved and must be shown. Removing a built-in database can disable daily-review sections until the user configures a compatible replacement.
-
-## 9. Agent boundaries
-
-A content agent can read a definition and edit authorized record values/body through domain commands. Permission to edit a todo does not automatically grant schema editing, database removal, migration, or application-code access. Schema changes belong to layer two and should present affected records/capabilities before application. Application changes belong to layer one and retain their separate trial/adoption workflow.
-
-File access remains possible, but malformed direct edits are validation problems rather than authority to bypass membership or capability rules. The application must preserve unreadable/unknown values and show repair options.
-
-## 10. Implementation status and next slice
-
-The first browser slice implements create/open/edit/toggle across meeting references, todo bodies/properties, and daily review. It includes focused model tests for identity, references, validation, conflicts, and unlink retention, plus browser workflow checks.
-
-Next steps:
-
-1. Load the example definitions and records from actual workspace files with strict frontmatter validation, duplicate-key detection, and scalar membership.
-2. Add file-level revision checks and production recovery for interrupted multi-file capture, projection, and migration operations.
-3. Extend conflict review beyond the current issue messages and verify arbitrary external-file editing against the persisted baselines.
-4. Add user-facing database/field CRUD and recoverable field retirement before broader query or view customization.
-
-The current browser prototype implements the create/open/edit/toggle record flow with stable references, reference baselines, one-record membership checks, independent todo notes, browser persistence, and individual Markdown export. Its seeded definitions and serialized record snapshots are a browser implementation, not a folder-backed database engine. The example fixtures are not yet loaded by the prototype, and schema management, production multi-file reconciliation/recovery, imports, and migrations remain unimplemented. Resolve the proposed reference/baseline syntax and migration semantics before treating the example as a frozen file format.
+Next: database/schema controls, generic record property editing and creation, explicit transfer/conversion tools, recovery/conflict review, incremental external-change watching, production editor/accessibility work, and Windows/macOS distribution validation. No real agent or Copilot integration is implemented.

@@ -35,6 +35,9 @@ Bento has three layers: the application, user-managed database definitions, and 
 - Every content record, including each project and todo, has its own openable, editable Markdown document with a free-form body and structured metadata.
 - A document **must belong to zero or one database**. Multiple database memberships are invalid. A document may appear in many views and have relationships to many other documents without gaining additional memberships.
 - Ordinary Markdown documents may remain outside a database and join one later.
+- A workspace is a folder with an editable workspace Markdown document. Each database occupies a registered folder with its own schema document; folder location determines membership, including ordinary subfolders.
+- Moving a document between database folders is a database transfer. Validate it against the destination and preserve values that need mapping or repair.
+- Database fields compose from Text, Number, Boolean, Date, Select, Multi-select, Status, and Relation. Status labels are customizable and distinguish Not started, In progress, and Complete; relations allow one or many target records.
 - Users can create, rename, update, and remove databases, and create, update, or remove their fields. Users should not need to edit code or raw schema files for these operations.
 - Projects and Todos are customizable, removable default databases, rather than mandatory application entity types. Meeting Notes is a candidate starter database in the worked example.
 - Database definitions describe the schema; each record's metadata supplies its values. Views present records without owning another copy of their data.

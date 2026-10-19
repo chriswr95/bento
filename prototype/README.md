@@ -1,6 +1,6 @@
-# Document-backed todo workflow prototype
+# Shared editor and browser sample
 
-Open `index.html` in a modern browser. Keep this directory together: scripts, styles, and the vendored Markdown parser work offline without a build step. The fictional planning records use October 19, 2026; birthday greetings use the real local date.
+For the native folder-backed app, see the [root README](../README.md). This document describes opening `index.html` directly in a browser. Keep this directory together: scripts, styles, and the vendored Markdown parser work offline without a build step. The fictional planning records use October 19, 2026; birthday greetings use the real local date.
 
 ## Try the flow
 
@@ -36,24 +36,24 @@ Open Profile to save first name, last name, and optional birthday. Settings pers
 
 ## Boundaries
 
-The [data-model design](../docs/data-model.md) goes beyond this slice. The prototype stores structured envelopes plus Markdown bodies and can export `.md` files. It does not parse/import frontmatter, open/save a desktop workspace folder, load example schema files, expose database/schema CRUD, or implement migration history, production recovery journals, a conflict-resolution dialog, or actual agent/Copilot integration. Its declarative defaults are seeded in JavaScript; arbitrary schema editing is not supported.
+The [desktop repository](../files/repository.cjs) now provides real file loading/saving; the [data-model contract](../docs/data-model.md) describes it. The browser-only mode remains separate. The prototype stores structured envelopes plus Markdown bodies and can export `.md` files. It does not parse/import frontmatter, open/save a desktop workspace folder, load example schema files, expose database/schema CRUD, or implement migration history, production recovery journals, a conflict-resolution dialog, or actual agent/Copilot integration. Its sample defaults are seeded in JavaScript; desktop definitions are loaded from folder files. Arbitrary schema editing through the UI is not supported.
 
 Raw document HTML is escaped, external images use their alternate text without loading, and external links display text without navigation. Marked 17.0.5 is vendored in `vendor/marked.umd.js`; attribution is in `vendor/MARKED-LICENSE.md`.
 
 ## Checks
 
-The record-model tests require only Node.js and the vendored parser:
+The record-model tests require Node.js, the vendored parser, and the shared schema module:
 
 ```sh
 node --test tests/workspace.cjs
 ```
 
-Browser checks additionally require Playwright:
+From the repository root, browser checks additionally require Playwright:
 
 ```sh
-npm install --no-save --package-lock=false playwright@1.62.1
-npx playwright install chromium
-node tests/workflow.cjs
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+pnpm test:browser
 ```
 
 Set `BENTO_CHROME_PATH` to use an existing Chrome executable. `BENTO_SCREENSHOT_DIR` optionally controls the screenshot destination; otherwise screenshots use a temporary directory. Tests use isolated browser contexts and fictional personal details.

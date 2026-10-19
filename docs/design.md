@@ -15,7 +15,7 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 | Storage | Required: one Markdown document per content record; proposed rebuildable index |
 | Database membership | Required: zero or one database per document; relationships and views are separate |
 | Database definitions | Required: user-managed schemas; Projects and Todos are customizable, removable defaults |
-| Desktop shell and editor | Open; validate on Windows and macOS |
+| Desktop shell and editor | Electron selected for the first file-backed slice; production editor and OS distribution validation remain open |
 | Todo representation | Required: a Markdown document per todo; proposed checkbox references with the todo document authoritative |
 | Everyday editing | Single live Markdown surface; production editor library remains open |
 | Content agent | Proposed: scoped query and command interface sharing application services |
@@ -27,7 +27,7 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 
 ## 2. Content and storage direction
 
-Workspace content lives in Markdown documents. Database definitions supply structure and specialized behavior over those records. A logical database is a collection identified by metadata; it does not imply a separate SQL database or require a hosted service.
+Workspace content lives in Markdown documents. Database definitions supply structure and specialized behavior over those records. A workspace has a root `workspace.md` manifest. Each registered database folder contains `database.md`; the folder determines membership. It does not imply a SQL database or hosted service.
 
 Propose versioned YAML frontmatter for the document envelope and property values, with database definitions also represented as Markdown documents. Keep query/search indexes rebuildable. A local backend component may manage files and indexing; a separate process is not required by this model.
 
@@ -41,7 +41,7 @@ The [data-model walkthrough](data-model.md) and [example workspace](../examples/
 | Database definitions | Stable database/field identities, field types, defaults, relationships, views, and optional specialized capabilities | User-facing database and schema controls |
 | Content records | One Markdown document per record, with values in metadata and a free-form body | Document editor and property controls |
 
-Each document has zero or one database membership, expressed as a scalar database ID or no membership. Reject arrays or multiple membership values instead of selecting one. Project relationships are ordinary reference fields; a meeting note can refer to multiple projects while remaining a member of just Meeting Notes. Views query documents without changing their membership.
+Each document has zero or one database membership, derived from its enclosing registered database folder. Registered database folders cannot nest; ordinary subfolders inherit their containing database. New record files omit redundant `database` metadata. A conflicting legacy value requires repair. Project relationships are ordinary reference fields; a meeting note can refer to multiple projects while remaining a member of just Meeting Notes. Views query documents without changing their membership.
 
 Propose stable document, database, field, and select-option IDs. Display names and paths may change independently. The document envelope needs minimal application-level rules for identity, membership, schema version, and reference bookkeeping; users customize fields within that boundary. Database definitions use a small application-owned metamodel to avoid recursive schema bootstrapping.
 
@@ -59,15 +59,17 @@ Opening existing Markdown discovers checkboxes without automatically rewriting t
 
 Removing a checkbox reference unlinks that occurrence and retains the todo document. Deleting a todo document is an explicit, recoverable operation that surfaces affected references. Nested checkboxes are independent todos; code examples and schema-definition documents do not trigger capture. If a note has multiple project relationships, a new todo needs explicit project selection or remains unassigned rather than inheriting an arbitrary project.
 
-### Current prototype boundary
+### Current implementation boundary
 
-The browser prototype now has a separate record model (`prototype/workspace.js`): seeded declarative database definitions, one record per project/meeting/todo, scalar membership checks, stable document IDs, persisted reference baselines, and todo-authoritative title/completion. Its create/open/edit/toggle flow is implemented across meeting documents, todo properties/bodies, and daily review. Removing a reference retains the todo record and notes.
+The shared model handles identity, typed field validation, capability mappings, relative todo links, reference checkpoints, and todo-authoritative title/completion. `prototype/schema.js` defines Text, Number, Boolean, Date, Select, Multi-select, Status, and Relation. The [data-model contract](data-model.md) specifies their values and grouped completion behavior.
 
-The prototype stores record envelopes and Markdown bodies together in one browser-local workspace snapshot, separate from the profile key. It exports individual documents as Markdown with YAML-compatible frontmatter; it does not yet load or save a desktop folder, parse frontmatter imports, manage database/schema changes through the UI, or implement production multi-file recovery. Seed data is declared in code rather than loaded from the design fixtures. These boundaries remain implementation work.
+The Electron shell uses native directory dialogs and a sandboxed, isolated renderer. The preload bridge exposes only create/open/reload/save operations; the desktop process validates the calling frame and constrains paths to the selected workspace. Raw document HTML is escaped; previews do not execute document scripts or load remote content. See Electron's [context isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation) and [security guidance](https://www.electronjs.org/docs/latest/tutorial/security/).
 
-Mutations operate on cloned workspace snapshots and validate before replacing state. Browser storage writes the complete snapshot, and undo restores the preceding snapshot. Detect observed changes from another page and stop overwriting the saved copy; this is single-tab prototype persistence, not a production synchronization protocol. Invalid saved snapshots are retained unchanged, with a visible warning and session-only sample operation. Storage/quota failures are reported as session-only operation. Older inline-host snapshots migrate to record documents when possible.
+`files/repository.cjs` parses actual YAML/frontmatter, discovers folders, derives membership, validates definitions/records, detects external changes before save, and retains unknown metadata. `files/transaction.cjs` journals before/after versions, uses a local writer lock and temporary-file replacements, and resumes interrupted writes. Recovery conflicts preserve divergent files and stop further writes. See the data-model document for the guarantees and remaining races; this is not production multi-device synchronization.
 
-A single live Markdown page replaces separate Read/Write modes. Ordinary blocks render until activated for source editing. Typing `[] ` or `- [ ] ` in a new block immediately renders a checkbox; its first nonempty title materializes a todo. Task labels edit inline, Enter continues the list, and an adjacent control opens the todo document. The browser slice uses a small block editor over source Markdown; production editor selection, cross-block rich-text selection, native undo, and full accessibility evaluation remain open. Version 3 browser snapshots migrate to the new single-ID representation while retaining the original saved copy. The prototype can preview reference conflicts and disable unresolved task links. It does not offer a dedicated conflict-resolution dialog or claim safe arbitrary external-file edits. Schema evolution, migrations, folder recovery, and the full database editor remain to be built. Keep personal profile settings outside workspace records and host snapshots.
+The editor is one live Markdown surface. Todo labels and checkboxes remain inline controls; ordinary blocks expose Markdown while active. Desktop changes autosave after a pause, with explicit Save files and Reload files controls. Drafts persist separately in local renderer storage; incompatible drafts can be downloaded for comparison. General schema UI, generic property forms, production cross-block editing/undo, link repair and full accessibility evaluation remain future work.
+
+The browser-only sample continues to use its own local snapshots and profile settings. It does not get filesystem access. Desktop startup reads workspace files instead of importing browser sample data.
 
 ## 5. Interface and customization
 
@@ -92,7 +94,7 @@ Use project capability mappings to create a summary for every active project, in
 
 ### Personal profile and greetings
 
-For the desktop application, propose a versioned `profile.json` in the operating system's per-user application-data directory, separate from workspace Markdown and source control. Store `firstName`, `lastName`, and an optional `birthday` as a calendar date (`YYYY-MM-DD`). Use atomic writes, validate on read/write, and let the user edit or clear optional fields in settings. The application framework will determine the actual platform paths; this is not implemented desktop persistence yet.
+For the desktop application, propose a versioned `profile.json` in the operating system's per-user application-data directory, separate from workspace Markdown and source control. Store `firstName`, `lastName`, and an optional `birthday` as a calendar date (`YYYY-MM-DD`). Use atomic writes, validate on read/write, and let the user edit or clear optional fields in settings. A separate native profile file remains a production proposal. The current Electron slice persists profiles in its per-user renderer storage, using the shared profile implementation, rather than creating `profile.json` yet.
 
 The browser prototype stores the versioned profile under `bento.prototype.profile.v1` in local browser storage. It saves only after an explicit Save profile action. If storage is unavailable, keep the profile for the session and disclose that it was not saved. Invalid stored values fall back to editable defaults. The profile is not included in host widget-state snapshots, Markdown files, or agent context by default.
 
@@ -120,7 +122,7 @@ Separate the following responsibilities behind small interfaces:
 
 The UI must not directly mutate metadata or implement its own task lifecycle. Changes flow through application services and the workspace repository; all views consume the resulting state.
 
-Select the desktop framework and editor through a small prototype. Evaluate Windows/macOS packaging, Markdown round-trip fidelity, accessibility, native filesystem integration, startup and memory behavior, theme integration, and maintenance burden. The framework choice remains open; do not introduce a separate web backend by default.
+Select the desktop framework and editor through a small prototype. Evaluate Windows/macOS packaging, Markdown round-trip fidelity, accessibility, native filesystem integration, startup and memory behavior, theme integration, and maintenance burden. Electron is selected for this slice: it reuses the current JavaScript model/editor and provides native dialogs and filesystem integration with consistent Chromium rendering. It carries a larger runtime and requires timely security updates. Tauri remains an alternative if measured distribution/startup needs justify a Rust bridge and differing system webviews. No separate HTTP backend is introduced.
 
 ### Data safety and external changes
 
@@ -223,12 +225,12 @@ Use small, focused commits and meaningful checks at domain, persistence, agent, 
 
 ## 10. Open technical decisions
 
-- Exact document/schema serialization, reserved metadata names, schema-history storage, and migration transaction format.
+- Further envelope compatibility, schema-history storage, migration/retirement transactions, and recovery review/retention. The first folder/YAML/journal contract is documented in data-model.md.
 - Checkbox-reference syntax, capture journal/idempotency, stale/missing-baseline recovery, and copy/paste rules.
-- Capability vocabulary, initial field types, view/query format, and explicit database-transfer mappings.
+- Capability vocabulary beyond the current task/project mappings, view/query format, and explicit database-transfer mappings.
 - Task/project starter statuses, project-relationship cardinality defaults, and tag case/rename semantics. The zero-or-one database membership rule is required and no longer open.
 - Editor implementation that meets approachable formatting and Markdown fidelity requirements.
-- Desktop framework, supported OS versions/architectures, packaging, and signing.
+- Supported OS versions/architectures, signed installers, update delivery, and Windows/macOS distribution validation. The first shell uses Electron.
 - Agent transport/providers, scope permissions, external transmission UX, audit retention, and recovery semantics.
 - Application-agent handoff, isolated build delivery, adoption, and rollback mechanics.
 - Initial layout extension surface and whether CSS or executable extensions are ever supported.
