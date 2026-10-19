@@ -1,243 +1,171 @@
-# Bento: product and technical specification
+# Bento: product specification
 
-Status: initial draft for discussion
+Status: draft for discussion
 
-Date: 2026-10-17
+Updated: 2026-10-19
 
-## 1. Product intent
+This document describes who Bento serves, what it should do, and how we will judge the experience. Implementation proposals and technical tradeoffs live in the [design document](design.md).
 
-Bento is a desktop workspace for thinking, planning, and getting things done. It brings Markdown documents, projects, and todos into one coherent interface.
+## 1. Audience and purpose
 
-Obsidian inspires file ownership and portable Markdown. Notion inspires a polished document experience and useful views of structured information. VS Code inspires configurable workspaces, themes, and an eventual extension model.
+Bento's first user is Makena, a civil engineer who is familiar with Notion and wants a straightforward way to manage her project work. The first workflow to optimize is **meeting notes → action items → follow-up**.
 
-The core experience should be simple: open a folder, write a note, turn an idea into a todo, organize work into a project, and find it again through search or tags.
+The broader audience is people managing multiple projects through notes, decisions, deadlines, and follow-up work. Makena's actual workflow takes priority over speculative features for a general productivity market.
 
-## 2. Confirmed requirements
+Bento should let her capture a meeting, recognize what needs to happen next, organize those actions under a project, and return later with enough context to follow through. She should be able to do this through a familiar interface or ask an agent to help.
 
-| Area | Requirement |
+Using Bento should not require programming, a terminal, Git knowledge, or understanding the storage format. Changing Bento with an agent should also be approachable, while giving her a clear view of what will change and a way back.
+
+Civil engineering provides the context for organizing work. Engineering calculations, CAD/BIM authoring, formal document control, and approval workflows are outside the initial scope. We still need to learn which project records and processes Makena actually uses before treating them as requirements.
+
+## 2. Product principles
+
+- **Make the daily workflow obvious.** Useful defaults and familiar page interactions should come before customization.
+- **Keep context attached to work.** A todo should lead back to the project and notes that explain it.
+- **Let people use their own language.** Titles, descriptions, and tags should not require a predefined taxonomy.
+- **Keep information accessible.** Markdown editing and content portability remain core capabilities.
+- **Make agent changes understandable.** Show the intended scope and meaningful results; make mistakes recoverable.
+- **Keep customization optional.** Themes and extensions should enrich an already usable application.
+
+## 3. Required capabilities
+
+| Area | User-facing requirement |
 | --- | --- |
-| Platforms | Runs on Windows and macOS. |
-| Documents | Opens, edits, and saves Markdown files. |
-| Todos | Todos are first-class entities with dedicated interactions and views. |
-| Projects | Projects are first-class entities that group work and carry their own information. |
-| Tags | Supports user-defined, free-form string tags. |
-| Interface | A clean, Notion-inspired visual experience. |
-| Customization | An extensible, editable interface inspired by VS Code, including installable themes. |
-| Theme direction | Support styles inspired by Catppuccin, Darcula, and Tokyo Night. These examples describe the desired flexibility; specific theme packages are not yet committed. |
+| Platforms | Run on Windows and macOS. |
+| Notes | Create, open, edit, organize, and save Markdown documents. |
+| Editing experience | Offer a readable, Notion-inspired writing experience with discoverable formatting controls. Everyday editing must not depend on typing Markdown syntax. |
+| Todos | Treat todos as independently manageable work with a title, description, status, optional due date, tags, and project context. |
+| Projects | Give each project a home for its description, related notes, todos, and current status. |
+| Follow-up | Make outstanding and completed actions easy to find across meetings and projects. |
+| Tags | Allow free-form string tags on notes, projects, and todos, including spaces and Unicode. |
+| Navigation | Provide search and useful project, todo, and tag views. |
+| Agent-assisted content | Let Makena use natural language to find, summarize, create, and update workspace content. |
+| Agent-assisted customization | Let Makena describe changes to Bento's behavior or appearance and work with an agent to review, try, and adopt them. |
+| Appearance | Provide a calm, Notion-inspired interface with installable themes, including the flexibility to express Catppuccin, Darcula, or Tokyo Night styles. |
+| Interface customization | Allow layout and interface customization inspired by VS Code, with a useful default experience. The initial depth of extension support remains open. |
+| Reliability | Preserve work through saving, reopening, conflicting edits, and unsuccessful agent changes. |
+| Accessibility | Support keyboard navigation, visible focus, scalable text, and understandable status beyond color alone. |
 
-The storage architecture is open. A local backend process and a folder of Markdown documents are both acceptable starting points.
+The exact editor interaction, storage model, framework, and agent integration are design decisions. These requirements do not select an agent provider or require a particular backend.
 
-## 3. Recommended initial direction
+## 4. Primary workflow: meeting notes to follow-up
 
-Use a local-first desktop application with a folder-based Markdown workspace as the durable source of truth. Use a rebuildable local index for fast search, relationships, and task views.
+### Capture a meeting
 
-This is a proposal, pending review. It preserves ordinary file ownership while allowing richer behavior than a plain text editor. It also avoids requiring an account, hosted service, or synchronization system to validate the core product.
+1. Open a project and create a meeting note.
+2. Write and format notes using familiar page controls.
+3. Record decisions and possible next actions without interrupting the writing flow.
+4. Return to the note later through the project or search.
 
-A desktop application can still use a local backend component to manage files and indexing. File-based storage and a local service are compatible choices. Prefer an in-process service behind a clear interface initially; add a separate process only if isolation, runtime requirements, or measured performance justify it.
+A meeting title, date, attendees, and agenda are candidate template fields to validate with Makena, not mandatory metadata for every note.
 
-### Storage options considered
+### Turn discussion into action
 
-| Option | Benefits | Costs | Initial recommendation |
-| --- | --- | --- | --- |
-| Markdown files plus rebuildable index | Portable, inspectable, compatible with external editors and Git | Requires explicit metadata conventions, file watching, and conflict handling | Preferred |
-| Local database as the source of truth, with Markdown import/export | Strong structured queries and transactional updates | Export can lose information; users depend on Bento to access the full workspace | Revisit if structured editing outgrows the file model |
-| Hosted service as the source of truth | A foundation for shared workspaces and coordinated updates | Accounts, networking, operations, offline behavior, and conflict resolution | Outside the initial release |
+1. Select text to create a todo, or ask an agent to suggest action items from the meeting.
+2. Review the suggested titles, project, due dates, and links to the source note.
+3. Correct or omit details, then apply the desired changes.
+4. See the resulting todos in both the project and central Todos views.
 
-## 4. Initial scope
+An agent must distinguish information recorded in the note from its own suggestions. Missing dates, ownership, or decisions must not become invented facts. The user can retain an action without assigning a due date.
 
-The first usable release includes folder workspaces, Markdown editing, project and todo management, tags, search, a small set of useful views, and theme customization.
+### Follow through
 
-Defer real-time collaboration, hosted accounts, mobile apps, calendar integrations, arbitrary executable plugins, and a general-purpose Notion-style database builder. Design boundaries should allow future additions without making them prerequisites for local use.
+1. Review open actions for a project or across projects, with optional due-date and tag filters.
+2. Open a todo and return to its source meeting for context.
+3. Record progress, complete the action, or reopen it when necessary.
+4. Ask an agent for a follow-up summary with links to the underlying notes and todos.
+5. Review any suggested updates before applying them.
 
-## 5. Core user journeys
+Example request: “Find the open actions from this project's last meeting and help me prepare a follow-up.” Exact project terminology and meeting conventions still need validation.
 
-### Open and write
-
-1. Open an existing folder or create a workspace.
-2. Browse, create, rename, and move Markdown files.
-3. Edit a document with familiar Markdown shortcuts and readable formatting.
-4. Switch between source and rendered presentation without losing content.
-5. Close and reopen Bento with files and workspace layout intact.
-
-The initial editor should support headings, paragraphs, lists, checkboxes, links, code fences, quotes, tables, and local image references. Unsupported syntax must survive edits unchanged.
-
-### Capture and complete a todo
-
-1. Create a todo from a global capture action or while editing a document.
-2. Optionally assign a project, due date, and tags.
-3. Find it in the central Todos view and its project view.
-4. Mark it complete in either location; every view reflects the same entity.
-5. Reopen a completed todo without losing its description or relationships.
+## 5. Other core journeys
 
 ### Manage a project
 
-1. Create a project with a title and Markdown description.
-2. Add todos and link related notes.
-3. View open and completed work, due dates, and project status.
-4. Archive a project while retaining its documents and task history.
+Create a project, write its description, associate existing notes, and add todos. Review its status and open work in one place. Archive the project while retaining its notes and task history.
 
-### Organize through tags
+### Use existing Markdown
 
-1. Add an existing tag or create a new string directly in the tag picker.
-2. Apply tags to notes, projects, and todos.
-3. Click a tag to see matching entities and narrow the view by type or status.
+Open existing Markdown documents and edit them without losing unsupported syntax. Everyday writing should be approachable through the UI; a way to inspect and edit the underlying Markdown remains available. Editor modes and shortcuts are specified in the design document.
 
-### Make the workspace feel personal
+### Organize and find work
 
-1. Select an installed light or dark theme.
-2. Install a compatible theme package from disk.
-3. Adjust sidebar visibility, panel arrangement, and editor typography.
-4. Restore the default layout or theme if customization causes problems.
+Apply existing tags or create new ones directly. Search notes, projects, and todos; filter by tag and relevant status. Renaming or moving an item should preserve its project and source relationships. Changing a todo in one view should update every other view of that todo.
 
-## 6. Domain model
+### Personalize the interface
 
-| Entity | Initial fields | Meaning |
-| --- | --- | --- |
-| Workspace | Root folder, format version, preferences | A collection of user-owned files and their working context |
-| Note | Stable ID, title, Markdown body, tags | A document with optional relationships to projects |
-| Todo | Stable ID, title, status, description, optional project, optional due date, tags | An independently addressable unit of work |
-| Project | Stable ID, title, status, Markdown body, tags | A durable planning context with associated todos and notes |
-| Tag | User-defined string | A reusable label across entity types |
+Select or install a theme, adjust typography and layout, and restore usable defaults. Invalid customization should leave Bento usable and explain what went wrong.
 
-Proposed todo states: `open`, `in_progress`, `done`, and `cancelled`. Proposed project states: `active`, `on_hold`, `completed`, and `archived`. The UI may simplify these initially, but transitions must be explicit and reversible.
+## 6. Two agent experiences
 
-A todo initially belongs to at most one project. Notes may link to multiple projects. Relationships use stable IDs so renaming or moving a file does not break them. Titles need not be unique. IDs must be unique within a workspace; duplicated IDs are surfaced for repair rather than silently merged.
+### A. Help with workspace content
 
-Due dates initially represent calendar dates (`YYYY-MM-DD`), with no implicit timezone conversion. Reminders and due times are deferred.
+Makena should be able to ask for outcomes such as:
 
-Tags are strings rather than a predefined taxonomy. Spaces, punctuation, and Unicode should be supported; storage must quote or escape them safely. Propose trimming surrounding whitespace, rejecting empty values, and preserving spelling and case. Decide case-sensitive identity before implementation. Inline `#tag` shorthand, if supported, is only one input method and must not limit the underlying tag format.
+- “Turn these meeting notes into action items for this project.”
+- “Show what is still open from our last meeting.”
+- “Summarize the decisions in these notes and link to the sources.”
+- “Move these todos to this project and add the tag ‘permit review’.”
 
-## 7. Proposed file format
+The experience must let her identify the workspace, project, notes, or selection the agent may use. Before a batch content change is applied, she can review a plain-language summary and the affected items, adjust the proposal, or cancel it. The precise interaction for an explicitly requested single-item change is a design decision.
 
-Use UTF-8 Markdown with a small, versioned YAML frontmatter schema for structured entities. Keep the body ordinary Markdown and preserve unrecognized metadata.
+Applied changes must appear in ordinary Bento views and remain inspectable and recoverable. An interrupted or unsuccessful operation must report what changed and what remains. The agent must not silently overwrite concurrent edits.
 
-Example project file, at a user-chosen path:
+Local writing and project management should remain available when an agent is unavailable. Before workspace information is sent to an external agent service, the experience must make the destination and content scope clear and obtain authorization. A local-only agent requirement has not been decided.
 
-```markdown
----
-bento_version: 1
-id: "project-kitchen"
-type: project
-title: "Kitchen refresh"
-status: active
-tags: ["home", "weekend plans"]
----
+### B. Help change Bento itself
 
-# Kitchen refresh
+Makena should be able to describe a desired product change, such as “Make project headings more compact” or “Add a view that groups my todos by project.”
 
-Collect ideas, choose materials, and plan the work.
-```
+She should be able to:
 
-Example todo file:
+1. Explain the desired result in ordinary language.
+2. Understand whether it is a setting, a theme/layout change, or a change to the application.
+3. Review a concrete proposal and try a preview or test version where feasible.
+4. See what was checked and any limitations before adopting the change.
+5. Return to the previous working version if the result does not work for her.
 
-```markdown
----
-bento_version: 1
-id: "todo-measure-shelves"
-type: todo
-title: "Measure the shelves"
-status: open
-project: "project-kitchen"
-due: "2026-10-24"
-tags: ["home"]
----
+An application change must not silently replace the running application or alter her workspace content as a side effect. Changing content and changing the application are distinct operations with distinct scope.
 
-Measure width and depth before ordering materials.
-```
+The initial integration may connect to an external coding agent rather than embed one. The product should make that handoff understandable; owning an agent runtime is not a requirement. The location of the entry point and degree of automation remain open.
 
-The example IDs are illustrative; the implementation should generate opaque stable IDs. Folder structure is organizational and does not define entity identity or project membership.
+## 7. Initial scope and sequencing
 
-Ordinary `.md` files without Bento metadata remain editable as notes. Assigning metadata should be an explicit action when structured features require it; opening a folder must not rewrite every file.
+The first usable product should support the complete manual meeting-to-follow-up workflow: project setup, Markdown notes, todo creation with source context, tags, search, and consistent project/todo views on Windows and macOS. Include a usable default interface and theme switching.
 
-### Todo representation decision
+The first agent-assisted slice should propose action items from a selected meeting note, let the user review them, and apply the chosen items with source links and recovery. Next, validate a small agent-assisted application change through the review, trial, and adoption journey above. Agent usability is a product goal, not an assumption that Markdown alone satisfies it.
 
-Propose one Markdown file per first-class todo for the first prototype: stable identity, rich descriptions, and ordinary file operations are easy to explain. A document's plain `- [ ]` checkbox initially remains a local checklist item, with an explicit action to promote it into a linked todo.
+Defer real-time collaboration, hosted accounts, mobile apps, calendar/email integrations, arbitrary executable plugins, and a general-purpose Notion-style database builder. Do not assume a requirement for Notion import or full Notion feature parity.
 
-The tradeoff is file count and a distinction between checklists and managed todos. Before finalizing the format, test this against an alternative where managed todos live inline with stable identifiers. Whichever representation is chosen, a single todo must have one authoritative record, and completing it must be consistent across all views.
+## 8. Success and acceptance criteria
 
-## 8. Interface and customization
+Validate these with Makena using representative, non-sensitive meeting material before treating the experience as complete:
 
-Proposed application shell:
+- She can create a project, capture a meeting, create linked todos, and find outstanding follow-up without terminal use or knowledge of the file format.
+- She can format everyday notes through discoverable controls and reopen them with their content intact.
+- She can manage a todo from different views and see one consistent status and source context.
+- She can organize and retrieve notes, projects, and todos with free-form tags and search.
+- She can review agent-proposed action items, correct a mistaken suggestion, apply the desired items, and recover from an unwanted change.
+- Agent summaries identify their source records, and suggestions remain distinguishable from recorded facts.
+- She can identify what an agent is allowed to read or change, including when information would leave her computer.
+- She can describe a small change to Bento, understand the proposal, try the result, and retain or revert it with appropriate assistance.
+- Core local workflows remain usable when an agent or network connection is unavailable.
+- Both platforms preserve work through reopening, failed saves, and conflicting external changes.
+- She can change themes and restore defaults without making the workspace unusable.
+- The core manual journeys work with keyboard navigation.
 
-- Sidebar: workspace files, Projects, Todos, Tags, and saved navigation.
-- Main area: document editor, project detail, task list, or search results.
-- Optional details panel: selected entity metadata and relationships.
-- Command palette: quick navigation and discoverable actions.
+Record usability observations and unresolved friction. Do not substitute a passing technical test for observing whether Makena can complete the workflow.
 
-Start with a document view, a filterable Todos list, and a Projects list with project detail pages. Add a task board after the underlying task lifecycle and filtering are reliable. Saved filters and custom views can follow initial validation.
+## 9. Product questions still to answer
 
-Use shared design tokens for color, typography, spacing, borders, focus states, and editor syntax. Themes consume a documented, versioned token schema and declare their light/dark appearance. Theme packages initially contain declarative data and permitted assets; importing a theme must not execute code.
+- What does a typical meeting note and follow-up look like in Makena's current workflow?
+- Does she track only her own actions, or also actions owned by other people? Shared assignment and collaboration are not yet specified.
+- Which project details, status labels, templates, and views matter most day to day?
+- Does she want all checkboxes to appear in the Todos view, or an explicit distinction between informal checklists and managed actions?
+- What agent tools can she use in her work environment, and what project information may they access?
+- Should agent assistance live inside Bento, in an external tool, or offer both entry points?
+- What would make reviewing content changes and trying application changes feel understandable to her?
+- How much interface customization is useful initially beyond themes, typography, and panel arrangement?
+- Is existing content migration, backup, or use across multiple computers needed for her first trial?
 
-Expose layout and typography through settings. Build internal extension points for commands, views, editor contributions, and themes, but defer a public executable extension API until those boundaries stabilize. Arbitrary CSS overrides and third-party code execution require separate design decisions.
-
-Keyboard navigation, visible focus, adequate contrast, scalable text, and accessible names are baseline requirements. Essential state must remain understandable without relying only on color.
-
-## 9. Technical architecture
-
-Separate the following responsibilities behind small interfaces:
-
-1. **Desktop shell:** windows, menus, dialogs, and platform integration.
-2. **UI and editor:** document interaction, task/project views, and themes.
-3. **Application services:** commands and domain rules shared by all views.
-4. **Workspace repository:** safe file reads/writes, schema handling, and change events.
-5. **Indexer:** rebuildable search and relationship projections from workspace files.
-
-The UI must not directly mutate metadata or implement its own task lifecycle. Changes flow through application services and the workspace repository; all views consume the resulting state.
-
-Select the desktop framework and editor through a small prototype. Evaluate Windows/macOS packaging, Markdown round-trip fidelity, accessibility, native filesystem integration, startup and memory behavior, theme integration, and maintenance burden. The framework choice remains open; do not introduce a separate web backend by default.
-
-### Data safety and external changes
-
-- Save through temporary files and replacement operations appropriate to each platform; recover unfinished writes where possible.
-- Detect external changes, including edits made while a document has unsaved local changes. Preserve both versions and show a resolvable conflict instead of silently overwriting either.
-- Keep a recoverable local draft while editing; clearly show pending, saved, and failed save states.
-- Make renames, deletes, and multi-file changes recoverable. Prefer the operating system trash for user-requested deletion.
-- Preserve unknown frontmatter keys and unsupported Markdown syntax; avoid whole-document formatting changes for small metadata edits.
-- Treat files as authoritative. The index can be deleted and rebuilt without losing content, relationships, or task state.
-- Keep machine-specific caches, drafts, and window state outside portable content. Shared workspace preferences may live in a versioned `.bento/` folder.
-- Treat file content as untrusted: constrain local resource access to authorized paths and prevent document previews from executing scripts.
-- Handle Windows path restrictions and case collisions explicitly. Use relative paths for portable links where practical and disclose broken links after file moves.
-
-### Scale and responsiveness
-
-Index incrementally, debounce file watcher bursts, and keep parsing/indexing work off latency-sensitive UI paths. Load document bodies on demand and virtualize long lists where needed. Explicitly report unreadable or malformed files without blocking the rest of the workspace.
-
-Measure prototypes with a representative workspace of 10,000 Markdown files and 20,000 todos. These are validation targets, not current performance claims. Record hardware and dataset characteristics before setting numeric latency and memory budgets.
-
-## 10. Release acceptance criteria
-
-- Install and launch the application on supported Windows and macOS versions, selected and documented before release.
-- Open an existing Markdown folder without unsolicited file rewrites.
-- Create, edit, save, close, and reopen supported Markdown content without losing unsupported syntax or unknown metadata.
-- Create projects and todos, change their status, and see consistent results across document links and dedicated views.
-- Filter notes, projects, and todos by free-form tags and search their content.
-- Preserve stable relationships when an entity file moves or is renamed.
-- Recover from an interrupted save and surface conflicting external edits without losing either version.
-- Rebuild the local index and recover equivalent project, todo, tag, and search views.
-- Switch themes and import a valid theme package; invalid packages fail with useful errors and leave the current theme usable.
-- Complete the core journeys using keyboard navigation.
-- Run the full local workflow without an account or network connection under the proposed architecture.
-
-## 11. Delivery plan
-
-1. **Resolve the core model:** review file ownership, todo representation, tag identity, and editing modes; document decisions with short rationale.
-2. **Validate the platform:** build a Windows/macOS spike for opening a folder, editing one Markdown file, saving safely, and switching theme tokens.
-3. **Build the workspace slice:** navigation, Markdown fidelity, drafts, external change handling, and rebuildable indexing.
-4. **Build planning workflows:** project and todo lifecycle, relationships, tags, search, and central views.
-5. **Harden and customize:** theme package validation, layout persistence, accessibility, large-workspace measurements, packaging, and recovery checks.
-
-Use focused commits and vertical slices with meaningful checks at domain, file persistence, and cross-platform interaction boundaries.
-
-## 12. Open decisions
-
-- Is a Markdown folder plus rebuildable index the preferred storage foundation?
-- Should managed todos be standalone files, inline entries, or an explicitly supported combination?
-- Should the initial editor prioritize live preview, rich text with Markdown round-tripping, or source editing with preview?
-- Are tag strings case-sensitive? Should renaming a tag update every matching file?
-- How much layout editing is needed initially: configurable panels, custom views, CSS overrides, or executable extensions?
-- Which desktop framework and editor best satisfy the prototype criteria?
-- Which Windows/macOS versions and CPU architectures should the first release support?
-- How should users back up or synchronize workspaces across computers? Initial local operation does not promise safe concurrent folder synchronization.
-- Which license should the public repository use?
-
-These questions are intentionally open. The draft recommends a starting architecture without treating it as an approved implementation decision.
+Technical decisions and their tradeoffs belong in the [design document](design.md).
