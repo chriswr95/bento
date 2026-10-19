@@ -1,10 +1,10 @@
 import { EditorState, TextSelection, Selection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
-import { baseKeymap, toggleMark, setBlockType, chainCommands, exitCode } from 'prosemirror-commands';
+import { baseKeymap, toggleMark, chainCommands, exitCode } from 'prosemirror-commands';
 import { keymap } from 'prosemirror-keymap';
 import { history, undo, redo, closeHistory } from 'prosemirror-history';
 import { inputRules, InputRule, textblockTypeInputRule, wrappingInputRule, undoInputRule } from 'prosemirror-inputrules';
-import { splitListItem, liftListItem, sinkListItem, wrapInList } from 'prosemirror-schema-list';
+import { splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import { tableEditing, goToNextCell } from 'prosemirror-tables';
 import { Slice } from 'prosemirror-model';
 import { editorSchema as schema, MarkdownBridge, taskPositions } from './rich-markdown.js';
@@ -62,18 +62,6 @@ function enterList(state, dispatch) {
   }
   return false;
 }
-function taskCommand(state, dispatch) {
-  const $from = state.selection.$from;
-  for (let depth = $from.depth - 1; depth > 0; depth--) {
-    if ($from.node(depth).type === schema.nodes.list_item) {
-      if (dispatch) dispatch(state.tr.setNodeMarkup($from.before(depth), null, { ...$from.node(depth).attrs, checked: false })); return true;
-    }
-  }
-  return wrapInList(schema.nodes.bullet_list)(state, dispatch && (tr => {
-    const pos = tr.selection.$from.before(tr.selection.$from.depth - 1);
-    dispatch(tr.setNodeMarkup(pos, null, { checked: false }));
-  }));
-}
 class ListItemView {
   constructor(node, view, getPos, owner) {
     this.view = view; this.getPos = getPos; this.owner = owner;
@@ -110,8 +98,6 @@ function safePaste(html) {
 export default class RichEditor {
   constructor(element, options) {
     this.element = element; this.options = options; this.bridge = new MarkdownBridge(options.body());
-    this.toolbar = document.createElement('div'); this.toolbar.className = 'b-format-toolbar'; this.toolbar.setAttribute('role', 'toolbar'); this.toolbar.setAttribute('aria-label', 'Text formatting');
-    element.append(this.toolbar);
     this.mount = document.createElement('div'); element.append(this.mount);
     this.view = new EditorView(this.mount, {
       state: EditorState.create({ schema, doc: this.bridge.doc, plugins: [history(), rules(), keymap({ 'Mod-End': documentEdge(true), 'Mod-Home': documentEdge(false), 'Mod-ArrowDown': documentEdge(true), 'Mod-ArrowUp': documentEdge(false), 'Mod-z': undo, 'Mod-y': redo, 'Mod-Shift-z': redo, 'Mod-b': toggleMark(schema.marks.strong), 'Mod-i': toggleMark(schema.marks.em), 'Mod-`': toggleMark(schema.marks.code), Enter: enterList, Tab: chainCommands(goToNextCell(1), sinkListItem(schema.nodes.list_item)), 'Shift-Tab': chainCommands(goToNextCell(-1), liftListItem(schema.nodes.list_item)), Backspace: undoInputRule, 'Mod-Enter': exitCode }), keymap(baseKeymap), tableEditing()] }),
@@ -128,14 +114,13 @@ export default class RichEditor {
         return false;
       }
     });
-    this.addToolbar(); this.syncTasks();
+    this.syncTasks();
   }
   dispatch(tr) {
     const previous = this.view.state;
     if (tr.docChanged && !previous.selection.empty) tr = closeHistory(tr);
     this.view.updateState(previous.apply(tr));
     if (tr.docChanged && !this.view.composing) this.publish(previous);
-    this.updateToolbar();
   }
   publish(previous) {
     try {
@@ -161,18 +146,6 @@ export default class RichEditor {
     }
     if (tr.docChanged) this.view.updateState(this.view.state.apply(tr.setMeta('addToHistory', false)));
   }
-  command(command) { command(this.view.state, this.view.dispatch, this.view); this.view.focus(); this.updateToolbar(); }
-  addToolbar() {
-    const buttons = [ ['Bold', toggleMark(schema.marks.strong)], ['Italic', toggleMark(schema.marks.em)], ['Code', toggleMark(schema.marks.code)], ['Strike', toggleMark(schema.marks.strike)],
-      ['Paragraph', setBlockType(schema.nodes.paragraph)], ['Heading 1', setBlockType(schema.nodes.heading, { level: 1 })], ['Heading 2', setBlockType(schema.nodes.heading, { level: 2 })],
-      ['Bullet list', wrapInList(schema.nodes.bullet_list)], ['Numbered list', wrapInList(schema.nodes.ordered_list)], ['Todo', taskCommand], ['Undo', undo], ['Redo', redo] ];
-    this.controls = buttons.map(([label, command]) => {
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'b-button'; button.textContent = label; button.setAttribute('aria-label', label);
-      button.addEventListener('mousedown', event => event.preventDefault()); button.addEventListener('click', event => { event.stopPropagation(); this.command(command); });
-      this.toolbar.append(button); return { button, command };
-    }); this.updateToolbar();
-  }
-  updateToolbar() { this.controls?.forEach(({ button, command }) => { button.disabled = !command(this.view.state); const mark = { Bold: 'strong', Italic: 'em', Code: 'code', Strike: 'strike' }[button.textContent]; if (mark) { const { selection, storedMarks } = this.view.state; const active = selection.empty ? !!schema.marks[mark].isInSet(storedMarks || selection.$from.marks()) : this.view.state.doc.rangeHasMark(selection.from, selection.to, schema.marks[mark]); button.setAttribute('aria-pressed', String(active)); } }); }
   focus() { this.view.focus(); }
   destroy() { this.destroyed = true; this.view.destroy(); }
 }

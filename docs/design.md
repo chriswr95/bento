@@ -272,6 +272,6 @@ Startup opens the previous workspace through the normal repository, including re
 
 ### Formatted editing implementation
 
-ProseMirror replaces the former block-source textarea implementation. `prototype/rich-editor.js` owns view/history/input rules and toolbar commands. `prototype/rich-markdown.js` owns the schema, parser and source-preserving serializer. `scripts/build-editor.js` creates a local ES module from pinned packages. The runtime has no editor network service or CDN dependency.
+ProseMirror replaces the former block-source textarea implementation. `prototype/rich-editor.js` owns view/history/input rules and keyboard commands. `prototype/rich-markdown.js` owns the schema, parser and source-preserving serializer. `scripts/build-editor.js` creates a local ES module from pinned packages. The runtime has no editor network service or CDN dependency.
 
 Supported visual editing covers headings, paragraphs, inline marks, links, lists/todos, quotes, code, horizontal rules and tables. Unknown/HTML blocks remain explicit preserved atoms. A user edit can normalize its enclosing top-level Markdown block; unsupported extension syntax does not silently disappear. Task projections preserve safe inline labels when their plain text matches the record title. Renaming the record to different plain text replaces the label projection. Clipboard task attributes preserve the linked identity; plain checkboxes capture new records through the same domain command as before.

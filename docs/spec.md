@@ -61,7 +61,7 @@ This requirement covers workspace content and database definitions. Personal pro
 | --- | --- |
 | Platforms | Run on Windows and macOS. |
 | Notes | Create, open, edit, organize, and save Markdown documents. |
-| Editing experience | Offer a readable, Notion-inspired writing experience with discoverable formatting controls. Everyday editing must not depend on typing Markdown syntax. |
+| Editing experience | Offer a readable, directly editable document with minimal UI. Favor expert workflows through Markdown typing rules and keyboard shortcuts rather than a formatting toolbar. |
 | Todos | Every document checkbox creates or references a tracked todo for Makena’s own work. Each todo opens as its own Markdown document with status, optional due date, tags, project context, and space for notes. |
 | Projects | Give each project its own Markdown document and related notes, todos, and current status through the default Projects database. |
 | Databases | Create, edit, and remove database definitions and fields through the UI. Projects and Todos are customizable, removable defaults. |
@@ -98,7 +98,7 @@ Initial implementation and validation priority.
 #### Capture a meeting
 
 1. Open a project and create a meeting note.
-2. Take meeting notes directly in Bento and format them using familiar page controls.
+2. Take meeting notes directly in Bento and format them using Markdown typing rules and keyboard shortcuts.
 3. Record decisions and possible next actions without interrupting the writing flow.
 4. Return to the note later through the project or search.
 
@@ -223,7 +223,7 @@ Validate these with Makena using representative, non-sensitive meeting material 
 - She can create a project, capture a meeting, create linked todos, and find outstanding follow-up without terminal use or knowledge of the file format.
 - She can review projects and upcoming or overdue work, then identify what needs attention next.
 - She can organize project notes and reference links, then retrieve them through project navigation, search, or tags.
-- She can format everyday notes through discoverable controls and reopen them with their content intact.
+- She can format everyday notes through Markdown typing rules and keyboard shortcuts and reopen them with their content intact.
 - Every document checkbox, including existing and nested checkboxes, appears as one tracked todo; completion changes in any view update the source checkbox.
 - She can open each todo’s own Markdown document and add notes while seeing one consistent status across its checkbox references and views.
 - A document can have zero or one database membership; attempts to assign multiple memberships fail clearly without changing content.

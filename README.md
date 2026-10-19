@@ -33,7 +33,7 @@ Open a project document and choose **Review project work**, or use **Review work
 
 Resume information lives in the app’s local `session.json`, separately from personal settings and workspace Markdown. It stores the last workspace path and page/view IDs.
 
-The document is a formatted, directly editable page powered by ProseMirror. Click a heading, paragraph, or list and type; there is no reading/source switch or block textbox. Use the toolbar or Ctrl/Cmd+B and Ctrl/Cmd+I for formatting. Markdown shortcuts such as `# `, `**bold**`, lists, and `[] ` apply formatting as you type. Select and replace text across paragraphs; Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z undo/redo document edits. Plain Markdown pastes become formatted content.
+The document is a formatted, directly editable page powered by ProseMirror. Click a heading, paragraph, or list and type; there is no reading/source switch or block textbox. Use Ctrl/Cmd+B and Ctrl/Cmd+I for formatting. Markdown shortcuts such as `# `, `**bold**`, lists, and `[] ` apply formatting as you type. Select and replace text across paragraphs; Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z undo/redo document edits. Plain Markdown pastes become formatted content.
 
 Markdown remains the storage format. Opening a document does not rewrite it. The bridge retains original source for untouched blocks; edited blocks can normalize Markdown syntax. Raw HTML and unsupported block types remain preserved, non-executable atoms; images stay placeholders. Tables, fenced code, nested lists, and rich todo labels are supported. Todo metadata stores a plain title while source labels retain inline formatting.
 

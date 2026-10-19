@@ -4,7 +4,7 @@ Run `pnpm demo` from the repository root and open http://127.0.0.1:4173/. For th
 
 ## Editing
 
-Click directly into headings, paragraphs, lists, tables or code and type. The document stays formatted; no source textarea appears. Use the formatting toolbar or Ctrl/Cmd+B and Ctrl/Cmd+I. Markdown input shortcuts apply headings, lists, inline bold/italic/code/strike and todos. Enter continues a list; an empty list item exits it. Document undo/redo uses Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z, and toolbar controls. Selections can span paragraphs. Paste Markdown or sanitized rich HTML into the document.
+Click directly into headings, paragraphs, lists, tables or code and type. The document stays formatted; no source textarea appears. Use Ctrl/Cmd+B and Ctrl/Cmd+I. Markdown input shortcuts apply headings, lists, inline bold/italic/code/strike and todos. Enter continues a list; an empty list item exits it. Document undo/redo uses Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z. Selections can span paragraphs. Paste Markdown or sanitized rich HTML into the document.
 
 Type `[] ` or `- [ ] ` and an action title to create a separately editable todo document. The linked ID remains stable while its label is edited. ↗ opens supporting notes. Rich title labels keep their formatting while record metadata stores plain text. Completion in a source note, overview or todo properties updates the same record. Removing a source reference retains the todo document and notes. Code samples do not create todos. Internal links can be opened with Ctrl/Cmd+click; external navigation is blocked by the desktop shell.
 

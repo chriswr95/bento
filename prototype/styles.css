@@ -131,8 +131,6 @@ html {background:light-dark(#fffefa,#202127)}
 
 
 /* A single formatted document; focus never changes it into a source input. */
-#bento-workflow .b-format-toolbar {display:flex;gap:5px;flex-wrap:wrap;padding:8px 0 14px;border-bottom:1px solid var(--b-line);margin-bottom:18px}
-#bento-workflow .b-format-toolbar .b-button {font-size:12px;padding:4px 8px}
 #bento-workflow .b-rich-document {white-space:pre-wrap;word-wrap:break-word;position:relative;min-height:380px;outline:none;caret-color:var(--b-ink)}
 #bento-workflow .b-rich-document:focus-visible {outline:none}
 #bento-workflow .b-rich-document p {min-height:1.5em}
@@ -153,5 +151,4 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-preserved-markdown {opacity:.8;white-space:pre-wrap}
 #bento-workflow .b-image-placeholder {color:var(--b-soft)}
 
-#bento-workflow .b-format-toolbar .b-button[aria-pressed="true"] {background:var(--b-wash);color:var(--b-accent)}
 #bento-workflow .b-rich-task:has(>input:checked)>.b-rich-item-content>p:first-child {text-decoration:line-through;color:var(--b-soft)}
