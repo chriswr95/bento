@@ -48,6 +48,12 @@ async function saved(page) {
   let launched = await launch(null, userData); application = launched.app; let page = launched.page;
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.getByRole('heading', { name: 'Your workspace, in Markdown.' }).waitFor();
+  const theme = page.getByRole('button', { name: 'Dark mode', exact: true });
+  if (await theme.getAttribute('aria-pressed') === 'true') await theme.click();
+  await theme.click();
+  assert.equal(await page.locator('#bento-workflow').getAttribute('data-theme'), 'dark');
+  assert.equal(await theme.getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('html').evaluate(element => getComputedStyle(element).colorScheme), 'dark');
   await application.evaluate(({ dialog }, folder) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] }); }, workspace);
   await page.getByRole('button', { name: 'New workspace', exact: true }).click();
   await saved(page);
@@ -144,6 +150,10 @@ async function saved(page) {
   console.log('Closed the app after saving. Reopening workspace.');
   launched = await launch(workspace, userData); application = launched.app; page = launched.page;
   await saved(page);
+  assert.equal(await page.locator('#bento-workflow').getAttribute('data-theme'), 'dark');
+  assert.equal(await page.getByRole('button', { name: 'Dark mode', exact: true }).getAttribute('aria-pressed'), 'true');
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click();
+  assert.equal(await page.locator('#bento-workflow').getAttribute('data-theme'), 'light');
   assert.equal(await page.locator('aside details[data-directory="projects"]').getAttribute('open'), null);
   await page.locator('aside').getByRole('button', { name: 'Weekly coordination', exact: true }).click();
   await page.locator('.b-page-properties>summary').click();

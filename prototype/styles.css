@@ -129,3 +129,7 @@
 #bento-workflow .b-property-options label {display:flex;align-items:center;gap:8px;padding:4px}
 #bento-workflow .b-property-options input {flex:none}
 #bento-workflow .b-visually-hidden {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+
+html {background:light-dark(#fffefa,#202127)}
+#bento-workflow .b-theme-toggle {margin-left:auto;white-space:nowrap}
+#bento-workflow .b-theme-toggle[aria-pressed="true"] {background:var(--b-wash);border-color:var(--b-accent);color:var(--b-accent)}

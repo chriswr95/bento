@@ -1,3 +1,4 @@
+import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
 import { propertyForm, propertyPatch } from './property-editor.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
 import BentoWorkspace from './workspace.js';
@@ -10,7 +11,22 @@ import BentoFileSession from './file-session.js';
   const model = BentoWorkspace, clone = model.clone, storageKey = 'bento.prototype.workspace.v4';
   const planDate = window.bentoDesktop ? BentoProfile.dateKey() : '2026-10-19';
   const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-  const appearance = { theme: 'system' };
+  const appearance = { theme: readTheme() };
+  const systemAppearance = matchMedia('(prefers-color-scheme: dark)');
+  function applyAppearance() {
+    root.dataset.theme = appearance.theme;
+    document.documentElement.style.colorScheme = appearance.theme === 'system' ? 'light dark' : appearance.theme;
+    const toggle = root.querySelector('[data-theme-toggle]');
+    const dark = isDark(appearance.theme, systemAppearance.matches);
+    toggle.setAttribute('aria-pressed', String(dark));
+    toggle.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+  function changeAppearance(theme) {
+    appearance.theme = theme; applyAppearance();
+    if (!saveTheme(theme)) notify('Appearance changed for this session. Local settings could not be saved.');
+  }
+  systemAppearance.addEventListener('change', applyAppearance);
+  applyAppearance();
   let previous = null, editingSnapshot = null, proposal = false, storageLocked = false, expectedStorage = null;
   let storageWarning = '';
 
@@ -316,7 +332,7 @@ import BentoFileSession from './file-session.js';
       return;
     }
     if (desktop) { root.querySelector('.b-shell').classList.remove('b-welcome-shell'); root.querySelector('.b-file-controls').hidden = false; renderSidebar(); }
-    root.dataset.theme = appearance.theme;
+    applyAppearance();
     root.querySelectorAll('[data-view]').forEach(button => {
       const selected = button.dataset.view === state.view || button.dataset.view === 'meeting' && state.view === 'document' && record()?.database === 'db-meetings';
       if (selected && !state.project) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
@@ -341,7 +357,8 @@ import BentoFileSession from './file-session.js';
   root.addEventListener('click', event => {
     const button = event.target.closest('button'); if (!button) return;
     try {
-      if (button.dataset.create) showCreate(button.dataset.create, button.dataset.forProject || null);
+      if (button.hasAttribute('data-theme-toggle')) changeAppearance(nextTheme(appearance.theme, systemAppearance.matches));
+      else if (button.dataset.create) showCreate(button.dataset.create, button.dataset.forProject || null);
       else if (button.hasAttribute('data-cancel-create')) { Object.assign(state, creation.previous); creation = null; render(); }
       else if (button.dataset.view === 'meeting') openRecord(state.note);
       else if (button.dataset.view) navigate(button.dataset.view);
@@ -405,6 +422,7 @@ import BentoFileSession from './file-session.js';
     }
   });
   window.addEventListener('storage', event => {
+    if (event.key === appearanceKey || event.key === null) { appearance.theme = readTheme(); applyAppearance(); }
     if (event.key === BentoProfile.key || event.key === null) { profile = BentoProfile.read(); refreshGreeting(); }
     if (event.key === storageKey && event.newValue !== expectedStorage) { storageLocked = true; storageWarning = 'Another page changed the saved workspace; this session will not overwrite it.'; notify('Workspace changed elsewhere.'); }
   });
@@ -459,7 +477,7 @@ import BentoFileSession from './file-session.js';
   }
   render(); notify(desktop ? 'Workspace files stay on this computer. Use Open workspace or New workspace to begin.' : storageWarning ? 'Sample workspace opened.' : 'Sample workspace ready. Edits save in this browser.');
   if (globalThis.Tweak) {
-    const tweak = new Tweak({ container: root, onChange: () => { root.dataset.theme = appearance.theme; } });
+    const tweak = new Tweak({ container: root, onChange: () => changeAppearance(appearance.theme) });
     tweak.addSelect(appearance, 'theme', { label: 'Appearance', options: ['system', 'light', 'dark'] });
   }
 })();
