@@ -85,7 +85,7 @@ test('unknown metadata, comments, body syntax, and line endings survive a small 
   const root = await fixture(t), filename = path.join(root, 'todos/todo-review-comments.md');
   let raw = await fs.readFile(filename, 'utf8');
   raw = raw.replace('properties:', '# Keep this comment\ncustom_setting: {nested: [one, two]}\nproperties:\n  unknown-field: valuable # Keep property comment');
-  raw = raw.replace(/\n/g, '\r\n');
+  raw = raw.replace(/\r?\n/g, '\r\n');
   await fs.writeFile(filename, raw);
   const repo = await WorkspaceRepository.open(root);
   await repo.save(model.updateTodo(repo.workspace, 'todo-review-comments', { done: true }));
