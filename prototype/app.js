@@ -5,7 +5,7 @@ import { propertyForm, propertyPatch } from './property-editor.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
 import BentoWorkspace from './workspace.js';
 import BentoProfile from './profile.js';
-import BentoLiveEditor from './live-editor.js';
+import RichEditor from './vendor/rich-editor.js';
 import BentoFileSession from './file-session.js';
 (async () => {
   const root = document.getElementById('bento-workflow');
@@ -106,31 +106,7 @@ import BentoFileSession from './file-session.js';
   const dueLabel = due => !due ? 'No date' : due === planDate ? 'Today'
     : new Date(due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  let renderOffset = 0, liveEditor = null, creation = null;
-  const markdown = new marked.Marked({ renderer: {
-    html({ text }) {
-      if (/^<!-- bento-ref: [\w-]+ -->$/.test(text.trim())) return '';
-      return escape(model.stripMarkers(text));
-    },
-    link({ href, tokens, todoId, sourceLine, taskTitle }) {
-      const target = model.targetId(href);
-      if (todoId) {
-        const todo = model.taskInfo(workspace(), workspace().records[target]);
-        if (!todo || !record().references[target] || !model.linkMatches(workspace(), record().id, href, target)) return this.parser.parseInline(tokens);
-        return `<span class="b-live-task"><input type="text" class="b-task-label" data-task-title="${sourceLine + renderOffset}" aria-label="Todo text" value="${escape(taskTitle)}"><button type="button" class="b-open-todo cursor-interaction" data-record="${target}" aria-label="Open ${escape(todo.title)}" title="Open todo document">↗</button></span>`;
-      }
-      return target && Object.hasOwn(workspace().records, target)
-        ? `<button class="b-document-link cursor-interaction" type="button" data-record="${target}">${this.parser.parseInline(tokens)}</button>`
-        : this.parser.parseInline(tokens);
-    },
-    image({ text }) { return `<span>[Image: ${escape(text)}]</span>`; },
-    checkbox(token) {
-      const unresolved = token.sourceHref && (!token.todoId || !record().references[token.todoId] || !model.taskInfo(workspace(), workspace().records[token.todoId]) || !model.linkMatches(workspace(), record().id, token.sourceHref, token.todoId));
-      const line = token.sourceLine + renderOffset;
-      return Number.isInteger(token.sourceLine)
-        ? `<input type="checkbox" class="cursor-interaction" data-source-line="${line}" aria-label="Complete ${escape(token.taskTitle)}" ${token.checked ? 'checked' : ''} ${unresolved ? 'disabled' : ''}>${!token.sourceHref && !token.taskTitle ? `<input class="b-task-label" type="text" data-task-title="${line}" aria-label="Todo text" placeholder="To-do">` : ''}` : '';
-    }
-  } });
+  let liveEditor = null, creation = null;
 
   function notify(message) { status.textContent = storageWarning ? `${message} ${storageWarning}` : message; }
   function persist() {
@@ -286,9 +262,6 @@ import BentoFileSession from './file-session.js';
       <details><summary>Completed (${tasks.length - open.length})</summary><ul class="b-list">${tasks.filter(task => task.done).map(taskRow).join('')}</ul></details>`;
   }
 
-  function resizeEditor() {
-    main.querySelectorAll('[data-block-source]').forEach(editor => liveEditor?.resize(editor));
-  }
   function refreshDocument() {
     const parsed = model.parse(record().body);
     const targets = new Set(parsed.tasks.map(task => task.todoId).filter(id => record().references[id]));
@@ -321,16 +294,17 @@ import BentoFileSession from './file-session.js';
       ${task ? `<h1>${escape(doc.title)}</h1>${taskProperties(task)}` : desktop ? propertyForm(workspace(), doc, files.view.readOnly) : ''}
       ${desktop && isProject ? `<div class="b-actions">${meetings ? `<button type="button" class="b-button b-primary" data-create="${meetings.id}" data-for-project="${doc.id}">New meeting note</button>` : ''}<button type="button" class="b-button" data-project="${doc.id}">Review project work</button></div>` : ''}
       <div class="b-actions"><button type="button" class="b-button cursor-interaction" data-export>Download Markdown</button>
-        <button type="button" class="b-button cursor-interaction" data-undo ${previous ? '' : 'disabled'}>Undo last change</button></div>
+</div>
       <article id="b-reading" class="b-reading" aria-label="Editable Markdown document"></article>
       <p id="b-task-count" class="b-muted" role="status" aria-live="polite"></p><p id="b-document-issues" class="b-issues" role="alert" hidden></p>
       ${doc.id === 'coordination' ? `<div class="b-actions"><button class="b-button cursor-interaction" type="button" data-propose>Preview agent suggestion</button></div>
         <section id="b-proposal" class="b-proposal" hidden><h3>Sample agent suggestion</h3><p id="b-suggestion-text"></p><p class="b-muted">From this note · no due date specified · simulated assistance</p>
           <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
-    liveEditor = new BentoLiveEditor(main.querySelector('#b-reading'), {
-      body: () => record().body, label, linkFor: id => model.linkFor(workspace(), state.document, id),
-      change: body => editDocument(body),
-      render: (body, offset) => { renderOffset = offset; return markdown.parser(model.parse(body).tokens); }
+    liveEditor = new RichEditor(main.querySelector('#b-reading'), {
+      body: () => record().body, label,
+      change: body => editDocument(body), error: notify, openRecord,
+      validTask: (id, href) => !!record().references[id] && !!model.taskInfo(workspace(), workspace().records[id]) && model.linkMatches(workspace(), record().id, href, id),
+      openLink: href => { const id = model.targetId(href); if (id && workspace().records[id]) openRecord(id); }
     });
     refreshDocument(); if (proposal && main.querySelector('#b-proposal')) showProposal();
   }
@@ -356,6 +330,7 @@ import BentoFileSession from './file-session.js';
         <div class="b-actions"><button type="submit" class="b-button b-primary cursor-interaction">Save profile</button><button type="button" class="b-button cursor-interaction" data-view="daily">Back to overview</button></div></form>`;
   }
   function render() {
+    liveEditor?.destroy(); liveEditor = null;
     if (desktop && !files?.view) {
       root.querySelector('aside').hidden = true;
       root.querySelector('.b-shell').classList.add('b-welcome-shell');
@@ -379,7 +354,7 @@ import BentoFileSession from './file-session.js';
   function editDocument(body) {
     if (!editingSnapshot) { editingSnapshot = clone(state); previous = editingSnapshot; }
     state.workspace = model.applyEdit(workspace(), state.document, body).workspace;
-    refreshDocument(); main.querySelector('[data-undo]').disabled = false;
+    refreshDocument();
     persist(); notify(desktop ? 'Draft updated.' : 'Document saved.');
   }
   function exportDocument() {
@@ -419,7 +394,6 @@ import BentoFileSession from './file-session.js';
         const form = main.querySelector('#b-todo-properties'), values = new FormData(form);
         change(() => model.updateTodo(workspace(), state.document, { done: event.target.checked, title: String(values.get('title')), due: String(values.get('due')), project: String(values.get('project')), status: String(values.get('status')) }), 'Todo properties and completion updated.');
       }
-      else if (event.target.hasAttribute('data-source-line')) change(() => model.setCheckbox(workspace(), state.document, Number(event.target.dataset.sourceLine), event.target.checked), 'Todo completion updated.');
     } catch (error) { if (event.target.type === 'checkbox') event.target.checked = !event.target.checked; notify(error.message); }
   });
   root.addEventListener('input', event => {
@@ -437,7 +411,7 @@ import BentoFileSession from './file-session.js';
         state.workspace = result.workspace; creation = null;
         navigate('document', null, result.documentId);
         notify('Created a Markdown document.');
-        main.querySelector('[data-start]')?.focus();
+        liveEditor?.focus();
       } catch (error) { const panel = main.querySelector('#b-create-error'); panel.hidden = false; panel.textContent = error.message; }
     } else if (form.id === 'b-page-properties') {
       try {
@@ -468,7 +442,6 @@ import BentoFileSession from './file-session.js';
   });
   document.addEventListener('visibilitychange', refreshGreeting);
   setInterval(refreshGreeting, 60_000);
-  window.addEventListener('resize', resizeEditor);
   window.addEventListener('openai:set_globals', event => {
     const saved = event.detail?.globals?.widgetState?.privateContent;
     if (!desktop && validSnapshot(saved) && saved.savedAt > state.savedAt && !editingSnapshot) { state = clone(saved); previous = null; proposal = false; render(); }

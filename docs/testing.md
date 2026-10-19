@@ -6,9 +6,9 @@ Bento must preserve Markdown and make the meeting → todo workflow work across 
 
 | Command | Scope |
 | --- | --- |
-| `pnpm test` | Unit tests for capture/reconciliation, typed schemas, document creation, profiles, settings-file migration/conflict/recovery, typed property forms/atomic updates, save coordination, directory tree/state, session-file validation/fallback, and project review date/relationship grouping; repository tests against actual temporary Markdown files. No GUI required. |
+| `pnpm test` | Unit tests for capture/reconciliation, typed schemas, document creation, profiles, settings-file migration/conflict/recovery, typed property forms/atomic updates, save coordination, directory tree/state, rich Markdown round trips/source preservation, session-file validation/fallback, and project review date/relationship grouping; repository tests against actual temporary Markdown files. No GUI required. |
 | `pnpm test:desktop` | Real Electron app: first-time welcome, empty workspace, personal profile/appearance in settings.md across restart, automatic workspace/page restoration without a chooser, nested directory navigation, keyboard folder disclosure, retained collapse state, active-page reveal, create/open project Markdown, cancel creation, linked meeting, project review with related-note/todo navigation, project status/tags and meeting date/relations across restart, typed checkbox, todo notes/status, restart, completion propagation, sandbox bridge, external conflict, and retained draft. Only the directory chooser is stubbed. |
-| `pnpm test:browser` | Shared editor interactions, pointer caret placement, reading selections, keyboard block transitions, checkbox shortcuts, title edits, copies, exports, reload, safe HTML, responsive widths, profiles, unavailable storage, and legacy snapshot migration. The runner starts its own loopback sample server. |
+| `pnpm test:browser` | Shared editor interactions, formatted contenteditable typing, cross-block replacement, undo/redo, Markdown shortcuts and rich paste, checkbox shortcuts, title edits, copies, exports, reload, safe HTML, responsive widths, profiles, unavailable storage, and legacy snapshot migration. The runner starts its own loopback sample server. |
 | `pnpm package` | Build an unsigned bundle for the current platform. |
 
 Install prerequisites with `pnpm install --frozen-lockfile` and `pnpm setup:desktop`. Browser checks also need `pnpm exec playwright install chromium`, or `BENTO_CHROME_PATH` pointing to an installed Chrome. Node.js 22.12+ is required.
@@ -32,7 +32,7 @@ Add regression coverage at the layer owning each behavior. Use storage tests for
 
 1. On Windows and macOS, start a fresh app and create a workspace with no coaching. Create a project, take meeting notes, capture three actions, set dates, and find upcoming work.
 2. Navigate with keyboard only. Check visible focus, readable labels, dialog cancellation, narrow windows, and light/dark appearance. Screen-reader evaluation remains outstanding.
-3. Exercise multi-paragraph editing, paste, undo/redo, selection, and IME composition with realistic notes. Full cross-block editor behavior remains an implementation gap.
+3. Exercise multi-paragraph editing, paste, undo/redo, selection, and IME composition with realistic notes. Automated cross-block replacement/history tests pass; broader real IME and screen-reader evaluation remains outstanding.
 4. Reopen a workspace after closing the app; edit files in another editor and review how Bento retains drafts when a save stops.
 5. Measure startup, typing and navigation with larger synthetic workspaces. No large-workspace performance target has been validated yet.
 6. Check packaged-app launch and native folder selection on both platforms. Signing, installers, automatic updates, real agent integration, and multi-device sync are outside current validation.

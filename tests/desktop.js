@@ -37,6 +37,13 @@ async function launch(workspace, userData) {
   }
   return { app, page };
 }
+async function paste(editor, text, html = '') {
+  await editor.evaluate((element, data) => {
+    const clipboardData = new DataTransfer(); clipboardData.setData('text/plain', data.text);
+    if (data.html) clipboardData.setData('text/html', data.html);
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
+  }, { text, html });
+}
 async function saved(page) {
   try { await page.locator('#b-save-state').filter({ hasText: 'Saved to workspace files' }).waitFor(); }
   catch (error) { console.error('Save diagnostics:', await page.locator('#b-save-state').textContent(), await page.locator('#b-file-errors').textContent()); throw error; }
@@ -130,9 +137,10 @@ async function saved(page) {
   const meetingRaw = await fs.readFile(path.join(workspace, 'meetings', meetingFile), 'utf8');
   assert.match(meetingRaw, /2026-10-20/); assert.match(meetingRaw, /Follow up/);
   console.log('Created and opened project Markdown, canceled without a file, and linked a meeting note.');
-  await page.getByRole('button', { name: 'Write a note…', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Meeting Markdown', exact: true }).pressSequentially('[] ');
-  await page.locator('[data-task-title]:focus').pressSequentially('Desktop action');
+
+  const meetingEditor = page.getByRole('textbox', { name: 'Meeting Markdown', exact: true });
+  await meetingEditor.click(); await meetingEditor.press('ControlOrMeta+End'); await meetingEditor.press('Enter');
+  await meetingEditor.pressSequentially('[] '); await meetingEditor.pressSequentially('Desktop action');
   await saved(page);
   let filename;
   for (const name of (await fs.readdir(path.join(workspace, 'todos'))).filter(name => name.startsWith('todo-'))) if ((await fs.readFile(path.join(workspace, 'todos', name), 'utf8')).includes('title: Desktop action')) filename = name;
@@ -140,9 +148,11 @@ async function saved(page) {
   console.log('Captured a checkbox into its Markdown todo file.');
   assert.match(await fs.readFile(path.join(workspace, 'meetings', meetingFile), 'utf8'), new RegExp('../todos/' + filename));
   await page.getByRole('button', { name: 'Open Desktop action', exact: true }).click();
-  await page.getByRole('button', { name: 'Write a note…', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Todo Markdown', exact: true }).fill('# Supporting notes\n\nKeep this project detail.\n');
-  await page.getByRole('textbox', { name: 'Todo Markdown', exact: true }).press('Escape');
+
+  const todoEditor = page.getByRole('textbox', { name: 'Todo Markdown', exact: true });
+  await todoEditor.click(); await todoEditor.press('ControlOrMeta+a');
+  await paste(todoEditor, '# Supporting notes\n\nKeep this project detail.\n');
+
   await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('option-started');
   await page.getByRole('button', { name: 'Save properties', exact: true }).click();
   await saved(page);
@@ -191,8 +201,10 @@ async function saved(page) {
   await page.getByRole('checkbox', { name: 'Completed', exact: true }).click();
   await saved(page);
   assert.match(await fs.readFile(path.join(workspace, 'meetings', meetingFile), 'utf8'), /\[x\] \[Desktop action\]/);
-  await page.getByRole('button', { name: 'Write a note…', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Todo Markdown', exact: true }).fill('Unsaved local detail');
+
+  await page.getByRole('textbox', { name: 'Todo Markdown', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Todo Markdown', exact: true }).press('ControlOrMeta+a');
+  await paste(page.getByRole('textbox', { name: 'Todo Markdown', exact: true }), 'Unsaved local detail');
   await fs.appendFile(path.join(workspace, 'todos', filename), '\nExternal detail\n');
   await page.getByRole('button', { name: 'Save files', exact: true }).click();
   await page.locator('#b-file-errors').filter({ hasText: 'changed on disk' }).waitFor();

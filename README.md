@@ -18,7 +18,7 @@ pnpm start
 
 1. Choose New workspace, then an empty folder. Create your first project by entering its title.
 2. Bento opens the project’s Markdown document immediately. Write notes, or choose New meeting note to create a note linked to that project.
-3. In the meeting, choose Write a note… and type `[] ` or `- [ ] `, then an action title. Bento creates a todo Markdown file with the same project and links it from the meeting.
+3. In the meeting, click into the document, press Enter for a new paragraph, and type `[] ` or `- [ ] `, then an action title. Bento creates a todo Markdown file with the same project and links it from the meeting.
 4. Use ↗ to open the todo. Add notes; edit title, Status, due date, and project. Save properties applies those values, then autosave persists them.
 5. On project and meeting pages, expand Properties to edit the title, tags, and schema fields. Save properties applies the edit; autosave then writes it to Markdown. Tags use one line each and may contain spaces and commas.
 6. Save files flushes changes immediately. The Workspace menu holds open/new/reload actions. Close and reopen the workspace to read documents and schemas from disk.
@@ -33,19 +33,21 @@ Open a project document and choose **Review project work**, or use **Review work
 
 Resume information lives in the app’s local `session.json`, separately from personal settings and workspace Markdown. It stores the last workspace path and page/view IDs.
 
-Click rendered text to edit near that position. Arrow keys at a block’s source boundary move to the neighboring block; Escape returns focus to that block in reading form. Drag-selecting rendered text keeps it in reading form. Active Markdown uses the preview’s typography rather than a separate code panel. Complex or ambiguous text runs fall back to placing the caret at the source end.
+The document is a formatted, directly editable page powered by ProseMirror. Click a heading, paragraph, or list and type; there is no reading/source switch or block textbox. Use the toolbar or Ctrl/Cmd+B and Ctrl/Cmd+I for formatting. Markdown shortcuts such as `# `, `**bold**`, lists, and `[] ` apply formatting as you type. Select and replace text across paragraphs; Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z undo/redo document edits. Plain Markdown pastes become formatted content.
+
+Markdown remains the storage format. Opening a document does not rewrite it. The bridge retains original source for untouched blocks; edited blocks can normalize Markdown syntax. Raw HTML and unsupported block types remain preserved, non-executable atoms; images stay placeholders. Tables, fenced code, nested lists, and rich todo labels are supported. Todo metadata stores a plain title while source labels retain inline formatting.
 
 ## Current boundary
 
 This is an early Electron desktop implementation. It loads actual YAML schemas and Markdown files, validates all eight field types, saves through a recoverable journal, and preserves unknown metadata. It shares the live Markdown editor/model with the browser sample.
 
-General database/schema editing controls, custom todo property controls, in-app record transfers, link repair after external moves, conflict/recovery review UI, production rich-text editing/accessibility, search, agents, and Copilot integration remain future work. Definition changes can currently be made in Markdown and loaded through Workspace → Reload files. Creation uses schema defaults; required custom fields without defaults currently report a validation error and require editing the schema/defaults before creation.
+General database/schema editing controls, custom todo property controls, in-app record transfers, link repair after external moves, conflict/recovery review UI, full accessibility/IME evaluation, search, agents, and Copilot integration remain future work. Definition changes can currently be made in Markdown and loaded through Workspace → Reload files. Creation uses schema defaults; required custom fields without defaults currently report a validation error and require editing the schema/defaults before creation.
 
 The app is local: no model requests, HTTP backend, or remote document resources. Sample agent suggestions are simulated. Profile and appearance live in a versioned Markdown settings file in the native app’s per-user data directory. The Profile page shows the exact path and offers Reload settings after an agent edits the file. Existing browser preferences migrate automatically when the file is first created; originals are retained. Malformed settings produce a warning without blocking workspace access, and conflicting external edits stop saves. Unsaved drafts and sidebar expansion remain in local app storage. `.bento-local/` holds save journals/backups and is ignored by Git in new workspaces. Journaling is not a backup system or multi-device synchronization protocol; its remaining concurrency/power-loss limits are documented in the [data model](docs/data-model.md).
 
 ## JavaScript modules
 
-Application code, shared renderer modules, scripts, and tests use `.js` ES modules (`"type": "module"`), with imports/exports and modern JavaScript. The small `desktop/preload.cjs` bridge deliberately remains CommonJS because Electron’s sandboxed preload cannot use ESM imports. The vendored Markdown parser retains its upstream UMD distribution.
+Application code, shared renderer modules, scripts, and tests use `.js` ES modules (`"type": "module"`), with imports/exports and modern JavaScript. The small `desktop/preload.cjs` bridge deliberately remains CommonJS because Electron’s sandboxed preload cannot use ESM imports. The vendored Markdown parser retains its upstream UMD distribution. `pnpm build` bundles the pinned ProseMirror packages into a local browser module; start, demo, browser/desktop tests, and packaging build it automatically. esbuild’s local binary setup is explicitly allowed in `pnpm-workspace.yaml`; editor packages are bundled rather than loaded from a CDN.
 
 ## Check and package
 

@@ -15,9 +15,9 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 | Storage | Required: one Markdown document per content record; proposed rebuildable index |
 | Database membership | Required: zero or one database per document; relationships and views are separate |
 | Database definitions | Required: user-managed schemas; Projects and Todos are customizable, removable defaults |
-| Desktop shell and editor | Electron selected for the first file-backed slice; production editor and OS distribution validation remain open |
+| Desktop shell and editor | Electron selected for the first file-backed slice; ProseMirror selected for formatted editing; signed OS distribution remains open |
 | Todo representation | Required: a Markdown document per todo; proposed checkbox references with the todo document authoritative |
-| Everyday editing | Single live Markdown surface; production editor library remains open |
+| Everyday editing | Single formatted ProseMirror surface with a Markdown bridge |
 | Content agent | Proposed: scoped query and command interface sharing application services |
 | Application agent | Proposed: external coding-agent integration with isolated trial and explicit adoption |
 | Theme system | Proposed: declarative theme packages over shared design tokens |
@@ -67,7 +67,9 @@ The Electron shell uses native directory dialogs and a sandboxed, isolated rende
 
 `files/repository.js` parses actual YAML/frontmatter, discovers folders, derives membership, validates definitions/records, detects external changes before save, and retains unknown metadata. `files/transaction.js` journals before/after versions, uses a local writer lock and temporary-file replacements, and resumes interrupted writes. Recovery conflicts preserve divergent files and stop further writes. See the data-model document for the guarantees and remaining races; this is not production multi-device synchronization.
 
-The editor is one live Markdown surface. Todo labels and checkboxes remain inline controls; ordinary blocks expose Markdown while active. Desktop changes autosave after a pause, with explicit Save files and Reload files controls. Drafts persist separately in local renderer storage; incompatible drafts can be downloaded for comparison. General schema UI, generic property forms, production cross-block editing/undo, link repair and full accessibility evaluation remain future work.
+The editor is a single ProseMirror formatted document. Headings, paragraphs, lists and inline styles remain editable in place. Document history supports cross-block replacements and undo/redo; input rules and clipboard parsing apply Markdown formatting. Task node views add a checkbox and document-open button while their labels remain normal editable text. Canonical IDs are synchronized through transactions excluded from user history, preserving selection. Source labels can carry rich formatting while task metadata and reference checkpoints use plain title text.
+
+The Markdown bridge retains raw source for untouched top-level nodes, including comments and definition blocks. Edited blocks can normalize syntax. Unsupported/HTML blocks stay non-executable atoms; images remain placeholders. Rich HTML paste is filtered and parsed through the schema. Desktop edits autosave through the existing draft/session/repository flow. Full IME, screen-reader and scale validation remain separate work.
 
 The browser-only sample continues to use its own local snapshots and profile settings. It does not get filesystem access. Desktop startup reads workspace files instead of importing browser sample data.
 
@@ -268,8 +270,8 @@ The main process owns a local, versioned `session.json` under the per-user app-d
 Startup opens the previous workspace through the normal repository, including recovery and validation. Missing/disconnected folders return to the welcome screen with a message and retain the previous session until another folder is chosen. Missing page IDs or invalid project references fall back to the overview. Malformed session data is retained until a subsequent successful selection/navigation replaces it. Session restoration does not automatically apply unsaved drafts.
 
 
-### First editor transition improvements
+### Formatted editing implementation
 
-Click-to-edit maps an unambiguous visible text run into the block's Markdown source. Ambiguous/repeated runs and entity-encoded text fall back to source end rather than guessing. Reading selections remain selections. Active blocks inherit preview typography; source-boundary arrow keys move to neighboring blocks, and Escape returns focus to the same rendered block.
+ProseMirror replaces the former block-source textarea implementation. `prototype/rich-editor.js` owns view/history/input rules and toolbar commands. `prototype/rich-markdown.js` owns the schema, parser and source-preserving serializer. `scripts/build-editor.js` creates a local ES module from pinned packages. The runtime has no editor network service or CDN dependency.
 
-This remains a block-source editor. The next editor milestone must support cross-block selection, dependable undo/redo, paste round trips, IME composition, and live formatting without losing the caret or rewriting unrelated Markdown. Evaluate a production editor against those acceptance cases before replacing the current implementation; no editor library is selected by this slice.
+Supported visual editing covers headings, paragraphs, inline marks, links, lists/todos, quotes, code, horizontal rules and tables. Unknown/HTML blocks remain explicit preserved atoms. A user edit can normalize its enclosing top-level Markdown block; unsupported extension syntax does not silently disappear. Task projections preserve safe inline labels when their plain text matches the record title. Renaming the record to different plain text replaces the label projection. Clipboard task attributes preserve the linked identity; plain checkboxes capture new records through the same domain command as before.
