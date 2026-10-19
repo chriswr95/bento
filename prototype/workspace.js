@@ -9,13 +9,22 @@ const refMarker = /\s*<!-- bento-ref: ([\w-]+) -->\s*$/;
 const lexer = new marked.Marked();
 const stripMarkers = text => text.replace(sourceMarkers, '');
 const escapeLabel = text => text.replace(/([\\[\]`*_<>])/g, '\\$1');
-const unescapeLabel = text => text.replace(/\\([\\[\]`*_<>])/g, '$1');
 
 function validDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(value + 'T12:00:00');
   return !Number.isNaN(date.valueOf()) && date.getFullYear() === Number(value.slice(0, 4))
     && date.getMonth() + 1 === Number(value.slice(5, 7)) && date.getDate() === Number(value.slice(8, 10));
+}
+
+function labelText(raw) {
+  const flatten = tokens => tokens.map(token => token.tokens ? flatten(token.tokens) : token.text ?? token.raw ?? '').join('');
+  return flatten(marked.Lexer.lexInline(raw));
+}
+function safeLabel(raw, title) {
+  let safe = true;
+  marked.walkTokens(marked.Lexer.lexInline(raw), token => { if (!['text', 'escape', 'strong', 'em', 'del', 'codespan'].includes(token.type)) safe = false; });
+  return safe && labelText(raw) === title ? raw : escapeLabel(title);
 }
 
 function details(item, line, lines) {
@@ -27,7 +36,8 @@ function details(item, line, lines) {
   const due = !marker && dueMatch && validDate(dueMatch[1]) ? dueMatch[1] : '';
   return {
     line, content, prefix: taskPrefix.exec(lines[line])?.[0] || '',
-    title: link ? unescapeLabel(link[1]) : due ? withoutMarker.slice(0, dueMatch.index) : withoutMarker,
+    label: link ? link[1] : due ? withoutMarker.slice(0, dueMatch.index) : withoutMarker,
+    title: labelText(link ? link[1] : due ? withoutMarker.slice(0, dueMatch.index) : withoutMarker),
     due, done: item.checked === true, todoId: link ? targetId(link[2]) : null, href: link?.[2] || null
   };
 }
@@ -147,9 +157,9 @@ function createTodo(workspace, source, task) {
 function baseline(task) {
   return { base_title: task.title, base_completed: task.done };
 }
-function projectedLine(workspace, source, task, prefix) {
+function projectedLine(workspace, source, task, prefix, label = '') {
   const marker = prefix.replace(/\[([ xX])\]/, task.done ? '[x]' : '[ ]');
-  return `${marker}[${escapeLabel(task.title)}](${linkFor(workspace, source.id, task.id)})`;
+  return `${marker}[${safeLabel(label, task.title)}](${linkFor(workspace, source.id, task.id)})`;
 }
 function issue(workspace, record, line, message) {
   workspace.issues.push({ document: record.id, line, message });
@@ -216,7 +226,7 @@ function reconcileDocument(workspace, source, capture, edits) {
     const task = reconcileGroup(workspace, source, occurrences, source.references[targetId], workspace.records[targetId]);
     if (!task) continue;
     for (const occurrence of occurrences) {
-      const replacement = projectedLine(workspace, source, task, occurrence.prefix);
+      const replacement = projectedLine(workspace, source, task, occurrence.prefix, occurrence.label);
       if (replacement !== lines[occurrence.line]) edits.push({ line: occurrence.line, old: lines[occurrence.line], replacement, capture: !occurrence.todoId, prefixLength: occurrence.prefix.length, title: task.title });
       lines[occurrence.line] = replacement;
     }

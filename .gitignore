@@ -20,3 +20,5 @@ coverage/
 
 # Local validation screenshots
 /work/
+
+/prototype/vendor/rich-editor.js

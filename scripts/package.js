@@ -1,3 +1,4 @@
+import './build-editor.js';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 import { fileURLToPath } from 'node:url';
