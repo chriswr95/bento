@@ -29,6 +29,8 @@ External edits are checked before save. If files changed, Bento keeps its local 
 
 Use **Dark mode** in the header to switch between light and dark appearance. The preference is remembered on this computer, separately from workspace files; the initial appearance follows the system.
 
+Open a project document and choose **Review project work**, or use **Review work** on its daily-overview card, to see related notes and overdue/today/upcoming/undated/completed todos together. Every note and todo opens its own Markdown document. Notes linked to several projects appear in each review; existing todo ownership stays unchanged.
+
 ## Current boundary
 
 This is an early Electron desktop implementation. It loads actual YAML schemas and Markdown files, validates all eight field types, saves through a recoverable journal, and preserves unknown metadata. It shares the live Markdown editor/model with the browser sample.

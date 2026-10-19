@@ -1,3 +1,4 @@
+import { projectReview } from './project-review.js';
 import { legacyPreferences } from './personal-settings.js';
 import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
 import { propertyForm, propertyPatch } from './property-editor.js';
@@ -10,7 +11,7 @@ import BentoFileSession from './file-session.js';
   const root = document.getElementById('bento-workflow');
   const main = root.querySelector('#b-main'), status = root.querySelector('#b-status');
   const model = BentoWorkspace, clone = model.clone, storageKey = 'bento.prototype.workspace.v4';
-  const planDate = window.bentoDesktop ? BentoProfile.dateKey() : '2026-10-19';
+  let planDate = window.bentoDesktop ? BentoProfile.dateKey() : '2026-10-19';
   const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const desktop = window.bentoDesktop;
   let personalSettings = null;
@@ -235,7 +236,7 @@ import BentoFileSession from './file-session.js';
     const tasks = allTasks().filter(task => task.project === project.id), open = tasks.filter(task => !task.done);
     const next = open.filter(task => task.due).sort((a, b) => a.due.localeCompare(b.due))[0];
     return `<section class="b-project"><button type="button" class="cursor-interaction" ${desktop ? `data-record="${project.id}"` : `data-project="${project.id}"`}>${escape(project.title)}</button>
-      <p>Active · ${open.length} open · ${tasks.length - open.length} complete</p>
+      <p><button type="button" data-project="${project.id}">Review work</button></p><p>Active · ${open.length} open · ${tasks.length - open.length} complete</p>
       <p>${next ? 'Next due: ' + dueLabel(next.due) : open.length ? 'No dated work' : 'No outstanding work'}</p></section>`;
   }
   function renderTaskGroups(open) {
@@ -246,7 +247,19 @@ import BentoFileSession from './file-session.js';
       return tasks.length ? `<section><h2>${title} <span class="b-muted">${tasks.length}</span></h2><ul class="b-list">${tasks.map(taskRow).join('')}</ul></section>` : '';
     }).join('');
   }
+  function renderProjectReview() {
+    const review = projectReview(workspace(), state.project, planDate);
+    const groups = [['Overdue', 'overdue'], ['Today', 'today'], ['Upcoming', 'upcoming'], ['Without a date', 'undated']];
+    main.innerHTML = `<p class="b-eyebrow">Project review · ${escape(planDate)}</p><h1>${escape(review.project.title)}</h1>
+      <p class="b-muted">${review.open} open action${review.open === 1 ? '' : 's'} · ${review.groups.completed.length} completed · ${review.notes.length} related note${review.notes.length === 1 ? '' : 's'}</p>
+      <div class="b-actions"><button type="button" class="b-button b-primary" data-record="${review.project.id}">Open project document</button><button type="button" class="b-button" data-view="daily">All projects</button></div>
+      <section aria-label="Related notes"><h2>Related notes <span class="b-muted">${review.notes.length}</span></h2>
+      ${review.notes.length ? `<ul class="b-list">${review.notes.map(note => `<li class="b-review-note"><button type="button" class="b-document-link" data-record="${note.id}">${escape(note.title)}</button><span class="b-muted">${escape(workspace().databases[note.database]?.title || 'Notes')}</span></li>`).join('')}</ul>` : '<p class="b-muted">No related notes yet. Link a meeting note to this project through its Properties.</p>'}</section>
+      ${groups.map(([title, key]) => `<section aria-label="${title}"><h2>${title} <span class="b-muted">${review.groups[key].length}</span></h2>${review.groups[key].length ? `<ul class="b-list">${review.groups[key].map(taskRow).join('')}</ul>` : '<p class="b-muted">No work in this group.</p>'}</section>`).join('')}
+      <details class="b-review-completed"><summary>Completed (${review.groups.completed.length})</summary><ul class="b-list">${review.groups.completed.map(taskRow).join('')}</ul></details>`;
+  }
   function renderDaily() {
+    if (state.project) { renderProjectReview(); return; }
 
     if (desktop && !Object.keys(workspace().records).length) {
       const projects = projectDatabase();
@@ -328,6 +341,7 @@ import BentoFileSession from './file-session.js';
     main.querySelector('[data-apply]').hidden = !available;
   }
   function refreshGreeting() {
+    if (desktop && planDate !== BentoProfile.dateKey()) { planDate = BentoProfile.dateKey(); if (state.view === 'daily') renderDaily(); }
     const heading = main.querySelector('#b-greeting');
     if (heading && !state.project) heading.textContent = BentoProfile.greeting(profile);
   }

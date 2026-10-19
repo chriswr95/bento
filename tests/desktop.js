@@ -155,6 +155,13 @@ async function saved(page) {
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);
 
+  await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).click();
+  await page.getByRole('button', { name: 'Review project work', exact: true }).click();
+  await page.getByRole('region', { name: 'Related notes', exact: true }).getByRole('button', { name: 'Weekly coordination', exact: true }).waitFor();
+  await page.getByRole('region', { name: 'Without a date', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).waitFor();
+  await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/project-review.png') });
+  await page.getByRole('region', { name: 'Related notes', exact: true }).getByRole('button', { name: 'Weekly coordination', exact: true }).click();
+  await page.getByRole('article', { name: 'Editable Markdown document' }).waitFor();
   await page.locator('aside details[data-directory="projects"]>summary').click();
   await page.locator('aside details[data-directory="todos"]>summary').click();
   await application.close(); application = null;
