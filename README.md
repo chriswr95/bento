@@ -28,7 +28,7 @@ Open [`prototype/index.html`](prototype/index.html) in a modern browser; no inst
 
 Keep the `prototype/` directory together when opening the page; its Markdown parser is bundled for offline use.
 
-The prototype uses fictional projects and a fixed sample date of October 19, 2026. It demonstrates daily review, active-project summaries, meeting-note editing, checkbox capture, shared completion state, and one-step undo. Changes last only for the current page session; refreshing restores the sample workspace.
+The prototype uses fictional projects and a fixed sample date of October 19, 2026. It demonstrates daily review, active-project summaries, meeting-note editing, checkbox capture, shared completion state, one-step undo, and personalized greetings through local profile settings. Document changes last only for the current page session; refreshing restores the sample workspace. Personal profile settings persist in this browser where local storage is available.
 
 Agent suggestions are explicitly simulated. The meeting note is one Markdown document: typing a checkbox creates a tracked todo, and changing completion from the overview updates its source. It does not read or write actual workspace files, connect to an agent, or implement Copilot integration. The production editor remains a design decision.
 

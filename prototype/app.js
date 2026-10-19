@@ -42,7 +42,7 @@
   });
 
   function validSnapshot(value) {
-    return value?.version === 2 && ['daily', 'meeting'].includes(value.view)
+    return value?.version === 2 && ['daily', 'meeting', 'profile'].includes(value.view)
       && (value.project === null || projects.some(project => project.id === value.project))
       && getNote(value.note) && ['write', 'read'].includes(value.editor)
       && value.documents && notes.every(note => typeof value.documents[note.id] === 'string');
@@ -65,6 +65,7 @@
   }
 
   let state = restoreWorkspace(window.openai?.widgetState?.privateContent);
+  let profile = BentoProfile.read();
   let previous = null;
   let editingSnapshot = null;
   let proposal = false;
@@ -182,7 +183,7 @@
     const open = tasks.filter(task => !task.done).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
     const selected = state.project ? getProject(state.project) : null;
     main.innerHTML = `<p class="b-eyebrow">Sample plan · Monday, October 19 · ${selected ? 'Project overview' : 'All projects'}</p>
-      <h1>${selected ? escape(selected.title) : 'A little clarity for your day.'}</h1>
+      <h1 id="b-greeting">${selected ? escape(selected.title) : escape(BentoProfile.greeting(profile))}</h1>
       <p class="b-muted">${open.length} open actions${selected ? ' in this project' : ' across your workspace'}.</p>
       <div class="b-actions">
         ${selected?.id !== 'park' ? `<button type="button" class="b-button b-primary cursor-interaction" data-open-meeting="${selected?.id === 'elm' ? 'drainage' : 'coordination'}">Open meeting note</button>` : ''}
@@ -248,6 +249,25 @@
     main.querySelector('[data-apply]').hidden = !available;
   }
 
+  function refreshGreeting() {
+    const heading = main.querySelector('#b-greeting');
+    if (heading && !state.project) heading.textContent = BentoProfile.greeting(profile);
+  }
+
+  function renderProfile() {
+    main.innerHTML = `<p class="b-eyebrow">Personal settings</p><h1>Your profile</h1>
+      <p class="b-muted">Make Bento feel a little more like you.</p>
+      <form id="b-profile-form">
+        <div class="b-form">
+          <label class="b-field">First name<input name="firstName" autocomplete="given-name" required maxlength="80" value="${escape(profile.firstName)}"></label>
+          <label class="b-field">Last name<input name="lastName" autocomplete="family-name" maxlength="80" value="${escape(profile.lastName)}"></label>
+          <label class="b-field">Birthday (optional)<input name="birthday" type="date" aria-label="Birthday" max="${BentoProfile.dateKey()}" value="${escape(profile.birthday)}"></label>
+        </div>
+        <p class="b-muted" style="margin-top:16px">Your birthday adds a little celebration to your daily greeting.</p>
+        <div class="b-actions"><button type="submit" class="b-button b-primary cursor-interaction">Save profile</button><button type="button" class="b-button cursor-interaction" data-view="daily">Back to overview</button></div>
+      </form>`;
+  }
+
   function render() {
     root.dataset.theme = appearance.theme;
     root.querySelectorAll('[data-view]').forEach(button => {
@@ -256,6 +276,7 @@
     });
     root.querySelector('#b-project-nav').innerHTML = projects.map(project => `<button type="button" class="cursor-interaction" data-project="${project.id}" ${state.project === project.id ? 'aria-current="page"' : ''}>${project.title}</button>`).join('');
     if (state.view === 'daily') renderDaily();
+    else if (state.view === 'profile') renderProfile();
     else renderMeeting();
     if (globalThis.lucide) lucide.createIcons({ attrs: { width: 16, height: 16 } });
   }
@@ -298,6 +319,7 @@
   });
 
   root.addEventListener('input', event => {
+    if (event.target.closest('#b-profile-form')) { event.target.setCustomValidity(''); return; }
     if (event.target.id !== 'b-markdown-editor') return;
     if (!editingSnapshot) { editingSnapshot = clone(state); previous = editingSnapshot; }
     state.documents[state.note] = event.target.value.replace(/\r\n?/g, '\n');
@@ -306,6 +328,33 @@
     persist();
     notify('Markdown updated. Todos follow the document automatically.');
   });
+  root.addEventListener('submit', event => {
+    if (event.target.id !== 'b-profile-form') return;
+    event.preventDefault();
+    const form = event.target;
+    const values = new FormData(form);
+    const value = {
+      version: 1, firstName: String(values.get('firstName') || '').trim(),
+      lastName: String(values.get('lastName') || '').trim(), birthday: String(values.get('birthday') || '')
+    };
+    if (!BentoProfile.validate(value)) {
+      form.elements.firstName.setCustomValidity('Enter a first name. Use a valid birthday or leave it blank.');
+      form.reportValidity();
+      return;
+    }
+    const result = BentoProfile.write(value);
+    profile = result.profile;
+    navigate('daily');
+    notify(result.saved ? 'Profile saved in this browser.' : 'Profile kept for this session. Browser storage is unavailable.');
+  });
+  window.addEventListener('storage', event => {
+    if (event.key === BentoProfile.key || event.key === null) {
+      profile = BentoProfile.read();
+      refreshGreeting();
+    }
+  });
+  document.addEventListener('visibilitychange', refreshGreeting);
+  setInterval(refreshGreeting, 60_000);
   window.addEventListener('resize', resizeEditor);
   window.addEventListener('openai:set_globals', event => {
     const saved = event.detail?.globals?.widgetState?.privateContent;

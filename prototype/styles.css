@@ -61,3 +61,5 @@
 #bento-workflow .b-reading table {width:100%;border-collapse:collapse;table-layout:fixed}
 #bento-workflow .b-reading td,#bento-workflow .b-reading th {padding:8px;border-bottom:1px solid var(--b-line);overflow-wrap:anywhere}
 #bento-workflow .b-button[aria-pressed=true] {background:var(--b-wash);border-color:var(--b-accent)}
+
+#bento-workflow #b-profile-form .b-form {grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));max-width:560px}

@@ -47,6 +47,7 @@ A locally installed agent on her Windows laptop is the proposed initial agent en
 | Projects | Give each project a home for its description, related notes, todos, and current status. |
 | Follow-up | Make outstanding and completed actions easy to find across meetings and projects. |
 | Daily overview | Open to upcoming work across all projects and a summary for every active project. |
+| Personal profile | Save and edit first name, last name, and an optional birthday locally. Greet the user with “Hello, Makena” normally and “hbd Makena!” on her birthday, using her saved first name. |
 | Tags | Allow free-form string tags on notes, projects, and todos, including spaces and Unicode. |
 | Navigation | Provide search and useful project, todo, and tag views. |
 | Agent-assisted content | Let Makena use natural language to find, summarize, create, and update workspace content. |
@@ -135,6 +136,12 @@ Open existing Markdown documents and edit them without losing unsupported syntax
 
 Apply existing tags or create new ones directly. Search notes, projects, and todos; filter by tag and relevant status. Renaming or moving an item should preserve its project and source relationships. Changing a todo in one view should update every other view of that todo.
 
+### Set up a personal profile
+
+Save a first name, last name, and optional birthday in personal settings. The first name personalizes the daily overview: “Hello, Makena” normally and “hbd Makena!” when the local calendar month/day matches her birthday. Updating the profile updates the greeting; clearing the birthday returns to the normal greeting. Profile changes persist across reopening.
+
+This is a local personal profile, not a shared-workspace identity or sign-in requirement. Unknown details stay blank; the sample uses Makena's first name without inventing her surname or birthday.
+
 ### Personalize the interface
 
 Select or install a theme, adjust typography and layout, and restore usable defaults. Invalid customization should leave Bento usable and explain what went wrong.
@@ -190,6 +197,7 @@ Validate these with Makena using representative, non-sensitive meeting material 
 - She can format everyday notes through discoverable controls and reopen them with their content intact.
 - Every document checkbox, including existing and nested checkboxes, appears as one tracked todo; completion changes in any view update the source checkbox.
 - She can manage her own todos from different views and see one consistent status and source context.
+- She can save and edit her profile, reopen Bento with those settings intact, and see the normal or birthday greeting based on the current local date.
 - Bento opens to upcoming work across projects and a summary for each active project, including projects without upcoming work; undated tasks remain accessible.
 - She can organize and retrieve notes, projects, and todos with free-form tags and search.
 - She can review agent-proposed action items, correct a mistaken suggestion, apply the desired items, and recover from an unwanted change.

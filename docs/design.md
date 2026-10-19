@@ -21,6 +21,7 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 | Theme system | Proposed: declarative theme packages over shared design tokens |
 | Agent providers and transport | Proposed: locally installed agent on Windows; provider, transport, and model processing location remain open |
 | Daily overview | Required: cross-project upcoming work and summaries for every active project |
+| Personal profile | Required: local first name, last name, optional birthday, and personalized greetings |
 
 ## 2. Recommended initial direction
 
@@ -139,6 +140,16 @@ Query the applied workspace index for upcoming open work across all projects, in
 
 Create a summary for every active project, including those without upcoming work. Initially derive summaries from recorded project status, open/completed task counts, and next due dates, with links to details. Empty and undated states should be explicit. Counts describe recorded work rather than inferred engineering progress. These summaries do not require an agent; optional narrative summaries can be added with source references and refresh timestamps.
 
+### Personal profile and greetings
+
+For the desktop application, propose a versioned `profile.json` in the operating system's per-user application-data directory, separate from workspace Markdown and source control. Store `firstName`, `lastName`, and an optional `birthday` as a calendar date (`YYYY-MM-DD`). Use atomic writes, validate on read/write, and let the user edit or clear optional fields in settings. The application framework will determine the actual platform paths; this is not implemented desktop persistence yet.
+
+The browser prototype stores the versioned profile under `bento.prototype.profile.v1` in local browser storage. It saves only after an explicit Save profile action. If storage is unavailable, keep the profile for the session and disclose that it was not saved. Invalid stored values fall back to editable defaults. The profile is not included in host widget-state snapshots, Markdown files, or agent context by default.
+
+Require a nonempty first name; permit an empty surname and birthday. Leave unknown sample details blank. Validate birthday as a real calendar date in the past or today. Compare its month/day with the current local calendar date, ignoring the birth year: use `Hello, {firstName}` normally and `hbd {firstName}!` on the birthday. For February 29, the greeting occurs on February 29 in leap years; an alternate non-leap-year observance is not currently specified. Refresh the greeting when the app becomes visible and periodically while open so crossing midnight does not require a restart.
+
+The prototype's planning records retain their clearly labeled fixed sample date; birthday greetings use the actual local clock rather than that sample date.
+
 ### Theme and layout customization
 
 Use shared design tokens for color, typography, spacing, borders, focus states, and editor syntax. Themes consume a documented, versioned token schema and declare their light/dark appearance. Theme packages initially contain declarative data and permitted assets; importing a theme must not execute code.
@@ -235,6 +246,7 @@ Use the product acceptance criteria as the release bar. Complement observation w
 - Markdown and metadata round trips, including unknown syntax and keys.
 - Checkbox discovery (existing, nested, completed, and unassigned tasks), code-sample exclusion, and consistent source completion across all views and agent commands.
 - Daily overview ordering and summaries for active projects with overdue, undated, or no tasks.
+- Local profile save/reload/edit/clear, valid and invalid dates, leap-day behavior, birthday/normal greetings, local-day rollover, and storage-unavailable fallback.
 - Source references surviving renames, with clear handling of changed or removed passages.
 - File-write recovery, external-edit conflicts, duplicated IDs, and malformed records.
 - Index rebuild equivalence for projects, todos, tags, and search.
