@@ -83,3 +83,8 @@
 #bento-workflow .b-open-todo:hover {background:var(--b-wash);color:var(--b-accent)}
 #bento-workflow .b-add-block {display:block;width:100%;text-align:left;background:none;border:0;color:var(--b-soft);padding:12px 0;margin-top:12px}
 #bento-workflow .b-live-block li:has(>input:checked)>.b-live-task .b-task-label {text-decoration:line-through;color:var(--b-soft)}
+
+#bento-workflow .b-file-controls {display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%}
+#bento-workflow #b-save-state {color:var(--b-soft);font-size:12px}
+#bento-workflow #b-file-errors {margin:16px 20px;white-space:pre-wrap}
+#bento-workflow #b-document-nav {max-height:360px;overflow:auto}

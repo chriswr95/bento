@@ -111,7 +111,7 @@
         const task = BentoWorkspace.parse(this.body()).tasks.find(task => task.line === line);
         if (!task) return;
         const title = input.value.replace(/[\r\n]/g, ' ');
-        this.replaceLine(line, task.todoId ? `${task.prefix}[${BentoWorkspace.escapeLabel(title)}](${task.todoId}.md)` : task.prefix + title);
+        this.replaceLine(line, task.todoId ? `${task.prefix}[${BentoWorkspace.escapeLabel(title)}](${this.options.linkFor(task.todoId)})` : task.prefix + title);
         this.render({ line, start: caret, end });
         return;
       }
@@ -158,7 +158,7 @@
           lines.splice(line, 0, task.prefix.replace(/\[[ xX]\]/, '[ ]'));
           this.options.change(lines.join('\n')); this.render({ line, start: 0 }); return;
         }
-        lines[line] = task.todoId ? `${task.prefix}[${BentoWorkspace.escapeLabel(left)}](${task.todoId}.md)` : task.prefix + left;
+        lines[line] = task.todoId ? `${task.prefix}[${BentoWorkspace.escapeLabel(left)}](${this.options.linkFor(task.todoId)})` : task.prefix + left;
         lines.splice(line + 1, 0, task.prefix.replace(/\[[ xX]\]/, '[ ]') + right);
         this.options.change(lines.join('\n'));
         this.render({ line: line + 1, start: 0 });

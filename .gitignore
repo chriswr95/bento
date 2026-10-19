@@ -17,3 +17,6 @@ coverage/
 
 # Local workspace and tool data
 .bento-local/
+
+# Local validation screenshots
+/work/

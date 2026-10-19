@@ -1,0 +1,27 @@
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const os = require('node:os');
+const root = path.resolve(__dirname, '..');
+
+async function copyDependency(name, from, into) {
+  const manifest = require.resolve(name + '/package.json', { paths: [from] });
+  const source = path.dirname(manifest), destination = path.join(into, 'node_modules', name);
+  await fs.cp(source, destination, { recursive: true, dereference: true });
+  const info = JSON.parse(await fs.readFile(manifest, 'utf8'));
+  for (const dependency of Object.keys(info.dependencies || {})) await copyDependency(dependency, source, destination);
+}
+async function build() {
+  const { packager } = await import('@electron/packager');
+  const metadata = require('../package.json');
+  const staging = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-package-'));
+  try {
+    // Build a real runtime tree, independent of the development package manager's symlinks.
+    for (const name of ['desktop', 'files', 'prototype', 'templates']) await fs.cp(path.join(root, name), path.join(staging, name), { recursive: true, filter: source => !source.includes(path.sep + 'tests') });
+    for (const name of Object.keys(metadata.dependencies)) await copyDependency(name, root, staging);
+    const { devDependencies, scripts, packageManager, ...runtime } = metadata;
+    await fs.writeFile(path.join(staging, 'package.json'), JSON.stringify(runtime, null, 2));
+    const output = await packager({ dir: staging, name: 'Bento', out: path.join(root, 'dist'), electronVersion: devDependencies.electron, platform: process.platform, arch: process.arch, overwrite: true, asar: true, prune: false });
+    output.forEach(folder => console.log(folder));
+  } finally { await fs.rm(staging, { recursive: true, force: true }); }
+}
+build().catch(error => { console.error(error); process.exitCode = 1; });
