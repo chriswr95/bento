@@ -12,12 +12,16 @@ Planning, with an interactive workflow prototype. There is no desktop applicatio
 
 - [Product specification](docs/spec.md): audience, workflows, features, and success criteria.
 - [Design document](docs/design.md): implementation proposals, tradeoffs, and technical decisions.
+- [Data-model walkthrough](docs/data-model.md): proposed database definitions, record documents, and checkbox references.
 
 ## Initial direction
 
 - Windows and macOS desktop support.
 - Markdown files that remain useful outside Bento.
-- First-class projects, todos, and free-form tags.
+- A Markdown document for every content record, including projects and todos.
+- User-managed database schemas, with Projects and Todos as customizable defaults.
+- Zero or one database membership per document, independent of views and relationships.
+- Free-form tags.
 - Integrated document, project, and task views.
 - Configurable layouts and installable themes.
 - Agent assistance for workspace content and for changing Bento itself.
@@ -30,7 +34,7 @@ Keep the `prototype/` directory together when opening the page; its Markdown par
 
 The prototype uses fictional projects and a fixed sample date of October 19, 2026. It demonstrates daily review, active-project summaries, meeting-note editing, checkbox capture, shared completion state, one-step undo, and personalized greetings through local profile settings. Document changes last only for the current page session; refreshing restores the sample workspace. Personal profile settings persist in this browser where local storage is available.
 
-Agent suggestions are explicitly simulated. The meeting note is one Markdown document: typing a checkbox creates a tracked todo, and changing completion from the overview updates its source. It does not read or write actual workspace files, connect to an agent, or implement Copilot integration. The production editor remains a design decision.
+Agent suggestions are explicitly simulated. The meeting note is one Markdown document: typing a checkbox creates a tracked todo, and changing completion from the overview updates its source. It does not read or write actual workspace files, connect to an agent, or implement Copilot integration. The production editor remains a design decision. The prototype still uses inline task authority; it does not yet implement the revised document-backed databases or todo documents described in the design.
 
 ## Development
 

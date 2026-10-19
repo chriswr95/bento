@@ -1,10 +1,10 @@
 # Bento: design document
 
-Status: proposed design; decisions remain open
+Status: agreed content principles with proposed implementation details
 
 Updated: 2026-10-19
 
-The [product specification](spec.md) defines the audience, features, and acceptance criteria. This document describes proposed implementation choices and tradeoffs. Earlier technical proposals are retained here; moving them does not approve them.
+The [product specification](spec.md) defines the audience, features, and acceptance criteria. This document describes proposed implementation choices and tradeoffs. Markdown content records, user-managed databases, and zero-or-one database membership are agreed requirements. Serialization, reconciliation, and runtime choices remain proposed unless explicitly stated.
 
 ## 1. Design goals and decision status
 
@@ -12,9 +12,11 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 
 | Area | Current position |
 | --- | --- |
-| Storage | Proposed: Markdown files as authority with a rebuildable index |
+| Storage | Required: one Markdown document per content record; proposed rebuildable index |
+| Database membership | Required: zero or one database per document; relationships and views are separate |
+| Database definitions | Required: user-managed schemas; Projects and Todos are customizable, removable defaults |
 | Desktop shell and editor | Open; validate on Windows and macOS |
-| Todo representation | Every document checkbox is tracked; proposed inline authority with stable task IDs |
+| Todo representation | Required: a Markdown document per todo; proposed checkbox references with the todo document authoritative |
 | Everyday editing | Must support discoverable formatting; exact editor model remains open |
 | Content agent | Proposed: scoped query and command interface sharing application services |
 | Application agent | Proposed: external coding-agent integration with isolated trial and explicit adoption |
@@ -23,122 +25,66 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 | Daily overview | Required: cross-project upcoming work and summaries for every active project |
 | Personal profile | Required: local first name, last name, optional birthday, and personalized greetings |
 
-## 2. Recommended initial direction
+## 2. Content and storage direction
 
-Use a local-first desktop application with a folder-based Markdown workspace as the durable source of truth. Use a rebuildable local index for fast search, relationships, and task views.
+Workspace content lives in Markdown documents. Database definitions supply structure and specialized behavior over those records. A logical database is a collection identified by metadata; it does not imply a separate SQL database or require a hosted service.
 
-This is a proposal, pending review. It preserves ordinary file ownership while allowing richer behavior than a plain text editor. It also avoids requiring an account, hosted service, or synchronization system to validate the core product.
+Propose versioned YAML frontmatter for the document envelope and property values, with database definitions also represented as Markdown documents. Keep query/search indexes rebuildable. A local backend component may manage files and indexing; a separate process is not required by this model.
 
-A desktop application can still use a local backend component to manage files and indexing. File-based storage and a local service are compatible choices. Prefer an in-process service behind a clear interface initially; add a separate process only if isolation, runtime requirements, or measured performance justify it.
+The [data-model walkthrough](data-model.md) and [example workspace](../examples/document-databases/README.md) describe the proposed encoding, schema evolution, task references, and recovery behavior. They supersede the earlier inline-only todo authority proposal.
 
-### Storage options considered
+## 3. Three-layer domain model
 
-| Option | Benefits | Costs | Initial recommendation |
-| --- | --- | --- | --- |
-| Markdown files plus rebuildable index | Portable, inspectable, compatible with external editors and Git | Requires explicit metadata conventions, file watching, and conflict handling | Preferred |
-| Local database as the source of truth, with Markdown import/export | Strong structured queries and transactional updates | Export can lose information; users depend on Bento to access the full workspace | Revisit if structured editing outgrows the file model |
-| Hosted service as the source of truth | A foundation for shared workspaces and coordinated updates | Accounts, networking, operations, offline behavior, and conflict resolution | Outside the initial release |
-
-## 3. Domain model
-
-| Entity | Initial fields | Meaning |
+| Layer | Responsibility | Editing surface |
 | --- | --- | --- |
-| Workspace | Root folder, format version, preferences | A collection of user-owned files and their working context |
-| Note | Stable ID, title, Markdown body, tags | A document with optional relationships to projects |
-| Todo | Stable ID, title, status, description, optional project, optional due date, tags, source references | An independently addressable unit of work |
-| Project | Stable ID, title, status, Markdown body, tags | A durable planning context with associated todos and notes |
-| Tag | User-defined string | A reusable label across entity types |
+| Application | Markdown editing, storage, validation, supported field types, commands, capability interpretation, and query/index execution | Bento development and supported extensions |
+| Database definitions | Stable database/field identities, field types, defaults, relationships, views, and optional specialized capabilities | User-facing database and schema controls |
+| Content records | One Markdown document per record, with values in metadata and a free-form body | Document editor and property controls |
 
-Todos initially represent Makena’s own work. Do not implement assignment, shared users, or collaboration yet; keep identity independent of ownership so later assignment can be added without changing task IDs.
+Each document has zero or one database membership, expressed as a scalar database ID or no membership. Reject arrays or multiple membership values instead of selecting one. Project relationships are ordinary reference fields; a meeting note can refer to multiple projects while remaining a member of just Meeting Notes. Views query documents without changing their membership.
 
-Propose initial todo states `open` and `done`, mapped directly to unchecked and checked source boxes. Additional states such as `in_progress` or `cancelled` are deferred until their checkbox mapping is designed. Proposed project states: `active`, `on_hold`, `completed`, and `archived`. Transitions must be explicit and reversible.
+Propose stable document, database, field, and select-option IDs. Display names and paths may change independently. The document envelope needs minimal application-level rules for identity, membership, schema version, and reference bookkeeping; users customize fields within that boundary. Database definitions use a small application-owned metamodel to avoid recursive schema bootstrapping.
 
-Propose explicit source references from a todo to the note and relevant passage that prompted it. Use stable entity references and optional passage anchors; if a passage changes, preserve the note link and flag an unresolved anchor. The exact serialization remains open.
+Projects and Todos ship as editable starter definitions, not hardcoded content classes. Optional capability mappings identify fields used for completion, due dates, project relationships, and active-project summaries. Deleting a required mapping disables the dependent feature with an explanation; no hidden recreation of a deleted default database.
 
-A todo initially belongs to at most one project. Notes may link to multiple projects. Relationships use stable IDs so renaming or moving a file does not break them. Titles need not be unique. IDs must be unique within a workspace; duplicated IDs are surfaced for repair rather than silently merged.
+Initial task use remains personal. The starter task schema can reference at most one project, while another user-defined relationship may allow many records. Due dates are calendar dates with no implicit timezone conversion. Tags remain free-form strings; their case and rename semantics still need a decision.
 
-Due dates initially represent calendar dates (`YYYY-MM-DD`), with no implicit timezone conversion. Reminders and due times are deferred.
+## 4. Documents, schemas, and checkbox references
 
-Tags are strings rather than a predefined taxonomy. Spaces, punctuation, and Unicode should be supported; storage must quote or escape them safely. Propose trimming surrounding whitespace, rejecting empty values, and preserving spelling and case. Decide case-sensitive identity before implementation. Inline `#tag` shorthand, if supported, is only one input method and must not limit the underlying tag format.
+A todo document owns its canonical title, completion status, and other properties; its Markdown body stores notes and supporting context. A meeting note owns the discussion and references to those todos. Checkbox completion markers and link labels are editable projections of the referenced document, not independent task records.
 
-## 4. Proposed file format
+Propose converting a newly authored checkbox into a link to a newly created todo document as one recoverable operation. Track each reference with a stable reference ID and a last-projected title/completion baseline in the meeting metadata. This enables comparison between external note edits and current todo values. See the walkthrough for a concrete example and conflict rules. Exact reference syntax is still open.
 
-Use UTF-8 Markdown with a small, versioned YAML frontmatter schema for structured entities. Keep the body ordinary Markdown and preserve unrecognized metadata.
+Opening existing Markdown discovers checkboxes without automatically rewriting the folder or creating files. Existing unlinked boxes appear as pending captures until an explicit save/capture operation materializes them. Within Bento, authoring a new checkbox triggers that operation automatically without a separate task form. If no compatible task database is configured, retain visible pending checkboxes and explain how to choose a destination; do not recreate a removed database.
 
-Example project file, at a user-chosen path:
+Removing a checkbox reference unlinks that occurrence and retains the todo document. Deleting a todo document is an explicit, recoverable operation that surfaces affected references. Nested checkboxes are independent todos; code examples and schema-definition documents do not trigger capture. If a note has multiple project relationships, a new todo needs explicit project selection or remains unassigned rather than inheriting an arbitrary project.
 
-```markdown
----
-bento_version: 1
-id: "project-site-review"
-type: project
-title: "Site review"
-status: active
-tags: ["site review", "follow-up"]
----
+### Current prototype boundary
 
-# Site review
+The browser prototype still derives tasks directly from inline Markdown and uses document/current-line identifiers. It validates editing and daily review but does not implement record documents, database definitions, permanent IDs, or schema editing. Its checkbox-removal behavior reflects that earlier model. Do not present it as an implementation of this revised architecture.
 
-Meeting notes, decisions, and follow-up actions.
-```
-
-### Checkbox todos
-
-The workflow prototype now edits a complete Markdown document as its only content authority. A bundled, pinned Marked parser recognizes task-list nodes, including nested and ordered lists. The Write/Read modes use the same source; the overview updates checkbox markers in that source. Preview rendering escapes raw HTML and does not load document images or activate links.
-
-Prototype task references use document ID and current source line. A temporary parse copy carries line annotations; the user’s document is not modified to add markers. This is sufficient for current-view interactions but is not the stable identity contract for a production workspace.
-
-Every Markdown task-list checkbox is a tracked todo, including checked boxes and nested entries. Parse task-list nodes rather than matching raw text so fenced code samples are not tasks. Opening an existing note must discover its todos without rewriting the file.
-
-Propose keeping each todo's authoritative text and completion state inline in its source document. The Todos, project, and daily views project that record; they do not create a second task file. Editing a task in any view uses the same application service to update the source node and refresh the index.
-
-Illustrative meeting note:
-
-```markdown
----
-bento_version: 1
-id: "note-site-review-meeting"
-type: note
-title: "Site review meeting"
-projects: ["project-site-review"]
----
-
-# Site review meeting
-
-Discussed comments and next steps.
-
-- [ ] Review meeting comments <!-- bento-task: todo-review-comments -->
-- [x] Collect the reference notes <!-- bento-task: todo-collect-notes -->
-```
-
-The example IDs are illustrative; generate opaque stable IDs. The comment syntax and metadata encoding are proposals, not a frozen schema. Decide where due dates, tags, and descriptions live before implementation, while keeping the source understandable outside Bento.
-
-When a checkbox lacks an explicit ID, index it immediately using provisional identity without an unsolicited file rewrite. Establish durable identity on an explicit edit that needs it. Exact reconciliation for external reordering, copy/paste, duplicated IDs, and added or removed markers remains open; do not claim stable identity across arbitrary edits until that contract is defined.
-
-A todo initially belongs to at most one project. Propose inheriting the source note's project when unambiguous; notes linked to multiple projects need an explicit task project or an unassigned state. A checkbox without project metadata is still tracked and visible centrally. Do not silently guess project membership.
-
-Checking a box completes its todo; unchecking reopens it. Each nested checkbox is independent, with no implicit completion cascade. Treat checkbox removal as task removal, recoverable with the document change; finalize details for open views and external edits before implementation.
-
-For a todo captured outside a document, propose inserting a checkbox into a workspace Inbox note. This preserves one task representation. An agent extracting actions from existing checkbox content must reuse those tasks rather than duplicate them. A future rich task page can edit the same record without creating competing authority.
-
-Ordinary `.md` files without Bento metadata remain editable as notes and their checkboxes are indexed. Preserve unknown metadata and unsupported syntax. Folder structure is organizational rather than an entity ID or project-membership rule.
+Before replacing that representation, validate the example schema and record files, then implement the smallest create/open/edit/toggle flow across a meeting and a todo document with recovery. Keep personal profile settings and runtime caches outside workspace content.
 
 ## 5. Interface and customization
 
 Proposed application shell:
 
-- Sidebar: daily overview, workspace files, Projects, Todos, Tags, and saved navigation.
+- Sidebar: daily overview, workspace files, user databases (including Projects and Todos when configured), Tags, and saved navigation.
 - Main area: document editor, project detail, task list, or search results.
 - Optional details panel: selected entity metadata and relationships.
 - Command palette: quick navigation and discoverable actions.
 
 Open to a daily overview, with a document view, a filterable Todos list, and a Projects list with project detail pages available through navigation. Add a task board after the underlying task lifecycle and filtering are reliable. Saved filters and custom views can follow initial validation.
 
+### Database and schema controls
+
+Provide database creation, field creation/editing/retirement, record property editing, and view configuration without raw schema edits. Preview affected records and capability mappings before type changes or removals. Supported field types are application behavior; schema editing does not install arbitrary code.
+
 ### Daily overview and project summaries
 
-Query the applied workspace index for upcoming open work across all projects, including unassigned tasks. Propose overdue, today, upcoming, and undated groups; the upcoming horizon and exact grouping remain open. Show project and source-note context on each task.
+Query the applied workspace index for documents from databases with valid task capabilities, including unassigned tasks. Use mapped fields rather than database or field display names. Propose overdue, today, upcoming, and undated groups; the upcoming horizon and exact grouping remain open. Show project and source-note context on each task.
 
-Create a summary for every active project, including those without upcoming work. Initially derive summaries from recorded project status, open/completed task counts, and next due dates, with links to details. Empty and undated states should be explicit. Counts describe recorded work rather than inferred engineering progress. These summaries do not require an agent; optional narrative summaries can be added with source references and refresh timestamps.
+Use project capability mappings to create a summary for every active project, including those without upcoming work. If no compatible database is configured, show the relevant configuration state rather than inventing records. Initially derive summaries from recorded project status, open/completed task counts, and next due dates, with links to details. Empty and undated states should be explicit. Counts describe recorded work rather than inferred engineering progress. These summaries do not require an agent; optional narrative summaries can be added with source references and refresh timestamps.
 
 ### Personal profile and greetings
 
@@ -164,7 +110,7 @@ Separate the following responsibilities behind small interfaces:
 
 1. **Desktop shell:** windows, menus, dialogs, and platform integration.
 2. **UI and editor:** document interaction, task/project views, and themes.
-3. **Application services:** commands and domain rules shared by all views.
+3. **Application services:** document, database/schema, reference, and capability commands shared by all UI and agent paths.
 4. **Workspace repository:** safe file reads/writes, schema handling, and change events.
 5. **Indexer:** rebuildable search and relationship projections from workspace files.
 
@@ -179,6 +125,7 @@ Select the desktop framework and editor through a small prototype. Evaluate Wind
 - Keep a recoverable local draft while editing; clearly show pending, saved, and failed save states.
 - Make renames, deletes, and multi-file changes recoverable. Prefer the operating system trash for user-requested deletion.
 - Preserve unknown frontmatter keys and unsupported Markdown syntax; avoid whole-document formatting changes for small metadata edits.
+- Preserve schema definitions and history, record properties, reference baselines, and operation recovery data alongside content; reindexing must not invent schema or reconcile unknown edits by guessing.
 - Treat files as authoritative. The index can be deleted and rebuilt without losing content, relationships, or task state.
 - Keep machine-specific caches, drafts, and window state outside portable content. Shared workspace preferences may live in a versioned `.bento/` folder.
 - Treat file content as untrusted: constrain local resource access to authorized paths and prevent document previews from executing scripts.
@@ -200,7 +147,7 @@ Possible integration paths are direct file edits with Bento reconciling external
 
 Expose scoped queries and domain commands through an adapter usable by an agent. Keep the transport open: an in-app integration, local tool protocol, or external agent may use the same application boundary. Markdown portability also permits external file editing, but that alone does not provide the review and recovery experience required by the spec.
 
-The application services own validation and state transitions for both UI and agent operations. Candidate commands include creating notes/projects/todos, updating fields, linking source notes, tagging entities, and completing or reopening todos. Queries return stable entity references and current revision information alongside results.
+The application services own validation and state transitions for both UI and agent operations. Candidate commands include creating/editing documents, updating properties, linking references, tagging records, and completing or reopening tasks through capability mappings. Database/schema commands form a separate scope: a content update does not grant permission to change field definitions, migrations, or capability mappings. Queries return stable entity references and current revision information alongside results.
 
 Proposed operation flow:
 
@@ -244,7 +191,8 @@ The initial handoff may require developer assistance. Validate the end-to-end ex
 Use the product acceptance criteria as the release bar. Complement observation with focused technical checks:
 
 - Markdown and metadata round trips, including unknown syntax and keys.
-- Checkbox discovery (existing, nested, completed, and unassigned tasks), code-sample exclusion, and consistent source completion across all views and agent commands.
+- Single database membership, independent relationship cardinality, stable IDs, schema-version validation, field rename/retirement/type conversion, and database detach/removal without content loss.
+- Checkbox discovery and materialization, one canonical todo document, reference deduplication, baseline-aware external edits, interrupted multi-file recovery, and consistent completion across views and agent commands.
 - Daily overview ordering and summaries for active projects with overdue, undated, or no tasks.
 - Local profile save/reload/edit/clear, valid and invalid dates, leap-day behavior, birthday/normal greetings, local-day rollover, and storage-unavailable fallback.
 - Source references surviving renames, with clear handling of changed or removed passages.
@@ -260,9 +208,9 @@ Observe Makena completing the meeting-to-follow-up workflow and reviewing a prop
 ## 9. Delivery plan
 
 1. **Validate the workflow:** use representative meeting notes to review direct capture, automatically tracked checkboxes, daily review, follow-up, and agent proposal review with Makena.
-2. **Resolve foundational choices:** storage, inline task identity/metadata, source links, tag identity, and editor model; record rationale and tradeoffs.
+2. **Resolve foundational choices:** the document/schema envelope, capability mappings, checkbox-reference reconciliation, tag identity, and editor model; record rationale and tradeoffs.
 3. **Validate the platform:** build a Windows/macOS prototype for opening a folder, approachable Markdown editing, safe saves, and theme tokens.
-4. **Build the manual workflow:** projects, direct meeting notes, checkbox todos, tags, search, daily overview/project summaries, and consistent views, with conflict handling and index recovery.
+4. **Build the data foundation and manual workflow:** user databases and basic schema controls, default Projects/Todos definitions, record documents, meeting-checkbox references, tags, search, and daily overview/project summaries, with conflict handling and index recovery.
 5. **Add content assistance:** scoped meeting-note queries, reviewable todo proposals, validated application, and recovery.
 6. **Validate application assistance:** deliver one small agent-generated change through handoff, testing, trial, adoption, and rollback.
 7. **Harden and customize:** accessibility, theme packages, layout persistence, scale measurements, and distribution.
@@ -271,10 +219,10 @@ Use small, focused commits and meaningful checks at domain, persistence, agent, 
 
 ## 10. Open technical decisions
 
-- Markdown authority plus index versus a database-authoritative model.
-- Inline task ID/metadata serialization, provisional identity reconciliation, Inbox capture, and task deletion recovery; all document checkboxes are tracked.
-- Stable ID and source-anchor formats, frontmatter preservation, and schema migration rules.
-- Todo/project states, project membership cardinality, and tag case/rename semantics.
+- Exact document/schema serialization, reserved metadata names, schema-history storage, and migration transaction format.
+- Checkbox-reference syntax, capture journal/idempotency, stale/missing-baseline recovery, and copy/paste rules.
+- Capability vocabulary, initial field types, view/query format, and explicit database-transfer mappings.
+- Task/project starter statuses, project-relationship cardinality defaults, and tag case/rename semantics. The zero-or-one database membership rule is required and no longer open.
 - Editor implementation that meets approachable formatting and Markdown fidelity requirements.
 - Desktop framework, supported OS versions/architectures, packaging, and signing.
 - Agent transport/providers, scope permissions, external transmission UX, audit retention, and recovery semantics.

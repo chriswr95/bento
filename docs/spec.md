@@ -22,10 +22,25 @@ Civil engineering provides the context for organizing work. Engineering calculat
 
 - Makena takes meeting notes directly in Bento.
 - Todos track her own work initially. Tracking other people's work is a future extension.
-- Every document checkbox is a tracked todo, with no promotion step.
+- Every document checkbox creates or references a tracked todo with its own Markdown document, with no promotion step.
 - The default daily overview surfaces upcoming work across all projects and a summary for each active project.
 
 A locally installed agent on her Windows laptop is the proposed initial agent entry point. Model requests may use a hosted service; running a fully local model is not a requirement.
+
+### Required content model
+
+Bento has three layers: the application, user-managed database definitions, and the documents in those databases.
+
+- Every content record, including each project and todo, has its own openable, editable Markdown document with a free-form body and structured metadata.
+- A document **must belong to zero or one database**. Multiple database memberships are invalid. A document may appear in many views and have relationships to many other documents without gaining additional memberships.
+- Ordinary Markdown documents may remain outside a database and join one later.
+- Users can create, rename, update, and remove databases, and create, update, or remove their fields. Users should not need to edit code or raw schema files for these operations.
+- Projects and Todos are customizable, removable default databases, rather than mandatory application entity types. Meeting Notes is a candidate starter database in the worked example.
+- Database definitions describe the schema; each record's metadata supplies its values. Views present records without owning another copy of their data.
+- Opening a todo opens its own Markdown document, where Makena can keep notes, context, references, and progress details.
+- Schema changes and database removal must offer recoverable behavior that preserves documents and existing values by default.
+
+This requirement covers workspace content and database definitions. Personal profile settings, credentials, caches, and operational state remain separate from workspace records.
 
 ## 2. Product principles
 
@@ -43,8 +58,10 @@ A locally installed agent on her Windows laptop is the proposed initial agent en
 | Platforms | Run on Windows and macOS. |
 | Notes | Create, open, edit, organize, and save Markdown documents. |
 | Editing experience | Offer a readable, Notion-inspired writing experience with discoverable formatting controls. Everyday editing must not depend on typing Markdown syntax. |
-| Todos | Every document checkbox is a tracked todo for Makena’s own work, with a title, description, status, optional due date, tags, and project context. |
-| Projects | Give each project a home for its description, related notes, todos, and current status. |
+| Todos | Every document checkbox creates or references a tracked todo for Makena’s own work. Each todo opens as its own Markdown document with status, optional due date, tags, project context, and space for notes. |
+| Projects | Give each project its own Markdown document and related notes, todos, and current status through the default Projects database. |
+| Databases | Create, edit, and remove database definitions and fields through the UI. Projects and Todos are customizable, removable defaults. |
+| Membership | Each document belongs to at most one database; views and relationships do not change membership. |
 | Follow-up | Make outstanding and completed actions easy to find across meetings and projects. |
 | Daily overview | Open to upcoming work across all projects and a summary for every active project. |
 | Personal profile | Save and edit first name, last name, and an optional birthday locally. Greet the user with “Hello, Makena” normally and “hbd Makena!” on her birthday, using her saved first name. |
@@ -58,7 +75,7 @@ A locally installed agent on her Windows laptop is the proposed initial agent en
 | Reliability | Preserve work through saving, reopening, conflicting edits, and unsuccessful agent changes. |
 | Accessibility | Support keyboard navigation, visible focus, scalable text, and understandable status beyond color alone. |
 
-The exact editor interaction, storage model, framework, and agent integration are design decisions. These requirements do not select an agent provider or require a particular backend.
+The editor implementation, schema serialization, desktop framework, and agent integration are design decisions. Markdown content records and single-database membership are requirements. These requirements do not select an agent provider or require a particular backend.
 
 ## 4. Three high-level workflows
 
@@ -90,7 +107,7 @@ A meeting title, date, attendees, and agenda are candidate template fields to va
 3. For agent suggestions, review and correct the proposed details before applying them; manually adding a checkbox needs no separate confirmation.
 4. See the same todos in the note, project, and central Todos views; no separate promotion or duplicate entry is required.
 
-Checked boxes are completed todos; unchecked boxes are open work. Changing completion in any view updates the same checkbox. Each nested checkbox is also its own todo. Literal checkbox syntax in code samples is text rather than an interactive checkbox. An existing document’s checkboxes appear as todos when opened, including those already completed.
+Checked boxes show completed todos; unchecked boxes show open work. A meeting checkbox references the todo document rather than creating a second todo. Changing completion in any view updates the same todo and its checkbox representations. Renaming or deleting a checkbox reference must not silently erase an independently useful todo document or its notes. Each nested checkbox is also its own todo. Literal checkbox syntax in code samples is text rather than an interactive checkbox. Existing checkboxes, including completed ones, are discoverable on open. Creating their todo documents must not rewrite untouched files without an explicit edit/save or capture action.
 
 Todos initially represent Makena’s work. Notes may mention other people, but the first release does not provide assignment or tracking of their work.
 
@@ -99,7 +116,7 @@ An agent must distinguish information recorded in the note from its own suggesti
 #### Follow through
 
 1. Review open actions for a project or across projects, with optional due-date and tag filters.
-2. Open a todo and return to its source meeting for context.
+2. Open a todo’s Markdown document, write progress notes or supporting context, and return to its source meeting when needed.
 3. Record progress, complete the action, or reopen it when necessary.
 4. Ask an agent for a follow-up summary with links to the underlying notes and todos.
 5. Review any suggested updates before applying them.
@@ -127,6 +144,14 @@ The exact priority controls and any project-level deadlines remain to be validat
 The reference types Makena uses still need validation. Linking to reference material does not imply importing or editing every external file format.
 
 ## 5. Supporting journeys
+
+### Customize a database
+
+Create a database, define its fields, and add documents to it. Add a field, rename it without losing its values, and review a field-type change before adopting it. Remove a field or database with a clear explanation of the effects and recoverable content retention by default.
+
+Move a document to another database through an explicit transfer, with a preview of field mapping and any incompatible values. It must not temporarily become a member of both databases. Reuse records in filtered views without copying them or adding memberships.
+
+Specialized features such as task completion and daily review depend on compatible database fields. Users can rename fields while retaining those behaviors. If they remove a required field mapping or the relevant database, Bento explains which features become unavailable and how to configure a replacement; it must not silently recreate removed defaults.
 
 ### Use existing Markdown
 
@@ -185,7 +210,7 @@ All three high-level workflows are product goals. The first usable product shoul
 
 The first agent-assisted slice should propose action items from a selected meeting note, let the user review them, and apply the chosen items with source links and recovery. Next, validate a small agent-assisted application change through the review, trial, and adoption journey above. Agent usability is a product goal, not an assumption that Markdown alone satisfies it.
 
-Defer real-time collaboration, hosted accounts, mobile apps, calendar/email integrations, arbitrary executable plugins, and a general-purpose Notion-style database builder. Do not assume a requirement for Notion import or full Notion feature parity.
+User-managed databases and editable schemas are part of the product scope. Start with basic fields, relationships, and views, plus the default Projects and Todos databases. Defer advanced database formulas and rollups, real-time collaboration, hosted accounts, mobile apps, calendar/email integrations, and arbitrary executable plugins. Do not assume a requirement for Notion import or full Notion feature parity.
 
 ## 8. Success and acceptance criteria
 
@@ -196,7 +221,11 @@ Validate these with Makena using representative, non-sensitive meeting material 
 - She can organize project notes and reference links, then retrieve them through project navigation, search, or tags.
 - She can format everyday notes through discoverable controls and reopen them with their content intact.
 - Every document checkbox, including existing and nested checkboxes, appears as one tracked todo; completion changes in any view update the source checkbox.
-- She can manage her own todos from different views and see one consistent status and source context.
+- She can open each todo’s own Markdown document and add notes while seeing one consistent status across its checkbox references and views.
+- A document can have zero or one database membership; attempts to assign multiple memberships fail clearly without changing content.
+- She can create a database and its fields, rename a populated field without losing values, and review incompatible schema changes.
+- She can remove a field or a default database while retaining recoverable documents and values, and understand any affected features.
+- A document may appear in several views or link to projects without acquiring another database membership.
 - She can save and edit her profile, reopen Bento with those settings intact, and see the normal or birthday greeting based on the current local date.
 - Bento opens to upcoming work across projects and a summary for each active project, including projects without upcoming work; undated tasks remain accessible.
 - She can organize and retrieve notes, projects, and todos with free-form tags and search.
@@ -222,4 +251,4 @@ Record usability observations and unresolved friction. Do not substitute a passi
 - How much interface customization is useful initially beyond themes, typography, and panel arrangement?
 - Is existing content migration, backup, or use across multiple computers needed for her first trial?
 
-Technical decisions and their tradeoffs belong in the [design document](design.md).
+Technical decisions and their tradeoffs belong in the [design document](design.md). The [data-model walkthrough](data-model.md) works through document-backed databases and meeting-checkbox references; its serialization is proposed rather than frozen.

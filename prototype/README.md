@@ -26,6 +26,10 @@ If browser storage is unavailable, the page keeps the profile for the session an
 - Are project summaries and the daily overview useful for deciding what needs attention?
 - Is the source context clear when completing tasks away from their notes?
 
+## Revised data model
+
+The [current design](../docs/data-model.md) gives every todo its own Markdown document and adds user-managed database schemas with zero-or-one membership per document. This prototype predates that model: its tasks are still inline and disappear when the source checkbox is removed. It does not implement database definitions, separate todo documents, stable reference IDs, or schema changes.
+
 ## Boundaries
 
 Documents stay in memory for the page session and reset on refresh; personal profile settings are stored separately and persist where browser storage is available. The inline conversation preview may restore documents through optional host widget state. No actual workspace files are read or written; no agent or Copilot integration is connected.
