@@ -80,6 +80,7 @@ async function paste(editor, text, html = '') {
   await page.reload();
   await page.getByRole('button', { name: 'Open Rich action revised', exact: true }).first().click();
   assert.match(await page.locator('#b-reading').innerText(), /important details/);
+  await page.locator('summary[aria-label="Document actions"]').click();
   const downloadPromise = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download Markdown', exact: true }).click();
   const download = await downloadPromise;
   assert.match(fs.readFileSync(await download.path(), 'utf8'), /\*\*important details\*\*/);

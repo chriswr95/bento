@@ -292,11 +292,14 @@ import BentoFileSession from './file-session.js';
     const doc = record(), database = workspace().databases[doc.database], task = model.taskInfo(workspace(), doc);
     const label = task ? 'Todo Markdown' : doc.database === meetingDatabase()?.id ? 'Meeting Markdown' : model.capability(workspace(), doc, 'project') ? 'Project Markdown' : 'Page Markdown';
     const isProject = model.capability(workspace(), doc, 'project'), meetings = meetingDatabase();
-    main.innerHTML = `<p class="b-eyebrow">${escape(database?.title || 'Documents')} / ${escape(doc.title)}</p>
+    const actions = [
+      desktop && isProject && meetings ? `<button type="button" data-create="${meetings.id}" data-for-project="${doc.id}">New meeting note</button>` : '',
+      desktop && isProject ? `<button type="button" data-project="${doc.id}">Review project work</button>` : '',
+      !desktop ? '<button type="button" data-export>Download Markdown</button>' : ''
+    ].join('');
+    main.innerHTML = `<div class="b-document-header"><p class="b-eyebrow">${escape(database?.title || 'Documents')} / ${escape(doc.title)}</p>
+      ${actions ? `<details class="b-document-actions"><summary aria-label="Document actions" title="Document actions">⋯</summary><div class="b-document-action-list">${actions}</div></details>` : ''}</div>
       ${task ? `<h1>${escape(doc.title)}</h1>${taskProperties(task)}` : desktop ? propertyForm(workspace(), doc, files.view.readOnly) : ''}
-      ${desktop && isProject ? `<div class="b-actions">${meetings ? `<button type="button" class="b-button b-primary" data-create="${meetings.id}" data-for-project="${doc.id}">New meeting note</button>` : ''}<button type="button" class="b-button" data-project="${doc.id}">Review project work</button></div>` : ''}
-      <div class="b-actions"><button type="button" class="b-button cursor-interaction" data-export>Download Markdown</button>
-</div>
       <article id="b-reading" class="b-reading" aria-label="Editable Markdown document"></article>
       <p id="b-task-count" class="b-muted" role="status" aria-live="polite"></p><p id="b-document-issues" class="b-issues" role="alert" hidden></p>
       ${doc.id === 'coordination' ? `<div class="b-actions"><button class="b-button cursor-interaction" type="button" data-propose>Preview agent suggestion</button></div>
@@ -384,6 +387,14 @@ import BentoFileSession from './file-session.js';
       else if (button.hasAttribute('data-dismiss')) { proposal = false; main.querySelector('#b-proposal').hidden = true; }
       else if (button.hasAttribute('data-apply')) { proposal = false; change(() => model.applyEdit(workspace(), state.document, record().body + `\n- [ ] ${suggestion}\n`).workspace, 'Created a todo document from the reviewed checkbox.'); }
     } catch (error) { notify(error.message); }
+  });
+  document.addEventListener('click', event => {
+    root.querySelectorAll('.b-document-actions[open]').forEach(menu => { if (!menu.contains(event.target)) menu.open = false; });
+  });
+  root.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const menu = root.querySelector('.b-document-actions[open]');
+    if (menu) { menu.open = false; menu.querySelector('summary').focus(); event.preventDefault(); }
   });
   root.addEventListener('toggle', event => {
     const details = event.target;

@@ -121,6 +121,8 @@ async function saved(page) {
   assert.notEqual(await projectsFolder.getAttribute('open'), null);
   assert.notEqual(await designFolder.getAttribute('open'), null);
   console.log('Passed nested directory navigation, keyboard disclosure, retained collapse, and active-path reveal.');
+  assert.equal(await page.getByRole('button', { name: 'Download Markdown', exact: true }).count(), 0);
+  await page.locator('summary[aria-label="Document actions"]').click();
   await page.locator('main').getByRole('button', { name: 'New meeting note', exact: true }).click();
   assert.equal(await page.getByRole('combobox', { name: 'Project', exact: true }).inputValue(), projectId);
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Weekly coordination');
@@ -166,6 +168,10 @@ async function saved(page) {
   assert.deepEqual(errors, []);
 
   await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).click();
+  await page.locator('summary[aria-label="Document actions"]').click();
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('button', { name: 'Review project work', exact: true }).isVisible(), false);
+  await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Review project work', exact: true }).click();
   await page.getByRole('region', { name: 'Related notes', exact: true }).getByRole('button', { name: 'Weekly coordination', exact: true }).waitFor();
   await page.getByRole('region', { name: 'Without a date', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).waitFor();
