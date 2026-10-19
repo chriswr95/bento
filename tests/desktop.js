@@ -58,6 +58,16 @@ async function saved(page) {
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'My first project', exact: true }).waitFor();
   await saved(page);
+  await page.locator('.b-page-properties>summary').click();
+  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('option-completed');
+  await page.getByRole('textbox', { name: 'Tags', exact: true }).fill('Civil engineering\nclient, internal');
+  await page.getByRole('button', { name: 'Save properties', exact: true }).click();
+  await saved(page);
+  await page.locator('.b-page-properties>summary').click();
+  assert.equal(await page.getByRole('combobox', { name: 'Status', exact: true }).inputValue(), 'option-completed');
+  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('option-active');
+  await page.getByRole('button', { name: 'Save properties', exact: true }).click();
+  await saved(page);
   const projectFiles = (await fs.readdir(path.join(workspace, 'projects'))).filter(name => name.startsWith('project-'));
   assert.equal(projectFiles.length, 1);
   const projectId = projectFiles[0].slice(0, -3);
@@ -95,6 +105,14 @@ async function saved(page) {
   await saved(page);
   const meetingFile = (await fs.readdir(path.join(workspace, 'meetings'))).find(name => name !== 'database.md');
   assert.ok(meetingFile);
+  await page.locator('.b-page-properties>summary').click();
+  await page.getByLabel('Meeting date', { exact: true }).fill('2026-10-20');
+  assert.equal(await page.getByRole('group', { name: 'Related projects', exact: true }).getByRole('checkbox', { name: 'My first project', exact: true }).isChecked(), true);
+  await page.getByRole('textbox', { name: 'Tags', exact: true }).fill('Follow up');
+  await page.getByRole('button', { name: 'Save properties', exact: true }).click();
+  await saved(page);
+  const meetingRaw = await fs.readFile(path.join(workspace, 'meetings', meetingFile), 'utf8');
+  assert.match(meetingRaw, /2026-10-20/); assert.match(meetingRaw, /Follow up/);
   console.log('Created and opened project Markdown, canceled without a file, and linked a meeting note.');
   await page.getByRole('button', { name: 'Write a note…', exact: true }).click();
   await page.getByRole('textbox', { name: 'Meeting Markdown', exact: true }).pressSequentially('[] ');
@@ -127,6 +145,13 @@ async function saved(page) {
   launched = await launch(workspace, userData); application = launched.app; page = launched.page;
   await saved(page);
   assert.equal(await page.locator('aside details[data-directory="projects"]').getAttribute('open'), null);
+  await page.locator('aside').getByRole('button', { name: 'Weekly coordination', exact: true }).click();
+  await page.locator('.b-page-properties>summary').click();
+  assert.equal(await page.getByLabel('Meeting date', { exact: true }).inputValue(), '2026-10-20');
+  assert.equal(await page.getByRole('textbox', { name: 'Tags', exact: true }).inputValue(), 'Follow up');
+  await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-meeting-properties.png') });
+  assert.equal(await page.getByRole('group', { name: 'Related projects', exact: true }).getByRole('checkbox', { name: 'My first project', exact: true }).isChecked(), true);
+
   await page.locator('aside details[data-directory="todos"]>summary').click();
   await page.getByRole('navigation', { name: 'Workspace files', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).click();
   assert.match(await page.locator('#b-reading').innerText(), /Keep this project detail/);

@@ -192,3 +192,20 @@ test('new project and meeting documents persist their identity, defaults and pro
   assert.equal(model.projectOf(reopened.workspace, reopened.workspace.records[meeting.documentId]), project.documentId);
   assert.match(await fs.readFile(path.join(root, 'projects', project.documentId + '.md'), 'utf8'), /# My project/);
 });
+
+
+test('project and meeting property edits survive reopening without rewriting Markdown bodies', async t => {
+  const root = await fixture(t), repo = await WorkspaceRepository.open(root);
+  const project = repo.workspace.records['project-creekside'], meeting = repo.workspace.records['meeting-coordination'];
+  let next = model.updateDocument(repo.workspace, project.id, { tags: ['Civil engineering', 'client, internal'], properties: { 'field-project-status': 'option-archived' } });
+  next = model.updateDocument(next, meeting.id, { properties: { 'field-meeting-date': '2026-10-20', 'field-meeting-projects': [] } });
+  await repo.save(next);
+  const reopened = await WorkspaceRepository.open(root);
+  assert.deepEqual(reopened.errors, []);
+  assert.deepEqual(reopened.workspace.records[project.id].tags, ['Civil engineering', 'client, internal']);
+  assert.equal(reopened.workspace.records[project.id].properties['field-project-status'], 'option-archived');
+  assert.equal(reopened.workspace.records[meeting.id].properties['field-meeting-date'], '2026-10-20');
+  assert.deepEqual(reopened.workspace.records[meeting.id].properties['field-meeting-projects'], []);
+  assert.equal(reopened.workspace.records[project.id].body, project.body);
+  assert.equal(reopened.workspace.records[meeting.id].body, meeting.body);
+});

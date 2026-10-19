@@ -245,3 +245,10 @@ Product questions about Makena's workflow remain in the [specification](spec.md)
 New desktop workspaces contain database definitions and no fictional content. The empty overview guides the user to create a project and immediately opens that project’s Markdown document. Projects can create linked meeting notes; captured checkboxes inherit their project. Sidebar navigation lists each record once under its database; project navigation opens documents, while project work summaries remain a separate action. Creation validates defaults and entered properties before inserting a record; schema fields requiring values without defaults currently block creation with an error.
 
 All first-party JavaScript except the sandboxed Electron preload uses native ES modules. `preload.cjs` remains a deliberately narrow CommonJS bridge. The browser sample uses a loopback static server (`pnpm demo`) for module loading; the desktop app still loads local files without a server.
+
+
+### Page property editing
+
+Non-task pages expose a collapsible Properties form generated from their database schema. It supports text, finite numbers, calendar dates, optional three-state booleans, single choices/status, multiple choices, and one/many record relations. Title and free-form tags are document metadata; tags are entered one per line. Existing unresolved relationship IDs remain visible and removable instead of disappearing from a save. Optional unset values stay absent when unchanged, and unknown properties are retained.
+
+Form submission constructs and validates a metadata patch before replacing the workspace snapshot. Rejected edits stay in the form with an inline error. Saving page metadata leaves body Markdown and reference checkpoints unchanged; task metadata changes, when performed through the shared model, project canonical title/completion into their source references. Changing a meeting's project relationship does not reassign existing todos. Todo pages retain their specialized status/completion controls; editing additional custom todo fields remains future work.

@@ -247,6 +247,33 @@ function applyEdit(workspace, documentId, body) {
   assertWorkspace(next);
   return { workspace: next, edits };
 }
+function updateDocument(workspace, documentId, patch) {
+  const next = clone(workspace), record = next.records[documentId];
+  if (!record) throw new Error('Document not found.');
+  if (Object.keys(patch).some(key => !['title', 'tags', 'properties'].includes(key))) throw new Error('Only document title, tags and properties can be edited.');
+  if ('title' in patch) {
+    if (typeof patch.title !== 'string' || !patch.title.trim() || patch.title.trim().length > 200 || /[\r\n]/.test(patch.title)) throw new Error('Enter a single-line title between 1 and 200 characters.');
+    record.title = patch.title.trim();
+  }
+  if ('tags' in patch) {
+    if (!Array.isArray(patch.tags) || !patch.tags.every(tag => typeof tag === 'string')) throw new Error('Tags must be strings.');
+    record.tags = [...new Set(patch.tags.map(tag => tag.trim()).filter(Boolean))];
+  }
+  if ('properties' in patch) {
+    if (!schema.object(patch.properties)) throw new Error('Invalid document properties.');
+    const fields = new Set(next.databases[record.database]?.fields.map(field => field.id) || []);
+    for (const [field, value] of Object.entries(patch.properties)) {
+      if (!fields.has(field)) throw new Error('Only fields in this database can be edited.');
+      record.properties[field] = value;
+    }
+  }
+  // Validate atomically before projecting any changed task title/completion into notes.
+  assertWorkspace(next);
+  if (capability(next, record, 'task')) reconcileAll(next);
+  assertWorkspace(next);
+  return next;
+}
+
 function updateTodo(workspace, documentId, patch) {
   const next = clone(workspace), record = next.records[documentId];
   const cap = capability(next, record, 'task');
@@ -395,4 +422,4 @@ function createWorkspace(documents = {}) {
 }
 
 export default Object.freeze({ clone, parse, stripMarkers, refMarker, escapeLabel, targetId, linkFor, linkMatches, validDate, capability, taskInfo, allTasks,
-  activeProjects, projectOf, applyEdit, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace, createDocument });
+  activeProjects, projectOf, applyEdit, updateDocument, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace, createDocument });

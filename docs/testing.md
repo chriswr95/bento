@@ -6,8 +6,8 @@ Bento must preserve Markdown and make the meeting → todo workflow work across 
 
 | Command | Scope |
 | --- | --- |
-| `pnpm test` | Unit tests for capture/reconciliation, typed schemas, document creation, profiles, save coordination, and directory tree/state; repository tests against actual temporary Markdown files. No GUI required. |
-| `pnpm test:desktop` | Real Electron app: first-time welcome, empty workspace, nested directory navigation, keyboard folder disclosure, retained collapse state, active-page reveal, create/open project Markdown, cancel creation, linked meeting, typed checkbox, todo notes/status, restart, completion propagation, sandbox bridge, external conflict, and retained draft. Only the directory chooser is stubbed. |
+| `pnpm test` | Unit tests for capture/reconciliation, typed schemas, document creation, profiles, typed property forms/atomic updates, save coordination, and directory tree/state; repository tests against actual temporary Markdown files. No GUI required. |
+| `pnpm test:desktop` | Real Electron app: first-time welcome, empty workspace, nested directory navigation, keyboard folder disclosure, retained collapse state, active-page reveal, create/open project Markdown, cancel creation, linked meeting, project status/tags and meeting date/relations across restart, typed checkbox, todo notes/status, restart, completion propagation, sandbox bridge, external conflict, and retained draft. Only the directory chooser is stubbed. |
 | `pnpm test:browser` | Shared editor interactions, checkbox shortcuts, title edits, copies, exports, reload, safe HTML, responsive widths, profiles, unavailable storage, and legacy snapshot migration. The runner starts its own loopback sample server. |
 | `pnpm package` | Build an unsigned bundle for the current platform. |
 

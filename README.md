@@ -20,7 +20,8 @@ pnpm start
 2. Bento opens the project’s Markdown document immediately. Write notes, or choose New meeting note to create a note linked to that project.
 3. In the meeting, choose Write a note… and type `[] ` or `- [ ] `, then an action title. Bento creates a todo Markdown file with the same project and links it from the meeting.
 4. Use ↗ to open the todo. Add notes; edit title, Status, due date, and project. Save properties applies those values, then autosave persists them.
-5. Save files flushes changes immediately. The Workspace menu holds open/new/reload actions. Close and reopen the workspace to read documents and schemas from disk.
+5. On project and meeting pages, expand Properties to edit the title, tags, and schema fields. Save properties applies the edit; autosave then writes it to Markdown. Tags use one line each and may contain spaces and commas.
+6. Save files flushes changes immediately. The Workspace menu holds open/new/reload actions. Close and reopen the workspace to read documents and schemas from disk.
 
 The sidebar shows a collapsible workspace directory tree with database folders, nested subfolders, and Markdown pages. Folder expansion is remembered per workspace on this computer; opening a page reveals its ancestor folders. Todo folders start collapsed. Each database folder has a + creation action. Projects, Meeting Notes, and Todos are customizable starter definitions. Sample content remains available separately under `examples/document-databases`.
 
@@ -30,7 +31,7 @@ External edits are checked before save. If files changed, Bento keeps its local 
 
 This is an early Electron desktop implementation. It loads actual YAML schemas and Markdown files, validates all eight field types, saves through a recoverable journal, and preserves unknown metadata. It shares the live Markdown editor/model with the browser sample.
 
-General database/schema editing controls, generic property forms, in-app record transfers, link repair after external moves, conflict/recovery review UI, production rich-text editing/accessibility, search, agents, and Copilot integration remain future work. Definition changes can currently be made in Markdown and loaded through Workspace → Reload files. Creation uses schema defaults; required custom fields without defaults currently report a validation error and require editing the schema/defaults before creation.
+General database/schema editing controls, custom todo property controls, in-app record transfers, link repair after external moves, conflict/recovery review UI, production rich-text editing/accessibility, search, agents, and Copilot integration remain future work. Definition changes can currently be made in Markdown and loaded through Workspace → Reload files. Creation uses schema defaults; required custom fields without defaults currently report a validation error and require editing the schema/defaults before creation.
 
 The app is local: no model requests, HTTP backend, or remote document resources. Sample agent suggestions are simulated. Profiles and unsaved drafts use local app storage, separately from workspace Markdown. `.bento-local/` holds save journals/backups and is ignored by Git in new workspaces. Journaling is not a backup system or multi-device synchronization protocol; its remaining concurrency/power-loss limits are documented in the [data model](docs/data-model.md).
 

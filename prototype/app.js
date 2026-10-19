@@ -1,3 +1,4 @@
+import { propertyForm, propertyPatch } from './property-editor.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
 import BentoWorkspace from './workspace.js';
 import BentoProfile from './profile.js';
@@ -268,7 +269,7 @@ import BentoFileSession from './file-session.js';
     const label = task ? 'Todo Markdown' : doc.database === meetingDatabase()?.id ? 'Meeting Markdown' : model.capability(workspace(), doc, 'project') ? 'Project Markdown' : 'Page Markdown';
     const isProject = model.capability(workspace(), doc, 'project'), meetings = meetingDatabase();
     main.innerHTML = `<p class="b-eyebrow">${escape(database?.title || 'Documents')} / ${escape(doc.title)}</p>
-      ${task ? `<h1>${escape(doc.title)}</h1>${taskProperties(task)}` : ''}
+      ${task ? `<h1>${escape(doc.title)}</h1>${taskProperties(task)}` : desktop ? propertyForm(workspace(), doc, files.view.readOnly) : ''}
       ${desktop && isProject ? `<div class="b-actions">${meetings ? `<button type="button" class="b-button b-primary" data-create="${meetings.id}" data-for-project="${doc.id}">New meeting note</button>` : ''}<button type="button" class="b-button" data-project="${doc.id}">Review project work</button></div>` : ''}
       <div class="b-actions"><button type="button" class="b-button cursor-interaction" data-export>Download Markdown</button>
         <button type="button" class="b-button cursor-interaction" data-undo ${previous ? '' : 'disabled'}>Undo last change</button></div>
@@ -386,6 +387,13 @@ import BentoFileSession from './file-session.js';
         notify('Created a Markdown document.');
         main.querySelector('[data-start]')?.focus();
       } catch (error) { const panel = main.querySelector('#b-create-error'); panel.hidden = false; panel.textContent = error.message; }
+    } else if (form.id === 'b-page-properties') {
+      try {
+        const patch = propertyPatch(workspace(), record(), values);
+        change(() => model.updateDocument(workspace(), state.document, patch), 'Page properties saved.');
+      } catch (error) {
+        const panel = form.querySelector('[data-property-error]'); panel.hidden = false; panel.textContent = error.message;
+      }
     } else if (form.id === 'b-todo-properties') {
       try { change(() => model.updateTodo(workspace(), state.document, { title: String(values.get('title')), due: String(values.get('due')), project: String(values.get('project')), status: String(values.get('status')) }), 'Todo properties saved.'); }
       catch (error) { notify(error.message); }
