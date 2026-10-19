@@ -167,6 +167,7 @@ import BentoFileSession from './file-session.js';
     if (workspace().records[documentId]?.database === 'db-meetings') state.note = documentId;
     editingSnapshot = null; proposal = false;
     render(); persist();
+    if (desktop) desktop.rememberLocation({ view, project, document: documentId || null }).then(result => { if (!result.ok) notify('Your last page could not be saved. Workspace edits are unaffected.'); });
   }
   function openRecord(documentId) {
     if (Object.hasOwn(workspace().records, documentId)) navigate('document', null, documentId);
@@ -488,7 +489,10 @@ import BentoFileSession from './file-session.js';
         const treeKey = 'bento.sidebar.tree.v1:' + view.folder;
         if (directoryState?.key !== treeKey) directoryState = new DirectoryState(treeKey);
         state.workspace = view.workspace;
-        state.view = 'daily'; state.project = null; creation = null;
+        state.view = view.location?.view || 'daily'; state.project = view.location?.project || null; creation = null;
+        if (view.location?.document) state.document = view.location.document;
+        if (state.view === 'document') directoryState.reveal(workspace().paths?.[state.document]);
+        if (view.resumeWarning) storageWarning = view.resumeWarning;
         state.document = Object.hasOwn(workspace().records, state.document) ? state.document : Object.keys(workspace().records)[0];
         state.note = Object.values(workspace().records).find(doc => doc.database === 'db-meetings')?.id;
         previous = null; editingSnapshot = null; proposal = false;
@@ -513,7 +517,11 @@ import BentoFileSession from './file-session.js';
       else if (action === 'draft') files.downloadDraft();
     });
     window.addEventListener('beforeunload', event => { if (files.dirty && !confirm('Keep your unsaved draft in Bento and close?')) { event.preventDefault(); event.returnValue = false; } });
-    await files.open(() => desktop.initial());
+    await files.open(async () => {
+      const result = await desktop.initial();
+      if (result.ok && result.value?.unavailable) { storageWarning = result.value.resumeWarning || ''; return { ok: true, value: null }; }
+      return result;
+    });
   }
   render(); notify(desktop ? personalSettings?.warning || (files?.view ? 'Workspace ready.' : 'Open a workspace or create one to begin.') : storageWarning ? 'Sample workspace opened.' : 'Sample workspace ready. Edits save in this browser.');
   if (globalThis.Tweak) {

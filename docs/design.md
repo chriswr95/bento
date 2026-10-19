@@ -259,3 +259,10 @@ Form submission constructs and validates a metadata patch before replacing the w
 ### Project review
 
 Project review derives personal todos from their project capability binding and groups them by local calendar date: overdue, today, upcoming, undated, and completed. Completed tasks stay out of upcoming/overdue groups. Related notes use direct one/many schema relations targeting the project’s database, with each note appearing once per review even if several relation fields match. Sharing a note across projects does not move or duplicate its existing todos. Custom/inactive project records can still be reviewed from their document. All entries open their underlying Markdown record. No workspace-specific review preferences are introduced in this slice.
+
+
+### Resume behavior
+
+The main process owns a local, versioned `session.json` under the per-user app-data directory. A successful folder choice records its canonical workspace path. Page navigation records document IDs and the current overview/profile view through a narrow IPC method; the renderer cannot choose the remembered root. Writes use a synced temporary file and rename. Graceful quit waits for already accepted main-process writes. No document content is stored in this file, and it does not replace draft persistence.
+
+Startup opens the previous workspace through the normal repository, including recovery and validation. Missing/disconnected folders return to the welcome screen with a message and retain the previous session until another folder is chosen. Missing page IDs or invalid project references fall back to the overview. Malformed session data is retained until a subsequent successful selection/navigation replaces it. Session restoration does not automatically apply unsaved drafts.

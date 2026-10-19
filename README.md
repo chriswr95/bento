@@ -14,7 +14,7 @@ pnpm setup:desktop
 pnpm start
 ```
 
-`setup:desktop` downloads the pinned Electron runtime. No server, account, or model service is required. The first startup shows Open workspace and New workspace. Choose an empty folder for a new workspace; it receives editable starter definitions and starts with no content records. To explore existing data, open `examples/document-databases` (copy it first if you want to keep the example unchanged).
+`setup:desktop` downloads the pinned Electron runtime. No server, account, or model service is required. First startup shows Open workspace and New workspace. Later launches reopen the last workspace and page automatically. If its folder is unavailable, Bento returns to the welcome screen with a message; if only the page is missing, it opens the workspace overview. Choose an empty folder for a new workspace; it receives editable starter definitions and starts with no content records. To explore existing data, open `examples/document-databases` (copy it first if you want to keep the example unchanged).
 
 1. Choose New workspace, then an empty folder. Create your first project by entering its title.
 2. Bento opens the project’s Markdown document immediately. Write notes, or choose New meeting note to create a note linked to that project.
@@ -30,6 +30,8 @@ External edits are checked before save. If files changed, Bento keeps its local 
 Use **Dark mode** in the header to switch between light and dark appearance. The preference is remembered on this computer, separately from workspace files; the initial appearance follows the system.
 
 Open a project document and choose **Review project work**, or use **Review work** on its daily-overview card, to see related notes and overdue/today/upcoming/undated/completed todos together. Every note and todo opens its own Markdown document. Notes linked to several projects appear in each review; existing todo ownership stays unchanged.
+
+Resume information lives in the app’s local `session.json`, separately from personal settings and workspace Markdown. It stores the last workspace path and page/view IDs.
 
 ## Current boundary
 

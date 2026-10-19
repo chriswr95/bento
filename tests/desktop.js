@@ -150,7 +150,7 @@ async function saved(page) {
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
   assert.doesNotMatch(raw, /^database:/m);
   assert.match(raw, new RegExp(projectId));
-  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'initial', 'open', 'reload', 'save', 'settingsRead', 'settingsSave'] });
+  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'initial', 'open', 'reload', 'rememberLocation', 'save', 'settingsRead', 'settingsSave'] });
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);
@@ -166,8 +166,11 @@ async function saved(page) {
   await page.locator('aside details[data-directory="todos"]>summary').click();
   await application.close(); application = null;
   console.log('Closed the app after saving. Reopening workspace.');
-  launched = await launch(workspace, userData); application = launched.app; page = launched.page;
+  launched = await launch(null, userData); application = launched.app; page = launched.page;
   await saved(page);
+  assert.equal(await page.locator('aside [aria-current="page"]').getAttribute('data-record') !== null, true);
+  await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'Weekly coordination', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
   await page.getByRole('heading', { name: 'Hello, Maki', exact: true }).waitFor();
   assert.equal(await page.locator('#bento-workflow').getAttribute('data-theme'), 'dark');
   assert.equal(await page.getByRole('button', { name: 'Dark mode', exact: true }).getAttribute('aria-pressed'), 'true');
