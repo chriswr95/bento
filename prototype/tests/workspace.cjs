@@ -44,11 +44,11 @@ test('removing references retains records and notes; duplicate titles remain sep
  assert.equal(model.sourcesFor(workspace,todos[0].id).length,0);
 });
 
-test('pasting linked occurrences deduplicates tasks and allocates independent reference IDs',()=>{
+test('pasting linked occurrences uses one todo ID and one checkpoint per source document',()=>{
  let workspace=edit(initial(),'- [ ] Review\n');
  workspace=edit(workspace,workspace.records.coordination.body.repeat(2));
  assert.equal(model.allTasks(workspace).length,1);
- assert.equal(Object.keys(workspace.records.coordination.references).length,2);
+ assert.equal(Object.keys(workspace.records.coordination.references).length,1);
  const checked=model.updateTodo(workspace,task(workspace).id,{done:true});
  assert.equal(model.parse(checked.records.coordination.body).tasks.filter(t=>t.done).length,2);
 });
@@ -57,7 +57,7 @@ test('source references across notes propagate canonical status',()=>{
  let workspace=edit(initial(),'- [ ] Review\n');
  const todo=task(workspace);
  workspace=edit(workspace,workspace.records.coordination.body,'drainage');
- assert.notEqual(Object.keys(workspace.records.coordination.references)[0],Object.keys(workspace.records.drainage.references)[0]);
+ assert.equal(Object.keys(workspace.records.coordination.references)[0],Object.keys(workspace.records.drainage.references)[0]);
  workspace=model.updateTodo(workspace,todo.id,{done:true});
  assert.match(workspace.records.coordination.body,/\[x\]/);
  assert.match(workspace.records.drainage.body,/\[x\]/);
@@ -124,4 +124,51 @@ test('invalid capability bindings and reference metadata are rejected',()=>{
  const other=initial();
  other.records.coordination.references['ref-invalid']=null;
  assert.throws(()=>model.assertWorkspace(other),/reference metadata/);
+});
+
+
+test('one changed repeated link propagates without being undone by an unchanged occurrence',()=>{
+ let workspace=edit(initial(),'- [ ] Review\n');
+ workspace=edit(workspace,workspace.records.coordination.body.repeat(2));
+ workspace=edit(workspace,workspace.records.coordination.body.replace('[Review]','[Revised]'));
+ assert.equal(task(workspace).title,'Revised');
+ assert.equal(workspace.records.coordination.body.match(/\[Revised\]/g).length,2);
+ assert.deepEqual(workspace.issues,[]);
+ assert.doesNotMatch(workspace.records.coordination.body,/bento-ref/);
+});
+
+test('conflicting repeated labels preserve the entire group without partially writing status',()=>{
+ let workspace=edit(initial(),'- [ ] Review\n');
+ const original=workspace.records.coordination.body;
+ workspace=edit(workspace,original.replace('[Review]','[First]').replace('[ ]','[x]')+original.replace('[Review]','[Second]'));
+ assert.equal(task(workspace).title,'Review');
+ assert.equal(task(workspace).done,false);
+ assert.match(workspace.issues[0].message,/Conflicting title/);
+ assert.match(workspace.records.coordination.body,/First/);
+ assert.match(workspace.records.coordination.body,/Second/);
+});
+
+test('new missing or stale linked targets are preserved rather than captured as new todos',()=>{
+ let workspace=edit(initial(),'- [ ] Review\n');
+ const count=model.allTasks(workspace).length;
+ workspace=edit(workspace,'- [ ] [Missing](todo-missing.md)\n'+workspace.records.coordination.body.replace('[Review]','[Old title]'),'drainage');
+ assert.equal(model.allTasks(workspace).length,count);
+ assert.match(workspace.issues.map(item=>item.message).join(' '),/Unresolved todo link/);
+ assert.match(workspace.issues.map(item=>item.message).join(' '),/New todo link differs/);
+});
+
+test('legacy migration preserves todo IDs, body notes, and checkpoints without mutating its input',()=>{
+ const workspace=edit(initial(),'- [ ] Review\n'), todo=task(workspace);
+ const old=model.clone(workspace); old.version=3;
+ old.records[todo.id].body='Detailed notes';
+ old.records.coordination.references={'ref-old':{target:todo.id,base_title:todo.title,base_completed:false}};
+ old.records.coordination.body=old.records.coordination.body.trimEnd()+' <!-- bento-ref: ref-old -->\n';
+ const migrated=model.migrateWorkspace(old);
+ assert.equal(migrated.version,4);
+ assert.equal(migrated.records[todo.id].body,'Detailed notes');
+ assert.doesNotMatch(migrated.records.coordination.body,/bento-ref/);
+ assert.deepEqual(Object.keys(migrated.records.coordination.references),[todo.id]);
+ assert.match(old.records.coordination.body,/bento-ref/);
+ old.records.coordination.references['ref-other']={target:todo.id,base_title:'Contradictory',base_completed:false};
+ assert.throws(()=>model.migrateWorkspace(old),/disagree/);
 });

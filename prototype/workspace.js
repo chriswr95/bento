@@ -29,8 +29,8 @@
     const due = !marker && dueMatch && validDate(dueMatch[1]) ? dueMatch[1] : '';
     return {
       line, content, prefix: taskPrefix.exec(lines[line])?.[0] || '',
-      title: marker && link ? unescapeLabel(link[1]) : due ? withoutMarker.slice(0, dueMatch.index) : withoutMarker,
-      due, done: item.checked === true, refId: marker?.[1] || null, href: link?.[2] || null
+      title: link ? unescapeLabel(link[1]) : due ? withoutMarker.slice(0, dueMatch.index) : withoutMarker,
+      due, done: item.checked === true, todoId: link && /^([\w-]+)\.md$/.exec(link[2])?.[1] || null, href: link?.[2] || null
     };
   }
 
@@ -52,8 +52,8 @@
         if (!link && child.type === 'link') link = child;
         if (child.type === 'html' && /^<!--bento-source-line:\d+-->$/.test(child.text)) child.text = '';
       });
-      if (checkbox) Object.assign(checkbox, { sourceLine: task.line, taskTitle: task.title, referenceId: task.refId, sourceHref: task.href });
-      if (link && task.refId) link.referenceId = task.refId;
+      if (checkbox) Object.assign(checkbox, { sourceLine: task.line, taskTitle: task.title, todoId: task.todoId, sourceHref: task.href });
+      if (link && task.todoId) Object.assign(link, { todoId: task.todoId, sourceLine: task.line, taskTitle: task.title });
     });
     return { tokens, tasks };
   }
@@ -108,87 +108,84 @@
     return record;
   }
   function baseline(task) {
-    return { target: task.id, base_title: task.title, base_completed: task.done };
+    return { base_title: task.title, base_completed: task.done };
   }
-  function projectedLine(task, prefix, refId) {
+  function projectedLine(task, prefix) {
     const marker = prefix.replace(/\[([ xX])\]/, task.done ? '[x]' : '[ ]');
-    return `${marker}[${escapeLabel(task.title)}](${task.id}.md) <!-- bento-ref: ${refId} -->`;
+    return `${marker}[${escapeLabel(task.title)}](${task.id}.md)`;
   }
   function issue(workspace, record, line, message) {
     workspace.issues.push({ document: record.id, line, message });
   }
 
-  function reconcileField(workspace, source, occurrence, target, reference, field, baseKey, current, write) {
-    const input = occurrence[field], base = reference[baseKey];
-    if (typeof base !== typeof current) {
-      issue(workspace, source, occurrence.line, `Missing ${field} baseline; both versions preserved.`);
-      return false;
+  function reconcileGroup(workspace, source, occurrences, reference, target) {
+    const task = taskInfo(workspace, target), cap = capability(workspace, target, 'task');
+    const proposed = {};
+    for (const [field, baseKey] of [['title', 'base_title'], ['done', 'base_completed']]) {
+      const base = reference[baseKey], current = task[field];
+      if (typeof base !== typeof current) {
+        issue(workspace, source, occurrences[0].line, `Missing ${field} baseline; both versions preserved.`);
+        return null;
+      }
+      const changes = [...new Set(occurrences.map(item => item[field]).filter(value => value !== base))];
+      if (changes.length > 1 || (changes.length && current !== base && changes[0] !== current)) {
+        issue(workspace, source, occurrences[0].line, `Conflicting ${field} changes; both versions preserved.`);
+        return null;
+      }
+      proposed[field] = changes.length ? changes[0] : current;
     }
-    if (input !== base && current !== base && input !== current) {
-      issue(workspace, source, occurrence.line, `Conflicting ${field} changes; both versions preserved.`);
-      return false;
-    }
-    if (input !== base && current === base) write(input);
-    return true;
-  }
-
-  function reconcileReference(workspace, source, occurrence, reference) {
-    const target = workspace.records[reference.target], task = taskInfo(workspace, target);
-    if (!task || occurrence.href !== `${target.id}.md`) {
-      issue(workspace, source, occurrence.line, 'Unresolved todo reference; document preserved.');
+    // Validate the whole group before mutating either canonical field.
+    if (!proposed.title.trim()) {
+      issue(workspace, source, occurrences[0].line, 'A todo needs a title; both versions preserved.');
       return null;
     }
-    const cap = capability(workspace, target, 'task');
-    const titleOK = reconcileField(workspace, source, occurrence, target, reference, 'title', 'base_title', task.title,
-      value => { target.title = value; });
-    const statusOK = reconcileField(workspace, source, occurrence, target, reference, 'done', 'base_completed', task.done,
-      value => { target.properties[cap.completion.field] = value ? cap.completion.checked : cap.completion.unchecked; });
-    if (!titleOK || !statusOK) return null;
+    target.title = proposed.title;
+    target.properties[cap.completion.field] = proposed.done ? cap.completion.checked : cap.completion.unchecked;
     const updated = taskInfo(workspace, target);
     Object.assign(reference, baseline(updated));
     return updated;
   }
 
   function reconcileDocument(workspace, source, capture, edits) {
-    const lines = source.body.split('\n'), parsed = parse(source.body), seen = new Set();
+    const lines = source.body.split('\n'), parsed = parse(source.body), groups = new Map();
     for (const occurrence of parsed.tasks) {
-      let refId = occurrence.refId;
-      let reference = source.references[refId];
-      let target;
-      if (!refId) {
+      let targetId = occurrence.todoId;
+      if (!occurrence.href) {
         if (!capture || !occurrence.title.trim()) continue;
-        target = createTodo(workspace, source, occurrence);
+        const target = createTodo(workspace, source, occurrence);
         if (!target) { issue(workspace, source, occurrence.line, 'Choose a task database to capture this checkbox.'); continue; }
-        refId = id('ref');
-        reference = baseline(taskInfo(workspace, target));
-        source.references[refId] = reference;
-      } else if (!reference) {
-        const copies = Object.values(workspace.records).filter(record => record.id !== source.id)
-          .map(record => record.references[refId]).filter(candidate => candidate && occurrence.href === `${candidate.target}.md`
-            && candidate.base_title === occurrence.title && candidate.base_completed === occurrence.done);
-        if (!copies.length || new Set(copies.map(candidate => candidate.target)).size !== 1) {
-          issue(workspace, source, occurrence.line, 'Unknown reference; no new todo was created.');
+        targetId = target.id;
+        source.references[targetId] = baseline(taskInfo(workspace, target));
+      }
+      const target = workspace.records[targetId], task = taskInfo(workspace, target);
+      if (!task) {
+        issue(workspace, source, occurrence.line, 'Unresolved todo link; document preserved.');
+        continue;
+      }
+      if (!source.references[targetId]) {
+        // A newly pasted link associates a record only when its projection agrees.
+        if (occurrence.title !== task.title || occurrence.done !== task.done) {
+          issue(workspace, source, occurrence.line, 'New todo link differs from its document; both versions preserved.');
           continue;
         }
-        refId = id('ref');
-        reference = clone(copies[0]);
-        source.references[refId] = reference;
-      } else if (seen.has(refId)) {
-        // Pasting a linked checkbox adds an occurrence, not another task record.
-        refId = id('ref');
-        reference = clone(reference);
-        source.references[refId] = reference;
+        source.references[targetId] = baseline(task);
       }
-      seen.add(refId);
-      const task = target ? taskInfo(workspace, target) : reconcileReference(workspace, source, occurrence, reference);
-      if (!task) continue;
-      const replacement = projectedLine(task, occurrence.prefix, refId);
-      if (replacement !== lines[occurrence.line]) edits.push({ line: occurrence.line, old: lines[occurrence.line], replacement, capture: !occurrence.refId, prefixLength: occurrence.prefix.length, title: task.title });
-      lines[occurrence.line] = replacement;
+      if (!groups.has(targetId)) groups.set(targetId, []);
+      groups.get(targetId).push(occurrence);
     }
-    // Removing an occurrence unlinks it; the independently useful record survives.
-    for (const refId of Object.keys(source.references)) {
-      if (!seen.has(refId) && !parsed.tasks.some(task => task.refId === refId)) delete source.references[refId];
+    for (const [targetId, occurrences] of groups) {
+      const task = reconcileGroup(workspace, source, occurrences, source.references[targetId], workspace.records[targetId]);
+      if (!task) continue;
+      for (const occurrence of occurrences) {
+        const replacement = projectedLine(task, occurrence.prefix);
+        if (replacement !== lines[occurrence.line]) edits.push({ line: occurrence.line, old: lines[occurrence.line], replacement, capture: !occurrence.todoId, prefixLength: occurrence.prefix.length, title: task.title });
+        lines[occurrence.line] = replacement;
+      }
+    }
+    // Removing a link retains the independently useful todo document.
+    const linked = new Set(parsed.tasks.map(task => task.todoId).filter(Boolean));
+    for (const targetId of Object.keys(source.references)) {
+      if (!groups.has(targetId) && !linked.has(targetId)) delete source.references[targetId];
     }
     source.body = lines.join('\n');
   }
@@ -237,15 +234,15 @@
   }
   function setCheckbox(workspace, documentId, line, done) {
     const occurrence = parse(workspace.records[documentId].body).tasks.find(task => task.line === line);
-    const reference = occurrence && workspace.records[documentId].references[occurrence.refId];
-    if (reference) return updateTodo(workspace, reference.target, { done });
+    const reference = occurrence && workspace.records[documentId].references[occurrence.todoId];
+    if (reference) return updateTodo(workspace, occurrence.todoId, { done });
     const lines = workspace.records[documentId].body.split('\n');
     if (!occurrence) throw new Error('Checkbox not found.');
     lines[line] = lines[line].replace(taskPrefix, (_, prefix, checked, gap) => prefix.slice(0, -2) + (done ? 'x' : ' ') + ']' + gap);
     return applyEdit(workspace, documentId, lines.join('\n')).workspace;
   }
   function sourcesFor(workspace, targetId) {
-    return Object.values(workspace.records).filter(record => Object.values(record.references).some(reference => reference.target === targetId));
+    return Object.values(workspace.records).filter(record => Object.hasOwn(record.references, targetId));
   }
   function serializeDocument(record) {
     const { body, ...metadata } = record;
@@ -256,7 +253,7 @@
 
   const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
   function assertWorkspace(workspace) {
-    if (!workspace || workspace.version !== 3 || !isObject(workspace.records) || !isObject(workspace.databases) || !Array.isArray(workspace.issues)) throw new Error('Invalid workspace.');
+    if (!workspace || workspace.version !== 4 || !isObject(workspace.records) || !isObject(workspace.databases) || !Array.isArray(workspace.issues)) throw new Error('Invalid workspace.');
     for (const [key, database] of Object.entries(workspace.databases)) {
       if (database.id !== key || !Array.isArray(database.fields) || !isObject(database.capabilities)) throw new Error('Invalid database definition.');
       const fields = Object.fromEntries(database.fields.map(field => [field.id, field]));
@@ -280,7 +277,7 @@
       if (!isObject(record.properties) || !isObject(record.references) || !Array.isArray(record.tags) || !record.tags.every(tag => typeof tag === 'string')) throw new Error('Invalid document metadata.');
       if (record.database && record.schema_version !== workspace.databases[record.database].schema_version) throw new Error('Unsupported schema version.');
       for (const reference of Object.values(record.references)) {
-        if (!isObject(reference) || typeof reference.target !== 'string') throw new Error('Invalid reference metadata.');
+        if (!isObject(reference) || ('target' in reference)) throw new Error('Invalid reference metadata.');
       }
       const cap = capability(workspace, record, 'task');
       if (cap && ![cap.completion.checked, cap.completion.unchecked].includes(record.properties[cap.completion.field])) throw new Error('Invalid task status.');
@@ -295,8 +292,37 @@
     return true;
   }
 
+  function migrateWorkspace(value) {
+    if (value?.version === 4) { assertWorkspace(value); return clone(value); }
+    if (value?.version !== 3) throw new Error('Unsupported workspace version.');
+    const next = clone(value);
+    for (const record of Object.values(next.records)) {
+      const references = {};
+      for (const reference of Object.values(record.references)) {
+        if (!reference || typeof reference.target !== 'string') throw new Error('Invalid legacy reference.');
+        const candidate = { base_title: reference.base_title, base_completed: reference.base_completed };
+        if (references[reference.target] && JSON.stringify(references[reference.target]) !== JSON.stringify(candidate)) {
+          throw new Error('Legacy references disagree; the saved copy needs repair.');
+        }
+        references[reference.target] = candidate;
+      }
+      const lines = record.body.split('\n');
+      for (const occurrence of parse(record.body).tasks) {
+        const legacyId = refMarker.exec(occurrence.content)?.[1];
+        const legacy = record.references[legacyId];
+        if (legacyId && (!legacy || occurrence.href !== `${legacy.target}.md`)) throw new Error('Legacy reference does not match its link.');
+        if (legacy) lines[occurrence.line] = lines[occurrence.line].replace(refMarker, '');
+      }
+      record.references = references;
+      record.body = lines.join('\n');
+    }
+    next.version = 4;
+    assertWorkspace(next);
+    return next;
+  }
+
   function createWorkspace(documents = {}) {
-    const workspace = { version: 3, defaultTaskDatabase: 'db-todos', issues: [], databases: {
+    const workspace = { version: 4, defaultTaskDatabase: 'db-todos', issues: [], databases: {
       'db-todos': { id: 'db-todos', title: 'Todos', schema_version: 1, fields: [
         { id: 'field-task-status', name: 'Status', type: 'select', options: [{ id: 'option-open', name: 'Open' }, { id: 'option-done', name: 'Done' }] },
         { id: 'field-task-due', name: 'Due date', type: 'date' },
@@ -324,5 +350,5 @@
   }
 
   return Object.freeze({ clone, parse, stripMarkers, refMarker, escapeLabel, validDate, capability, taskInfo, allTasks,
-    activeProjects, projectOf, applyEdit, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, createWorkspace });
+    activeProjects, projectOf, applyEdit, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace });
 });

@@ -32,7 +32,7 @@ A database name can change. A field label can change. Neither changes the stable
 
 ## 3. Proposed representation
 
-See the actual [Todos definition](../examples/document-databases/.bento/databases/todos.md) and [todo record](../examples/document-databases/todos/review-comments.md).
+See the actual [Todos definition](../examples/document-databases/.bento/databases/todos.md) and [todo record](../examples/document-databases/todos/todo-review-comments.md).
 
 - `bento_version` identifies the document-envelope format.
 - `kind` distinguishes control documents such as database/workspace definitions. Ordinary content does not need a hardcoded `type: todo` or `type: project`.
@@ -41,7 +41,7 @@ See the actual [Todos definition](../examples/document-databases/.bento/database
 - `schema_version` identifies the database schema used to interpret that record's properties; it is distinct from the envelope format version.
 - `title` and `tags` are intrinsic document metadata available even without membership. The UI can hide or relabel their controls, but user fields cannot redefine their identity or storage type.
 - `properties` maps stable field IDs to their values. Field display names live in the definition so a label change does not rewrite every record.
-- `references` holds per-occurrence targets and reconciliation baselines for interactive references embedded in the document body.
+- `references` stores reconciliation checkpoints keyed by linked todo document ID. Repeated links to one todo in a source share a checkpoint; there is no separate occurrence identity.
 
 Proposed initial field types: text, number, boolean, calendar date, select, and document relation. Tags are an intrinsic list of free-form strings. The initial vocabulary, query/view encoding, and exact frontmatter names remain design choices; arbitrary user-defined executable field types are outside schema editing.
 
@@ -51,7 +51,7 @@ Property-ID keys are less readable than display-name keys in raw YAML. The benef
 
 ## 4. Membership, relationships, and views
 
-The [meeting document](../examples/document-databases/meetings/coordination.md) belongs only to `db-meetings`. Its Related projects property points to a record in `db-projects`. The [todo document](../examples/document-databases/todos/review-comments.md) belongs only to `db-todos` and independently relates to the same project.
+The [meeting document](../examples/document-databases/meetings/coordination.md) belongs only to `db-meetings`. Its Related projects property points to a record in `db-projects`. The [todo document](../examples/document-databases/todos/todo-review-comments.md) belongs only to `db-todos` and independently relates to the same project.
 
 The daily overview, a project's todo list, and an open-work view of Todos can all display that same todo. None assigns another database membership. A view may query multiple databases if their mapped fields are compatible; its result is still a set of referenced documents.
 
@@ -73,22 +73,32 @@ Proposed sequence:
 
 1. Makena types `- [ ] Review drainage comments` in the meeting document.
 2. Bento recognizes a real task-list node, excluding fenced/indented code and control documents.
-3. The capture command allocates a stable todo ID and reference ID, and records the intended operation before writing multiple files.
+3. The capture command allocates one stable todo ID, and records the intended operation before writing multiple files.
 4. It creates the todo document in the configured task database with the unchecked status. A checked source box initializes a completed todo. Inherit project context only when unambiguous; otherwise leave it unassigned.
 5. It replaces the source line with a linked checkbox and records the projected title/completion baseline in the meeting's frontmatter.
-6. Clicking the task title opens the todo's own Markdown document. The checkbox changes completion without opening that document.
+6. The task label is editable in place. Its open-document control opens the todo's Markdown document; the checkbox changes completion without navigation.
 
 The [meeting fixture](../examples/document-databases/meetings/coordination.md) shows the resulting line:
 
 ```markdown
-- [ ] [Review drainage comments](../todos/review-comments.md) <!-- bento-ref: ref-review-comments -->
+- [ ] [Review drainage comments](../todos/todo-review-comments.md)
 ```
 
-The reference ID resolves through the meeting metadata to the stable todo ID. The relative link remains useful outside Bento. When paths change, Bento updates known links; the stable target ID remains the authoritative association. Broken or conflicting path/ID associations require repair rather than linking to an unrelated record.
+The linked filename is the stable document ID plus `.md`; the metadata `id` must agree. A relative directory prefix is allowed, but the identity-bearing basename stays stable when the title or containing folder changes. The link remains ordinary Markdown outside Bento. Bento can repair moved links through its ID index; a path resolving to a document with a different ID is an issue to repair, not permission to retarget a todo. The browser prototype exports a flat collection of ID-named files; folder repair is still future work.
+
+The source keeps a checkpoint for conflict detection, without a second ID or a redundant target field:
+
+```yaml
+references:
+  todo-review-comments:
+    base_title: Review drainage comments
+    base_completed: false
+```
+
 
 The link label and checkbox marker are caches of the todo's canonical title and completion. Editing either through Bento issues a command against the todo record, then refreshes its known references. The first heading in a record body is ordinary Markdown and does not independently override the metadata title. Any heading/title synchronization needs its own editor rule.
 
-A todo may be referenced from several notes without creating more task records. A plain checkbox is a new task; copying an existing linked reference intentionally refers to the same task. Each pasted occurrence gets its own reference ID. Duplicating a task document is an explicit new-record action with a new document ID. Exact external copy/paste repair remains open.
+A todo may be referenced from several notes without creating more task records. A plain checkbox is a new task; copying an existing linked reference intentionally refers to the same task. Copied links retain the same todo ID. Within a source document all occurrences share one checkpoint. One changed occurrence updates its unchanged siblings; conflicting edits among siblings preserve the group for review. Duplicating a task document is an explicit new-record action with a new document ID. Exact external copy/paste repair remains open.
 
 Opening untouched existing Markdown only discovers provisional checkboxes. An explicit edit/save or capture action materializes their todo documents; merely browsing a folder does not rewrite it. Newly authored checkboxes inside Bento trigger capture automatically. A standalone todo-capture action can create a todo document directly; it does not need a synthetic source note. A checklist within a todo's body creates separate todos and must not recursively create the containing todo again.
 
@@ -96,7 +106,7 @@ Opening untouched existing Markdown only discovers provisional checkboxes. An ex
 
 Two editable Markdown representations need an explicit reconciliation contract. A rebuildable index alone is not enough: losing it must not lose the knowledge needed to distinguish a user edit from an outdated projection.
 
-Propose retaining a last-projected baseline for each reference in the source document's metadata. Compare each title/completion field independently:
+Propose retaining a last-projected baseline for each linked todo ID in the source document's metadata. Compare each title/completion field independently, validate the whole group, then apply it atomically:
 
 | Source reference versus baseline | Todo value versus baseline | Proposed action |
 | --- | --- | --- |
@@ -106,6 +116,8 @@ Propose retaining a last-projected baseline for each reference in the source doc
 | Both changed to the same value | Same new value | Advance the baseline |
 | Both changed differently | Different new value | Preserve both and show a conflict |
 | Missing or invalid baseline | Any value | Keep the todo authoritative; surface the unresolved reference without guessing or silently overwriting the source |
+
+A new link can establish a checkpoint when its label/status agrees with the canonical todo. If they disagree, preserve both and request repair. An existing association with a missing checkpoint must not silently adopt an arbitrary baseline.
 
 Use optimistic revision checks on the actual files before applying a planned update. An invalid status/capability mapping blocks a semantic task update without blocking ordinary document access. Rebuild indexes from definitions, records, and reference baselines; do not turn every stale checkbox into a new command after a rebuild.
 

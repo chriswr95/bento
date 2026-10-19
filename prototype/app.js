@@ -1,7 +1,7 @@
 (() => {
   const root = document.getElementById('bento-workflow');
   const main = root.querySelector('#b-main'), status = root.querySelector('#b-status');
-  const model = BentoWorkspace, clone = model.clone, storageKey = 'bento.prototype.workspace.v3';
+  const model = BentoWorkspace, clone = model.clone, storageKey = 'bento.prototype.workspace.v4';
   const planDate = '2026-10-19';
   const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const appearance = { theme: 'system' };
@@ -10,13 +10,15 @@
 
   function validSnapshot(value) {
     try {
-      return value?.version === 3 && ['daily', 'document', 'profile'].includes(value.view)
-        && ['write', 'read'].includes(value.editor) && model.assertWorkspace(value.workspace)
+      return value?.version === 4 && ['daily', 'document', 'profile'].includes(value.view)
+        && model.assertWorkspace(value.workspace)
         && !!value.workspace.records[value.document] && (!value.project || !!value.workspace.records[value.project]);
     } catch { return false; }
   }
   function loadWorkspace() {
-    const host = window.openai?.widgetState?.privateContent;
+    let host = window.openai?.widgetState?.privateContent;
+    const upgrade = snapshot => ({ ...snapshot, version: 4, workspace: model.migrateWorkspace(snapshot.workspace) });
+    try { if (host?.version === 3) host = upgrade(host); } catch { host = null; }
     let local;
     try {
       expectedStorage = localStorage.getItem(storageKey);
@@ -30,6 +32,17 @@
     }
     const candidates = [host, local].filter(validSnapshot).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
     if (candidates.length) return clone(candidates[0]);
+    try {
+      const legacy = localStorage.getItem('bento.prototype.workspace.v3');
+      if (!expectedStorage && legacy) {
+        const migrated = upgrade(JSON.parse(legacy));
+        if (!validSnapshot(migrated)) throw new Error('Invalid migrated workspace');
+        return migrated;
+      }
+    } catch {
+      storageWarning = 'Earlier saved workspace needs repair; its original copy has been left unchanged.';
+      storageLocked = true;
+    }
     let documents = {};
     if (host?.version === 2 && host.documents) {
       documents = Object.fromEntries(['coordination', 'drainage'].filter(key => typeof host.documents[key] === 'string').map(key => [key, host.documents[key]]));
@@ -39,7 +52,7 @@
           .map(task => `- [${task.done ? 'x' : ' '}] ${String(task.title)}${task.due ? ` (due ${task.due})` : ''}`).join('\n');
       }
     }
-    return { version: 3, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', editor: 'write', workspace: model.createWorkspace(documents) };
+    return { version: 4, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', editor: 'write', workspace: model.createWorkspace(documents) };
   }
   let state = loadWorkspace();
   let profile = BentoProfile.read();
@@ -55,10 +68,10 @@
       if (/^<!-- bento-ref: [\w-]+ -->$/.test(text.trim())) return '';
       return escape(model.stripMarkers(text));
     },
-    link({ href, tokens, referenceId }) {
-      if (referenceId) {
-        const reference = record().references[referenceId];
-        if (!reference || href !== `${reference.target}.md` || !model.taskInfo(workspace(), workspace().records[reference.target])) return this.parser.parseInline(tokens);
+    link({ href, tokens, todoId }) {
+      if (todoId) {
+        const reference = record().references[todoId];
+        if (!reference || href !== `${todoId}.md` || !model.taskInfo(workspace(), workspace().records[todoId])) return this.parser.parseInline(tokens);
       }
       const target = /^([\w-]+)\.md$/.exec(href)?.[1];
       return target && Object.hasOwn(workspace().records, target)
@@ -67,8 +80,8 @@
     },
     image({ text }) { return `<span>[Image: ${escape(text)}]</span>`; },
     checkbox(token) {
-      const reference = token.referenceId && record().references[token.referenceId];
-      const unresolved = token.referenceId && (!reference || token.sourceHref !== `${reference.target}.md` || !model.taskInfo(workspace(), workspace().records[reference.target]));
+      const reference = token.todoId && record().references[token.todoId];
+      const unresolved = token.todoId && (!reference || token.sourceHref !== `${token.todoId}.md` || !model.taskInfo(workspace(), workspace().records[token.todoId]));
       return Number.isInteger(token.sourceLine)
         ? `<input type="checkbox" class="cursor-interaction" data-source-line="${token.sourceLine}" aria-label="Complete ${escape(token.taskTitle)}" ${token.checked ? 'checked' : ''} ${unresolved ? 'disabled' : ''}>` : '';
     }
@@ -162,7 +175,7 @@
   function refreshDocument() {
     const parsed = model.parse(record().body);
     main.querySelector('#b-reading').innerHTML = markdown.parser(parsed.tokens);
-    const targets = new Set(parsed.tasks.map(task => record().references[task.refId]?.target).filter(Boolean));
+    const targets = new Set(parsed.tasks.map(task => task.todoId).filter(id => record().references[id]));
     main.querySelector('#b-task-count').textContent = `${targets.size} linked todos in this document`;
     const issues = workspace().issues.filter(item => item.document === record().id);
     const panel = main.querySelector('#b-document-issues');
@@ -305,7 +318,7 @@
     if (editor.id !== 'b-markdown-editor' || event.key !== 'Enter' || editor.selectionStart !== editor.selectionEnd) return;
     const pos = editor.selectionStart, lineEnd = editor.value.indexOf('\n', pos);
     const end = lineEnd < 0 ? editor.value.length : lineEnd;
-    if (!editor.value.slice(pos, end).startsWith('](') || !/<!-- bento-ref: [\w-]+ -->$/.test(editor.value.slice(pos, end))) return;
+    if (!editor.value.slice(pos, end).startsWith('](') || !/^\]\([\w-]+\.md\)$/.test(editor.value.slice(pos, end))) return;
     event.preventDefault(); editor.setRangeText('\n- [ ] ', end, end, 'end');
     editor.dispatchEvent(new Event('input', { bubbles: true }));
   });

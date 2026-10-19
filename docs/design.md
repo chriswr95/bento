@@ -53,7 +53,7 @@ Initial task use remains personal. The starter task schema can reference at most
 
 A todo document owns its canonical title, completion status, and other properties; its Markdown body stores notes and supporting context. A meeting note owns the discussion and references to those todos. Checkbox completion markers and link labels are editable projections of the referenced document, not independent task records.
 
-Propose converting a newly authored checkbox into a link to a newly created todo document as one recoverable operation. Track each reference with a stable reference ID and a last-projected title/completion baseline in the meeting metadata. This enables comparison between external note edits and current todo values. See the walkthrough for a concrete example and conflict rules. Exact reference syntax is still open.
+Propose converting a newly authored checkbox into a link to a newly created todo document as one recoverable operation. Use the todo document ID in its stable filename as the only identity in each Markdown link. Retain a last-projected title/completion checkpoint per linked todo ID in the meeting metadata, shared by repeated occurrences. No per-occurrence ID or inline bookkeeping comment is needed. This enables comparison between external note edits and current todo values. See the walkthrough for the encoding and conflict rules.
 
 Opening existing Markdown discovers checkboxes without automatically rewriting the folder or creating files. Existing unlinked boxes appear as pending captures until an explicit save/capture operation materializes them. Within Bento, authoring a new checkbox triggers that operation automatically without a separate task form. If no compatible task database is configured, retain visible pending checkboxes and explain how to choose a destination; do not recreate a removed database.
 
@@ -61,7 +61,7 @@ Removing a checkbox reference unlinks that occurrence and retains the todo docum
 
 ### Current prototype boundary
 
-The browser prototype now has a separate record model (`prototype/workspace.js`): seeded declarative database definitions, one record per project/meeting/todo, scalar membership checks, stable document/reference IDs, persisted reference baselines, and todo-authoritative title/completion. Its create/open/edit/toggle flow is implemented across meeting documents, todo properties/bodies, and daily review. Removing a reference retains the todo record and notes.
+The browser prototype now has a separate record model (`prototype/workspace.js`): seeded declarative database definitions, one record per project/meeting/todo, scalar membership checks, stable document IDs, persisted reference baselines, and todo-authoritative title/completion. Its create/open/edit/toggle flow is implemented across meeting documents, todo properties/bodies, and daily review. Removing a reference retains the todo record and notes.
 
 The prototype stores record envelopes and Markdown bodies together in one browser-local workspace snapshot, separate from the profile key. It exports individual documents as Markdown with YAML-compatible frontmatter; it does not yet load or save a desktop folder, parse frontmatter imports, manage database/schema changes through the UI, or implement production multi-file recovery. Seed data is declared in code rather than loaded from the design fixtures. These boundaries remain implementation work.
 

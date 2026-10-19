@@ -10,7 +10,7 @@ Read the [data-model walkthrough](../../docs/data-model.md) first. All names and
 | --- | --- |
 | Workspace configuration | [workspace definition](.bento/workspace.md) |
 | Database definitions | [Projects](.bento/databases/projects.md), [Todos](.bento/databases/todos.md), [Meeting Notes](.bento/databases/meeting-notes.md) |
-| Content records | [project](projects/creekside.md), [meeting](meetings/coordination.md), [todo](todos/review-comments.md), [unclassified note](scratch.md) |
+| Content records | [project](projects/creekside.md), [meeting](meetings/coordination.md), [todo](todos/todo-review-comments.md), [unclassified note](scratch.md) |
 
 Every content record has zero or one database membership. The project relationship in a meeting or todo is not another membership. A database definition describes fields, while the record frontmatter contains values keyed by stable field IDs. Every record also has a free-form Markdown body.
 

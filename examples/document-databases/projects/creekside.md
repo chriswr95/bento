@@ -14,4 +14,4 @@ properties:
 Review coordination notes and follow-up work for this fictional project.
 
 - [Weekly coordination meeting](../meetings/coordination.md)
-- [Review drainage comments](../todos/review-comments.md)
+- [Review drainage comments](../todos/todo-review-comments.md)
