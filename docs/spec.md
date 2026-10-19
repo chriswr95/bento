@@ -48,9 +48,21 @@ Civil engineering provides the context for organizing work. Engineering calculat
 
 The exact editor interaction, storage model, framework, and agent integration are design decisions. These requirements do not select an agent provider or require a particular backend.
 
-## 4. Primary workflow: meeting notes to follow-up
+## 4. Three high-level workflows
 
-### Capture a meeting
+These workflows define Bento's product scope. We will start by validating meeting notes → action items → follow-up, while keeping all three visible in planning and product validation.
+
+| Workflow | Desired outcome |
+| --- | --- |
+| Meeting notes → action items → follow-up | Turn discussion into clear actions and retain the context needed to follow through. |
+| Tracking projects, deadlines, and priorities | Understand the state of ongoing projects and decide what needs attention next. |
+| Organizing project notes and references | Keep project knowledge accessible and find the information needed to move work forward. |
+
+### 1. Meeting notes → action items → follow-up
+
+Initial implementation and validation priority.
+
+#### Capture a meeting
 
 1. Open a project and create a meeting note.
 2. Write and format notes using familiar page controls.
@@ -59,7 +71,7 @@ The exact editor interaction, storage model, framework, and agent integration ar
 
 A meeting title, date, attendees, and agenda are candidate template fields to validate with Makena, not mandatory metadata for every note.
 
-### Turn discussion into action
+#### Turn discussion into action
 
 1. Select text to create a todo, or ask an agent to suggest action items from the meeting.
 2. Review the suggested titles, project, due dates, and links to the source note.
@@ -68,7 +80,7 @@ A meeting title, date, attendees, and agenda are candidate template fields to va
 
 An agent must distinguish information recorded in the note from its own suggestions. Missing dates, ownership, or decisions must not become invented facts. The user can retain an action without assigning a due date.
 
-### Follow through
+#### Follow through
 
 1. Review open actions for a project or across projects, with optional due-date and tag filters.
 2. Open a todo and return to its source meeting for context.
@@ -78,11 +90,25 @@ An agent must distinguish information recorded in the note from its own suggesti
 
 Example request: “Find the open actions from this project's last meeting and help me prepare a follow-up.” Exact project terminology and meeting conventions still need validation.
 
-## 5. Other core journeys
+### 2. Tracking projects, deadlines, and priorities
 
-### Manage a project
+1. Create a project with a description, related notes, and todos.
+2. Review project status and open work within a project or across projects.
+3. See upcoming and overdue todo deadlines, then decide what needs attention next.
+4. Update work as priorities change and archive finished projects while retaining their history.
 
-Create a project, write its description, associate existing notes, and add todos. Review its status and open work in one place. Archive the project while retaining its notes and task history.
+The exact priority controls and any project-level deadlines remain to be validated with Makena. This workflow does not yet select a priority scale or scheduling model.
+
+### 3. Organizing project notes and references
+
+1. Create or associate notes and links to relevant reference material with a project.
+2. Organize them with meaningful titles and free-form tags.
+3. Retrieve information through project navigation, search, or tags.
+4. Move between a reference, related notes, and the work they inform without losing context.
+
+The reference types Makena uses still need validation. Linking to reference material does not imply importing or editing every external file format.
+
+## 5. Supporting journeys
 
 ### Use existing Markdown
 
@@ -131,7 +157,7 @@ The initial integration may connect to an external coding agent rather than embe
 
 ## 7. Initial scope and sequencing
 
-The first usable product should support the complete manual meeting-to-follow-up workflow: project setup, Markdown notes, todo creation with source context, tags, search, and consistent project/todo views on Windows and macOS. Include a usable default interface and theme switching.
+All three high-level workflows are product goals. The first usable product should support the complete manual meeting-to-follow-up workflow: project setup, Markdown notes, todo creation with source context, tags, search, and consistent project/todo views on Windows and macOS. Include a usable default interface and theme switching.
 
 The first agent-assisted slice should propose action items from a selected meeting note, let the user review them, and apply the chosen items with source links and recovery. Next, validate a small agent-assisted application change through the review, trial, and adoption journey above. Agent usability is a product goal, not an assumption that Markdown alone satisfies it.
 
@@ -142,6 +168,8 @@ Defer real-time collaboration, hosted accounts, mobile apps, calendar/email inte
 Validate these with Makena using representative, non-sensitive meeting material before treating the experience as complete:
 
 - She can create a project, capture a meeting, create linked todos, and find outstanding follow-up without terminal use or knowledge of the file format.
+- She can review projects and upcoming or overdue work, then identify what needs attention next.
+- She can organize project notes and reference links, then retrieve them through project navigation, search, or tags.
 - She can format everyday notes through discoverable controls and reopen them with their content intact.
 - She can manage a todo from different views and see one consistent status and source context.
 - She can organize and retrieve notes, projects, and todos with free-form tags and search.
