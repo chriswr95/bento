@@ -492,7 +492,7 @@ import BentoFileSession from './file-session.js';
         state.view = view.location?.view || 'daily'; state.project = view.location?.project || null; creation = null;
         if (view.location?.document) state.document = view.location.document;
         if (state.view === 'document') directoryState.reveal(workspace().paths?.[state.document]);
-        if (view.resumeWarning) storageWarning = view.resumeWarning;
+        if ('resumeWarning' in view) storageWarning = view.resumeWarning || '';
         state.document = Object.hasOwn(workspace().records, state.document) ? state.document : Object.keys(workspace().records)[0];
         state.note = Object.values(workspace().records).find(doc => doc.database === 'db-meetings')?.id;
         previous = null; editingSnapshot = null; proposal = false;

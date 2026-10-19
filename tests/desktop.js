@@ -200,6 +200,18 @@ async function saved(page) {
   assert.match(raw, /External detail/); assert.doesNotMatch(raw, /Unsaved local detail/);
   assert.equal(await page.evaluate(() => Object.keys(localStorage).some(key => key.startsWith('bento.desktop.draft.') && localStorage.getItem(key).includes('Unsaved local detail'))), true);
   console.log('Passed native create/open, typed checkbox → Markdown files, grouped status, todo notes, restart, completion propagation, sandbox bridge, external-change protection, and retained draft.');
+  await stop(application); application = null;
+  const movedWorkspace = path.join(temporary, 'Reconnected workspace');
+  await fs.rename(workspace, movedWorkspace);
+  launched = await launch(null, userData); application = launched.app; page = launched.page;
+  await page.getByRole('heading', { name: 'Your workspace, in Markdown.' }).waitFor();
+  assert.match(await page.locator('#b-status').innerText(), /last workspace is unavailable/);
+  await application.evaluate(({ dialog }, folder) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] }); }, movedWorkspace);
+  await page.getByRole('button', { name: 'Open workspace', exact: true }).click();
+  await saved(page);
+  assert.doesNotMatch(await page.locator('#b-status').innerText(), /last workspace is unavailable/);
+  console.log('Passed disconnected-workspace welcome fallback and recovery through another folder.');
+
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
   try {
     await stop(application);
