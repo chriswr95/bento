@@ -22,7 +22,7 @@ pnpm start
 4. Use ↗ to open the todo. Add notes; edit title, Status, due date, and project. Save properties applies those values, then autosave persists them.
 5. Save files flushes changes immediately. The Workspace menu holds open/new/reload actions. Close and reopen the workspace to read documents and schemas from disk.
 
-The sidebar groups pages by database, highlights the open document, and keeps the todo list collapsed unless you open a todo. Each database has a + creation action. Projects, Meeting Notes, and Todos are customizable starter definitions. Sample content remains available separately under `examples/document-databases`.
+The sidebar shows a collapsible workspace directory tree with database folders, nested subfolders, and Markdown pages. Folder expansion is remembered per workspace on this computer; opening a page reveals its ancestor folders. Todo folders start collapsed. Each database folder has a + creation action. Projects, Meeting Notes, and Todos are customizable starter definitions. Sample content remains available separately under `examples/document-databases`.
 
 External edits are checked before save. If files changed, Bento keeps its local draft and stops instead of overwriting them. Reload files reads external changes; Restore draft is available only against an unchanged baseline. Download draft preserves the draft for manual comparison when files diverge. Opening a workspace does not rewrite untouched files, except to recover an earlier interrupted save.
 

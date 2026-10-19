@@ -67,6 +67,27 @@ async function saved(page) {
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Canceled project');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   assert.equal((await fs.readdir(path.join(workspace, 'projects'))).filter(name => name.startsWith('project-')).length, 1);
+  // Reload after an external directory move: folders remain navigation, not membership changes.
+  await fs.mkdir(path.join(workspace, 'projects', 'Design'));
+  await fs.rename(path.join(workspace, 'projects', projectFiles[0]), path.join(workspace, 'projects', 'Design', projectFiles[0]));
+  await page.locator('.b-workspace-menu>summary').click();
+  await page.getByRole('button', { name: 'Reload files', exact: true }).click();
+  await saved(page);
+  const projectsFolder = page.locator('aside details[data-directory="projects"]');
+  const designFolder = page.locator('aside details[data-directory="projects/Design"]');
+  assert.equal(await designFolder.getAttribute('open'), null);
+  await designFolder.locator(':scope>summary').focus();
+  await page.keyboard.press('Enter');
+  await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).click();
+  await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'My first project', exact: true }).waitFor();
+  await projectsFolder.locator(':scope>summary').click();
+  await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
+  assert.equal(await projectsFolder.getAttribute('open'), null);
+  // Opening the project from the overview reveals its folder ancestry.
+  await page.locator('main').getByRole('button', { name: 'My first project', exact: true }).click();
+  assert.notEqual(await projectsFolder.getAttribute('open'), null);
+  assert.notEqual(await designFolder.getAttribute('open'), null);
+  console.log('Passed nested directory navigation, keyboard disclosure, retained collapse, and active-path reveal.');
   await page.locator('main').getByRole('button', { name: 'New meeting note', exact: true }).click();
   assert.equal(await page.getByRole('combobox', { name: 'Project', exact: true }).inputValue(), projectId);
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Weekly coordination');
@@ -99,12 +120,15 @@ async function saved(page) {
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);
+  await page.locator('aside details[data-directory="projects"]>summary').click();
+  await page.locator('aside details[data-directory="todos"]>summary').click();
   await application.close(); application = null;
   console.log('Closed the app after saving. Reopening workspace.');
   launched = await launch(workspace, userData); application = launched.app; page = launched.page;
   await saved(page);
-  await page.locator('aside details').getByText('1 todo', { exact: true }).click();
-  await page.getByRole('navigation', { name: 'Todos', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).click();
+  assert.equal(await page.locator('aside details[data-directory="projects"]').getAttribute('open'), null);
+  await page.locator('aside details[data-directory="todos"]>summary').click();
+  await page.getByRole('navigation', { name: 'Workspace files', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).click();
   assert.match(await page.locator('#b-reading').innerText(), /Keep this project detail/);
   assert.equal(await page.getByRole('combobox', { name: 'Status', exact: true }).inputValue(), 'option-started');
   await page.getByRole('checkbox', { name: 'Completed', exact: true }).click();
