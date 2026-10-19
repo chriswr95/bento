@@ -136,3 +136,6 @@ html {background:light-dark(#fffefa,#202127)}
 
 #bento-workflow .b-review-note {display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--b-line)}
 #bento-workflow .b-review-note>span {font-size:12px;flex:none}
+
+/* Active Markdown stays on the same page with the preview's typography. */
+#bento-workflow .b-block-source {background:transparent;padding:0;border-radius:0;font:inherit;line-height:1.5}

@@ -266,3 +266,10 @@ Project review derives personal todos from their project capability binding and 
 The main process owns a local, versioned `session.json` under the per-user app-data directory. A successful folder choice records its canonical workspace path. Page navigation records document IDs and the current overview/profile view through a narrow IPC method; the renderer cannot choose the remembered root. Writes use a synced temporary file and rename. Graceful quit waits for already accepted main-process writes. No document content is stored in this file, and it does not replace draft persistence.
 
 Startup opens the previous workspace through the normal repository, including recovery and validation. Missing/disconnected folders return to the welcome screen with a message and retain the previous session until another folder is chosen. Missing page IDs or invalid project references fall back to the overview. Malformed session data is retained until a subsequent successful selection/navigation replaces it. Session restoration does not automatically apply unsaved drafts.
+
+
+### First editor transition improvements
+
+Click-to-edit maps an unambiguous visible text run into the block's Markdown source. Ambiguous/repeated runs and entity-encoded text fall back to source end rather than guessing. Reading selections remain selections. Active blocks inherit preview typography; source-boundary arrow keys move to neighboring blocks, and Escape returns focus to the same rendered block.
+
+This remains a block-source editor. The next editor milestone must support cross-block selection, dependable undo/redo, paste round trips, IME composition, and live formatting without losing the caret or rewriting unrelated Markdown. Evaluate a production editor against those acceptance cases before replacing the current implementation; no editor library is selected by this slice.

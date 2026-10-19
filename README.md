@@ -33,6 +33,8 @@ Open a project document and choose **Review project work**, or use **Review work
 
 Resume information lives in the app’s local `session.json`, separately from personal settings and workspace Markdown. It stores the last workspace path and page/view IDs.
 
+Click rendered text to edit near that position. Arrow keys at a block’s source boundary move to the neighboring block; Escape returns focus to that block in reading form. Drag-selecting rendered text keeps it in reading form. Active Markdown uses the preview’s typography rather than a separate code panel. Complex or ambiguous text runs fall back to placing the caret at the source end.
+
 ## Current boundary
 
 This is an early Electron desktop implementation. It loads actual YAML schemas and Markdown files, validates all eight field types, saves through a recoverable journal, and preserves unknown metadata. It shares the live Markdown editor/model with the browser sample.

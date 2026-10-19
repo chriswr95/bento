@@ -1,3 +1,4 @@
+import { sourceCaret } from './editor-position.js';
 import BentoWorkspace from './workspace.js';
 /* Markdown stays authoritative. Only the active block exposes source syntax. */
 class LiveEditor {
@@ -59,7 +60,7 @@ class LiveEditor {
       if (input) { input.focus(); input.setSelectionRange(focus.start, focus.end ?? focus.start); }
     }
   }
-  start(block, atEnd = true) {
+  start(block, atEnd = true, caret = null) {
     if (this.active) {
       const start = block.dataset.start;
       this.active = null; this.render();
@@ -67,15 +68,23 @@ class LiveEditor {
       if (!block) return;
     }
     this.active = { start: Number(block.dataset.start), end: Number(block.dataset.end) };
+    const preview = block.firstElementChild;
+    const typography = preview ? getComputedStyle(preview) : null;
     const textarea = document.createElement('textarea');
     textarea.dataset.blockSource = '';
     textarea.className = 'b-block-source';
     textarea.setAttribute('aria-label', this.options.label);
     textarea.spellcheck = true;
+    if (typography) {
+      textarea.style.font = typography.font;
+      textarea.style.letterSpacing = typography.letterSpacing;
+      textarea.style.margin = typography.margin;
+    }
     textarea.value = this.body().slice(this.active.start, this.active.end);
     block.replaceChildren(textarea);
     textarea.focus();
-    textarea.setSelectionRange(atEnd ? textarea.value.length : 0, atEnd ? textarea.value.length : 0);
+    const position = caret ?? (atEnd ? textarea.value.length : 0);
+    textarea.setSelectionRange(position, position);
     this.resize(textarea);
   }
   append() {
@@ -92,7 +101,17 @@ class LiveEditor {
     if (event.target.closest('[data-append]')) return this.append();
     if (event.target.closest('input,textarea,button,a')) return;
     const block = event.target.closest('[data-start]');
-    if (block) this.start(block);
+    if (block) {
+      // A drag selection should remain a reading selection, not become an edit.
+      if (!window.getSelection().isCollapsed) return;
+      const point = document.caretPositionFromPoint?.(event.clientX, event.clientY);
+      const range = point ? null : document.caretRangeFromPoint?.(event.clientX, event.clientY);
+      const node = point?.offsetNode || range?.startContainer;
+      const offset = point?.offset ?? range?.startOffset;
+      const source = this.body().slice(Number(block.dataset.start), Number(block.dataset.end));
+      const caret = node?.nodeType === Node.TEXT_NODE && block.contains(node) ? sourceCaret(source, node.textContent, offset) : source.length;
+      this.start(block, true, caret);
+    }
   }
   resize(textarea) {
     textarea.style.height = 'auto';
@@ -139,9 +158,22 @@ class LiveEditor {
       this.resize(input);
     }
   }
+  adjacent(direction) {
+    const blocks = this.blocks();
+    const next = direction > 0 ? blocks.find(block => block.start >= this.active.end) : blocks.filter(block => block.end <= this.active.start).at(-1);
+    if (!next) return false;
+    this.active = null; this.render();
+    this.start(this.element.querySelector(`[data-start="${next.start}"]`), direction < 0);
+    return true;
+  }
   keydown(event) {
     if (event.isComposing) return;
     const input = event.target;
+    if (input.matches('[data-block-source]') && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey && input.selectionStart === input.selectionEnd) {
+      const direction = ['ArrowUp', 'ArrowLeft'].includes(event.key) && input.selectionStart === 0 ? -1
+        : ['ArrowDown', 'ArrowRight'].includes(event.key) && input.selectionEnd === input.value.length ? 1 : 0;
+      if (direction && this.adjacent(direction)) { event.preventDefault(); return; }
+    }
     if (input.matches('[data-task-title]') && event.key === 'Enter') {
       event.preventDefault();
       const line = Number(input.dataset.taskTitle), lines = this.body().split('\n');
@@ -163,7 +195,9 @@ class LiveEditor {
       this.options.change(lines.join('\n'));
       this.render({ line: line + 1, start: 0 });
     } else if (input.matches('[data-block-source]') && event.key === 'Escape') {
-      event.preventDefault(); this.active = null; this.render(); this.element.querySelector('[data-append]').focus();
+      const start = this.active?.start;
+      event.preventDefault(); this.active = null; this.render();
+      (this.element.querySelector(`[data-start="${start}"]`) || this.element.querySelector('[data-append]')).focus();
     } else if (input.matches('[data-start]') && event.key === 'Enter') {
       event.preventDefault(); this.start(input);
     }

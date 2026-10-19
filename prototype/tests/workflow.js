@@ -66,6 +66,26 @@ let browser;
  await source.fill('**Revised discussion** with a [reference](creek.md).\n\n');
  await source.press('Escape');
  await page.locator('#b-reading strong').filter({hasText:'Revised discussion'}).waitFor();
+ // Clicking formatted text keeps a nearby caret rather than jumping to the end.
+ await page.locator('#b-reading strong').filter({hasText:'Revised discussion'}).click({position:{x:2,y:8}});
+ assert.equal(await source.evaluate(input=>input.selectionStart < input.value.length / 2),true);
+ await source.press('Escape');
+ assert.equal(await page.locator('[data-start]:focus').count(),1);
+ await page.keyboard.press('Enter');
+ await source.evaluate(input=>input.setSelectionRange(0,0));
+ await source.press('ArrowUp');
+ assert.match(await source.inputValue(), /Discussion & decisions/);
+ await source.evaluate(input=>input.setSelectionRange(input.value.length,input.value.length));
+ await source.press('ArrowDown');
+ assert.match(await source.inputValue(), /Revised discussion/);
+ assert.equal(await source.evaluate(input=>input.selectionStart),0);
+ await source.press('Escape');
+ const formatted=page.locator('#b-reading strong').filter({hasText:'Revised discussion'});
+ await formatted.evaluate(element=>{const range=document.createRange();range.selectNodeContents(element);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);});
+ await formatted.dispatchEvent('click');
+ assert.equal(await page.locator('[data-block-source]').count(),0);
+ await page.evaluate(()=>getSelection().removeAllRanges());
+
  // [] + space converts before a title exists. Typing continues in the formatted task.
  await page.getByRole('button',{name:'Write a note…',exact:true}).click();
  await source.pressSequentially('[] ');
