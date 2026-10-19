@@ -170,6 +170,6 @@ The YAML document API retains unknown values and comments where possible, and up
 
 ## Implementation boundary
 
-The Electron app creates/opens folders, discovers registered definitions, edits notes/todo bodies and title/status/date/project properties, creates todo files from checkboxes, saves, reloads, and recovers interrupted saves. The browser-only sample still uses its independent local snapshot. Profile/drafts remain in local app storage, separate from workspace content and agent context.
+The Electron app creates/opens folders, discovers registered definitions, edits notes/todo bodies and title/status/date/project properties, creates todo files from checkboxes, saves, reloads, and recovers interrupted saves. The browser-only sample still uses its independent local snapshot. Personal profile/appearance are stored in the per-user app-data `settings.md`, outside workspace content. Drafts remain in local renderer storage. Personal settings are never included in workspace snapshots or agent context automatically.
 
 Next: database/schema controls, generic record property editing, explicit transfer/conversion tools, recovery/conflict review, incremental external-change watching, production editor/accessibility work, and Windows/macOS distribution validation. No real agent or Copilot integration is implemented.

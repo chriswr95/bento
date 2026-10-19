@@ -1,3 +1,4 @@
+import { legacyPreferences } from './personal-settings.js';
 import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
 import { propertyForm, propertyPatch } from './property-editor.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
@@ -11,6 +12,8 @@ import BentoFileSession from './file-session.js';
   const model = BentoWorkspace, clone = model.clone, storageKey = 'bento.prototype.workspace.v4';
   const planDate = window.bentoDesktop ? BentoProfile.dateKey() : '2026-10-19';
   const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  const desktop = window.bentoDesktop;
+  let personalSettings = null;
   const appearance = { theme: readTheme() };
   const systemAppearance = matchMedia('(prefers-color-scheme: dark)');
   function applyAppearance() {
@@ -21,9 +24,25 @@ import BentoFileSession from './file-session.js';
     toggle.setAttribute('aria-pressed', String(dark));
     toggle.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
   }
-  function changeAppearance(theme) {
+  async function changeAppearance(theme) {
     appearance.theme = theme; applyAppearance();
-    if (!saveTheme(theme)) notify('Appearance changed for this session. Local settings could not be saved.');
+    if (desktop) {
+      try { await savePersonal({ appearance: theme }); }
+      catch (error) { notify(`Appearance changed for this session. ${error.message}`); }
+    } else if (!saveTheme(theme)) notify('Appearance changed for this session. Local settings could not be saved.');
+  }
+  async function savePersonal(patch) {
+    const result = await desktop.settingsSave(patch);
+    if (!result.ok) throw new Error(result.error);
+    personalSettings = result.value;
+  }
+  async function loadPersonal() {
+    const result = await desktop.settingsRead(legacyPreferences());
+    if (!result.ok) { notify(result.error); return; }
+    personalSettings = result.value;
+    profile = personalSettings.profile; appearance.theme = personalSettings.appearance;
+    applyAppearance();
+    if (personalSettings.warning) notify(personalSettings.warning);
   }
   systemAppearance.addEventListener('change', applyAppearance);
   applyAppearance();
@@ -76,7 +95,6 @@ import BentoFileSession from './file-session.js';
     }
     return { version: 4, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', workspace: model.createWorkspace(documents) };
   }
-  const desktop = window.bentoDesktop;
   let files = null, directoryState = null;
   let state = desktop ? { version: 4, view: 'daily', project: null, document: null, note: null, workspace: { version: 4, databases: {}, records: {}, issues: [] } } : loadWorkspace();
   let profile = BentoProfile.read();
@@ -229,6 +247,7 @@ import BentoFileSession from './file-session.js';
     }).join('');
   }
   function renderDaily() {
+
     if (desktop && !Object.keys(workspace().records).length) {
       const projects = projectDatabase();
       main.innerHTML = `<p class="b-eyebrow">Your workspace is ready</p><h1>${escape(BentoProfile.greeting(profile))}</h1>
@@ -313,7 +332,7 @@ import BentoFileSession from './file-session.js';
     if (heading && !state.project) heading.textContent = BentoProfile.greeting(profile);
   }
   function renderProfile() {
-    main.innerHTML = `<p class="b-eyebrow">Personal settings</p><h1>Your profile</h1><p class="b-muted">Make Bento feel a little more like you.</p>
+    main.innerHTML = `${desktop && personalSettings ? `<p class="b-muted">Settings file: <code>${escape(personalSettings.path)}</code></p>${personalSettings.warning ? `<p class="b-issues" role="alert">${escape(personalSettings.warning)}</p>` : ''}<button type="button" class="b-button" data-reload-settings>Reload settings</button>` : ''}<p class="b-eyebrow">Personal settings</p><h1>Your profile</h1><p class="b-muted">Make Bento feel a little more like you.</p>
       <form id="b-profile-form"><div class="b-form">
         <label class="b-field">First name<input name="firstName" autocomplete="given-name" required maxlength="80" value="${escape(profile.firstName)}"></label>
         <label class="b-field">Last name<input name="lastName" autocomplete="family-name" maxlength="80" value="${escape(profile.lastName)}"></label>
@@ -357,7 +376,8 @@ import BentoFileSession from './file-session.js';
   root.addEventListener('click', event => {
     const button = event.target.closest('button'); if (!button) return;
     try {
-      if (button.hasAttribute('data-theme-toggle')) changeAppearance(nextTheme(appearance.theme, systemAppearance.matches));
+      if (button.hasAttribute('data-reload-settings')) loadPersonal().then(() => { render(); notify(personalSettings?.warning || 'Personal settings reloaded.'); });
+      else if (button.hasAttribute('data-theme-toggle')) changeAppearance(nextTheme(appearance.theme, systemAppearance.matches));
       else if (button.dataset.create) showCreate(button.dataset.create, button.dataset.forProject || null);
       else if (button.hasAttribute('data-cancel-create')) { Object.assign(state, creation.previous); creation = null; render(); }
       else if (button.dataset.view === 'meeting') openRecord(state.note);
@@ -390,7 +410,7 @@ import BentoFileSession from './file-session.js';
   root.addEventListener('input', event => {
     if (event.target.closest('#b-profile-form')) { event.target.setCustomValidity(''); return; }
   });
-  root.addEventListener('submit', event => {
+  root.addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.target, values = new FormData(form);
     if (form.id === 'b-create-document') {
@@ -417,13 +437,18 @@ import BentoFileSession from './file-session.js';
     } else if (form.id === 'b-profile-form') {
       const value = { version: 1, firstName: String(values.get('firstName') || '').trim(), lastName: String(values.get('lastName') || '').trim(), birthday: String(values.get('birthday') || '') };
       if (!BentoProfile.validate(value)) { form.elements.firstName.setCustomValidity('Enter a first name and a valid birthday, or leave birthday blank.'); form.reportValidity(); return; }
+      if (desktop) {
+        try { await savePersonal({ profile: value }); profile = value; navigate('daily'); notify('Profile saved in personal settings.md.'); }
+        catch (error) { notify(error.message); }
+        return;
+      }
       const result = BentoProfile.write(value); profile = result.profile; navigate('daily');
       notify(result.saved ? 'Profile saved in this browser.' : 'Profile kept for this session. Browser storage is unavailable.');
     }
   });
   window.addEventListener('storage', event => {
-    if (event.key === appearanceKey || event.key === null) { appearance.theme = readTheme(); applyAppearance(); }
-    if (event.key === BentoProfile.key || event.key === null) { profile = BentoProfile.read(); refreshGreeting(); }
+    if (!desktop && (event.key === appearanceKey || event.key === null)) { appearance.theme = readTheme(); applyAppearance(); }
+    if (!desktop && (event.key === BentoProfile.key || event.key === null)) { profile = BentoProfile.read(); refreshGreeting(); }
     if (event.key === storageKey && event.newValue !== expectedStorage) { storageLocked = true; storageWarning = 'Another page changed the saved workspace; this session will not overwrite it.'; notify('Workspace changed elsewhere.'); }
   });
   document.addEventListener('visibilitychange', refreshGreeting);
@@ -434,6 +459,7 @@ import BentoFileSession from './file-session.js';
     if (!desktop && validSnapshot(saved) && saved.savedAt > state.savedAt && !editingSnapshot) { state = clone(saved); previous = null; proposal = false; render(); }
   });
   if (desktop) {
+    await loadPersonal();
     root.dataset.desktop = 'true';
     root.querySelector('.b-demo').textContent = 'Markdown workspace';
     root.querySelector('.b-chrome').insertAdjacentHTML('beforeend', `<div class="b-file-controls"><details class="b-workspace-menu"><summary>Workspace</summary><div><button class="b-button" type="button" data-files="open">Open workspace</button><button class="b-button" type="button" data-files="create">New workspace</button><button class="b-button" type="button" data-files="reload" disabled>Reload files</button></div></details><button class="b-button" type="button" data-files="save" disabled>Save files</button><button class="b-button" type="button" data-files="restore" hidden>Restore draft</button><button class="b-button" type="button" data-files="draft" hidden>Download draft</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
@@ -475,7 +501,7 @@ import BentoFileSession from './file-session.js';
     window.addEventListener('beforeunload', event => { if (files.dirty && !confirm('Keep your unsaved draft in Bento and close?')) { event.preventDefault(); event.returnValue = false; } });
     await files.open(() => desktop.initial());
   }
-  render(); notify(desktop ? 'Workspace files stay on this computer. Use Open workspace or New workspace to begin.' : storageWarning ? 'Sample workspace opened.' : 'Sample workspace ready. Edits save in this browser.');
+  render(); notify(desktop ? personalSettings?.warning || (files?.view ? 'Workspace ready.' : 'Open a workspace or create one to begin.') : storageWarning ? 'Sample workspace opened.' : 'Sample workspace ready. Edits save in this browser.');
   if (globalThis.Tweak) {
     const tweak = new Tweak({ container: root, onChange: () => changeAppearance(appearance.theme) });
     tweak.addSelect(appearance, 'theme', { label: 'Appearance', options: ['system', 'light', 'dark'] });

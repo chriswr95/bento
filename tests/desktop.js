@@ -48,6 +48,9 @@ async function saved(page) {
   let launched = await launch(null, userData); application = launched.app; let page = launched.page;
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.getByRole('heading', { name: 'Your workspace, in Markdown.' }).waitFor();
+  const settingsPath = path.join(await application.evaluate(({ app }) => app.getPath('userData')), 'settings.md');
+  assert.match(await fs.readFile(settingsPath, 'utf8'), /kind: user-settings/);
+
   const theme = page.getByRole('button', { name: 'Dark mode', exact: true });
   if (await theme.getAttribute('aria-pressed') === 'true') await theme.click();
   await theme.click();
@@ -58,6 +61,13 @@ async function saved(page) {
   await page.getByRole('button', { name: 'New workspace', exact: true }).click();
   await saved(page);
   console.log('Created workspace through the native dialog.');
+  await page.getByRole('button', { name: 'Profile', exact: true }).click();
+  await page.getByLabel('First name', { exact: true }).fill('Maki');
+  await page.getByRole('button', { name: 'Save profile', exact: true }).click();
+  await page.getByRole('heading', { name: 'Hello, Maki', exact: true }).waitFor();
+  assert.match(await fs.readFile(settingsPath, 'utf8'), /first_name: Maki/);
+  assert.equal((await fs.readdir(workspace)).includes('settings.md'), false);
+
   assert.equal(await page.locator('aside').getByRole('button', { name: 'Creekside improvements', exact: true }).count(), 0);
   await page.getByRole('button', { name: 'Create your first project', exact: true }).click();
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('My first project');
@@ -140,16 +150,18 @@ async function saved(page) {
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
   assert.doesNotMatch(raw, /^database:/m);
   assert.match(raw, new RegExp(projectId));
-  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'initial', 'open', 'reload', 'save'] });
+  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'initial', 'open', 'reload', 'save', 'settingsRead', 'settingsSave'] });
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);
+
   await page.locator('aside details[data-directory="projects"]>summary').click();
   await page.locator('aside details[data-directory="todos"]>summary').click();
   await application.close(); application = null;
   console.log('Closed the app after saving. Reopening workspace.');
   launched = await launch(workspace, userData); application = launched.app; page = launched.page;
   await saved(page);
+  await page.getByRole('heading', { name: 'Hello, Maki', exact: true }).waitFor();
   assert.equal(await page.locator('#bento-workflow').getAttribute('data-theme'), 'dark');
   assert.equal(await page.getByRole('button', { name: 'Dark mode', exact: true }).getAttribute('aria-pressed'), 'true');
   await page.getByRole('button', { name: 'Dark mode', exact: true }).click();

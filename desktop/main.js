@@ -1,10 +1,12 @@
+import { SettingsStore } from '../files/settings.js';
+import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { WorkspaceRepository, create } from '../files/repository.js';
-let window, repository = null, pending = Promise.resolve();
+let window, settings, repository = null, pending = Promise.resolve();
 const entry = path.join(__dirname, '..', 'prototype', 'index.html');
 const trustedURL = pathToFileURL(entry).href;
 if (!app.isPackaged && process.env.BENTO_TEST_MODE === '1' && process.env.BENTO_TEST_USER_DATA) app.setPath('userData', process.env.BENTO_TEST_USER_DATA);
@@ -30,12 +32,16 @@ async function choose(makeNew) {
   return next.view();
 }
 async function start() {
+  await fs.mkdir(app.getPath('userData'), { recursive: true });
+  settings = new SettingsStore(app.getPath('userData'));
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
   window = new BrowserWindow({ width: 1160, height: 900, minWidth: 380, minHeight: 500, title: 'Bento', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
+  register('settings:read', legacy => settings.load(legacy));
+  register('settings:save', patch => settings.save(patch));
   register('workspace:initial', () => repository?.view() || null);
   register('workspace:open', () => choose(false));
   register('workspace:create', () => choose(true));
