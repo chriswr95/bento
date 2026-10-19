@@ -1,23 +1,14 @@
-# Document-backed database example
+# Example Bento workspace
 
-Status: design fixtures, not an implemented workspace format or a production migration.
+This folder can be opened by the desktop app. Its records are fictional. Copy it before experimenting if you want to preserve the checked-in fixture.
 
-Read the [data-model walkthrough](../../docs/data-model.md) first. All names and work items here are fictional. The short IDs make references readable; production IDs should be opaque and stable.
+- [workspace.md](workspace.md) registers databases, folder paths and default selections.
+- [Todos schema](todos/database.md) defines grouped Status, Date, Relation, Select and Number fields and task capabilities.
+- [Projects schema](projects/database.md) identifies active project statuses.
+- [Meeting Notes schema](meetings/database.md) has a meeting date and a many-project relation.
+- [Meeting](meetings/meeting-coordination.md), [todo](todos/todo-review-comments.md), and [project](projects/project-creekside.md) are separate records with their own bodies.
+- [Scratch notes](note-scratch.md) and this README are unclassified Markdown documents outside database folders.
 
-## Files
+The source checkbox is an ordinary relative link to the todo. Its metadata keeps a reconciliation checkpoint keyed by the todo ID. There is no separate occurrence ID. Folder-derived membership is not repeated in record metadata.
 
-| Layer | Files |
-| --- | --- |
-| Workspace configuration | [workspace definition](.bento/workspace.md) |
-| Database definitions | [Projects](.bento/databases/projects.md), [Todos](.bento/databases/todos.md), [Meeting Notes](.bento/databases/meeting-notes.md) |
-| Content records | [project](projects/creekside.md), [meeting](meetings/coordination.md), [todo](todos/todo-review-comments.md), [unclassified note](scratch.md) |
-
-Every content record has zero or one database membership. The project relationship in a meeting or todo is not another membership. A database definition describes fields, while the record frontmatter contains values keyed by stable field IDs. Every record also has a free-form Markdown body.
-
-The meeting's linked checkbox and frontmatter reference baseline illustrate the proposed reconciliation mechanism. They are one reference to the todo document, not a second task. The todo document is authoritative for its title and completion; the example's cached checkbox state is intentionally consistent.
-
-The existing browser prototype does not read these files or implement their schemas. The examples do not establish the final file syntax, migration format, copy/paste semantics, or external-edit conflict UI.
-
-## Fixture validation
-
-Checked the YAML for duplicate keys, unique document/definition IDs, scalar database membership, property types/options, schema versions, relation targets/cardinality, task capability mappings, the default capture database, and agreement between the meeting reference, its relative link, and the todo’s title/completion. This is consistency checking of design fixtures, not application integration evidence.
+Schemas are loaded from these files. The schema editor, transfer/conversion UI and general automatic link repair are not implemented. See the [data-model contract](../../docs/data-model.md) for validation and recovery behavior.

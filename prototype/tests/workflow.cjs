@@ -42,7 +42,7 @@ let browser;
  const download=await downloadPromise;
  assert.equal(download.suggestedFilename(),created.id+'.md');
  const markdown=fs.readFileSync(await download.path(),'utf8');
- assert.match(markdown,/database: "db-todos"/);
+ assert.doesNotMatch(markdown,/^database:/m);
  assert.match(markdown,/Keep this context attached/);
  assert.match(markdown,/option-done/);
  await page.locator('#bento-workflow').screenshot({path:path.join(screenshots,'todo.png')});

@@ -7,12 +7,12 @@ schema_version: 1
 fields:
   - id: field-project-status
     name: Status
-    type: select
+    type: status
     default: option-active
     options:
-      - {id: option-active, name: Active}
-      - {id: option-completed, name: Completed}
-      - {id: option-archived, name: Archived}
+      - {id: option-active, name: Active, group: in-progress}
+      - {id: option-completed, name: Completed, group: complete}
+      - {id: option-archived, name: Archived, group: complete}
 capabilities:
   project:
     active:

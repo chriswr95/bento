@@ -1,8 +1,8 @@
 (function (root, factory) {
-  const api = factory(typeof module === 'object' && module.exports ? require('./vendor/marked.umd.js') : root.marked);
+  const api = factory(typeof module === 'object' && module.exports ? require('./vendor/marked.umd.js') : root.marked, typeof module === 'object' && module.exports ? require('./schema.js') : root.BentoSchema);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.BentoWorkspace = api;
-})(globalThis, function (marked) {
+})(globalThis, function (marked, schema) {
   const clone = value => JSON.parse(JSON.stringify(value));
   const id = prefix => `${prefix}-${globalThis.crypto.randomUUID()}`;
   const taskPrefix = /^([\t ]*(?:>[\t ]*)*(?:[-+*]|\d+[.)])[\t ]+\[([ xX])\])([\t ]+|$)/;
@@ -30,7 +30,7 @@
     return {
       line, content, prefix: taskPrefix.exec(lines[line])?.[0] || '',
       title: link ? unescapeLabel(link[1]) : due ? withoutMarker.slice(0, dueMatch.index) : withoutMarker,
-      due, done: item.checked === true, todoId: link && /^([\w-]+)\.md$/.exec(link[2])?.[1] || null, href: link?.[2] || null
+      due, done: item.checked === true, todoId: link ? targetId(link[2]) : null, href: link?.[2] || null
     };
   }
 
@@ -58,15 +58,31 @@
     return { tokens, tasks };
   }
 
+  function targetId(href) {
+    if (typeof href !== 'string' || href.startsWith('/') || /[:?#\\]/.test(href)) return null;
+    return /^([\w-]+)\.md$/i.exec(href.split('/').at(-1))?.[1] || null;
+  }
+  function linkFor(workspace, sourceId, target) {
+    const destination = workspace.paths?.[target] || `${target}.md`;
+    const from = (workspace.paths?.[sourceId] || '').split('/').slice(0, -1), to = destination.split('/');
+    while (from.length && to.length && from[0] === to[0]) { from.shift(); to.shift(); }
+    return '../'.repeat(from.length) + to.map(part => encodeURIComponent(part).replace(/[!'()*]/g, char => '%' + char.charCodeAt(0).toString(16).toUpperCase())).join('/');
+  }
+  function linkMatches(workspace, sourceId, href, target) {
+    if (!workspace.paths) return href === `${target}.md`;
+    return href === linkFor(workspace, sourceId, target);
+  }
   function capability(workspace, record, name) {
     return workspace.databases[record?.database]?.capabilities?.[name];
   }
   function taskInfo(workspace, record) {
     const cap = capability(workspace, record, 'task');
     if (!cap) return null;
+    const status = workspace.databases[record.database].fields.find(field => field.id === cap.completion.field);
+    const value = record.properties[cap.completion.field];
     return {
       id: record.id, title: record.title,
-      done: record.properties[cap.completion.field] === cap.completion.checked,
+      done: status.type === 'status' ? status.options.find(option => option.id === value)?.group === 'complete' : value === cap.completion.checked,
       due: record.properties[cap.due.field] || '',
       project: record.properties[cap.project.field] || null
     };
@@ -93,26 +109,29 @@
   }
 
   function makeRecord(recordId, database, title, body, properties = {}) {
-    return { id: recordId, database, schema_version: 1, title, tags: [], properties, references: {}, body };
+    return { bento_version: 1, id: recordId, database, schema_version: 1, title, tags: [], properties, references: {}, body };
   }
   function createTodo(workspace, source, task) {
     const database = workspace.defaultTaskDatabase;
     const cap = workspace.databases[database]?.capabilities?.task;
     if (!cap) return null;
     const record = makeRecord(id('todo'), database, task.title, '', {
+      ...schema.defaults(workspace.databases[database]),
       [cap.completion.field]: task.done ? cap.completion.checked : cap.completion.unchecked,
       [cap.due.field]: task.due || null,
       [cap.project.field]: projectOf(workspace, source)
     });
+    record.schema_version = workspace.databases[database].schema_version;
     workspace.records[record.id] = record;
+    if (workspace.paths) workspace.paths[record.id] = `${workspace.databasePaths[database]}/${record.id}.md`;
     return record;
   }
   function baseline(task) {
     return { base_title: task.title, base_completed: task.done };
   }
-  function projectedLine(task, prefix) {
+  function projectedLine(workspace, source, task, prefix) {
     const marker = prefix.replace(/\[([ xX])\]/, task.done ? '[x]' : '[ ]');
-    return `${marker}[${escapeLabel(task.title)}](${task.id}.md)`;
+    return `${marker}[${escapeLabel(task.title)}](${linkFor(workspace, source.id, task.id)})`;
   }
   function issue(workspace, record, line, message) {
     workspace.issues.push({ document: record.id, line, message });
@@ -140,7 +159,7 @@
       return null;
     }
     target.title = proposed.title;
-    target.properties[cap.completion.field] = proposed.done ? cap.completion.checked : cap.completion.unchecked;
+    if (proposed.done !== task.done) target.properties[cap.completion.field] = proposed.done ? cap.completion.checked : cap.completion.unchecked;
     const updated = taskInfo(workspace, target);
     Object.assign(reference, baseline(updated));
     return updated;
@@ -158,7 +177,7 @@
         source.references[targetId] = baseline(taskInfo(workspace, target));
       }
       const target = workspace.records[targetId], task = taskInfo(workspace, target);
-      if (!task) {
+      if (!task || (occurrence.href && !linkMatches(workspace, source.id, occurrence.href, targetId))) {
         issue(workspace, source, occurrence.line, 'Unresolved todo link; document preserved.');
         continue;
       }
@@ -177,7 +196,7 @@
       const task = reconcileGroup(workspace, source, occurrences, source.references[targetId], workspace.records[targetId]);
       if (!task) continue;
       for (const occurrence of occurrences) {
-        const replacement = projectedLine(task, occurrence.prefix);
+        const replacement = projectedLine(workspace, source, task, occurrence.prefix);
         if (replacement !== lines[occurrence.line]) edits.push({ line: occurrence.line, old: lines[occurrence.line], replacement, capture: !occurrence.todoId, prefixLength: occurrence.prefix.length, title: task.title });
         lines[occurrence.line] = replacement;
       }
@@ -216,6 +235,11 @@
       if (typeof patch.title !== 'string' || !patch.title.trim() || /[\r\n]/.test(patch.title)) throw new Error('Enter a single-line title.');
       record.title = patch.title.trim();
     }
+    if ('status' in patch) {
+      const field = next.databases[record.database].fields.find(field => field.id === cap.completion.field);
+      schema.value(field, patch.status);
+      record.properties[field.id] = patch.status;
+    }
     if ('done' in patch) {
       if (typeof patch.done !== 'boolean') throw new Error('Completion must be a boolean.');
       record.properties[cap.completion.field] = patch.done ? cap.completion.checked : cap.completion.unchecked;
@@ -245,7 +269,7 @@
     return Object.values(workspace.records).filter(record => Object.hasOwn(record.references, targetId));
   }
   function serializeDocument(record) {
-    const { body, ...metadata } = record;
+    const { body, database, ...metadata } = record;
     const envelope = { bento_version: 1, ...metadata };
     return '---\n' + Object.entries(envelope).filter(([, value]) => value !== undefined)
       .map(([key, value]) => `${key}: ${JSON.stringify(value)}`).join('\n') + '\n---\n\n' + body;
@@ -256,19 +280,20 @@
     if (!workspace || workspace.version !== 4 || !isObject(workspace.records) || !isObject(workspace.databases) || !Array.isArray(workspace.issues)) throw new Error('Invalid workspace.');
     for (const [key, database] of Object.entries(workspace.databases)) {
       if (database.id !== key || !Array.isArray(database.fields) || !isObject(database.capabilities)) throw new Error('Invalid database definition.');
+      schema.definition(database, workspace.databases);
       const fields = Object.fromEntries(database.fields.map(field => [field.id, field]));
-      if (Object.keys(fields).length !== database.fields.length) throw new Error('Duplicate field identity.');
-      for (const field of database.fields) {
-        if (typeof field.id !== 'string' || !['text', 'number', 'boolean', 'date', 'select', 'relation'].includes(field.type)) throw new Error('Invalid field definition.');
-        if (field.type === 'select' && (!Array.isArray(field.options) || new Set(field.options.map(option => option.id)).size !== field.options.length)) throw new Error('Invalid select options.');
-        if (field.type === 'relation' && (!Object.hasOwn(workspace.databases, field.target_database) || !['one', 'many'].includes(field.cardinality))) throw new Error('Invalid relation definition.');
-      }
       const task = database.capabilities.task;
       if (task) {
         const completion = fields[task.completion?.field];
         const values = completion?.options?.map(option => option.id) || [];
-        if (completion?.type !== 'select' || !values.includes(task.completion.checked) || !values.includes(task.completion.unchecked) || task.completion.checked === task.completion.unchecked) throw new Error('Invalid completion mapping.');
+        if (!['select', 'status'].includes(completion?.type) || !values.includes(task.completion.checked) || !values.includes(task.completion.unchecked) || task.completion.checked === task.completion.unchecked) throw new Error('Invalid completion mapping.');
+        if (completion.type === 'status' && (completion.options.find(option => option.id === task.completion.checked).group !== 'complete' || completion.options.find(option => option.id === task.completion.unchecked).group === 'complete')) throw new Error('Invalid completion group mapping.');
         if (fields[task.due?.field]?.type !== 'date' || fields[task.project?.field]?.type !== 'relation') throw new Error('Invalid task field mapping.');
+      }
+      const project = database.capabilities.project;
+      if (project) {
+        const active = project.active, field = fields[active?.field];
+        if (!['select', 'status'].includes(field?.type) || !Array.isArray(active?.values) || !active.values.length || !active.values.every(value => field.options.some(option => option.id === value))) throw new Error('Invalid active-project mapping.');
       }
     }
     for (const [key, record] of Object.entries(workspace.records)) {
@@ -280,7 +305,7 @@
         if (!isObject(reference) || ('target' in reference)) throw new Error('Invalid reference metadata.');
       }
       const cap = capability(workspace, record, 'task');
-      if (cap && ![cap.completion.checked, cap.completion.unchecked].includes(record.properties[cap.completion.field])) throw new Error('Invalid task status.');
+      if (record.database) schema.properties(workspace.databases[record.database], record, workspace.records);
       const due = cap && record.properties[cap.due.field];
       if (due && !validDate(due)) throw new Error('Invalid task date.');
       for (const field of workspace.databases[record.database]?.fields || []) {
@@ -349,6 +374,6 @@
     return workspace;
   }
 
-  return Object.freeze({ clone, parse, stripMarkers, refMarker, escapeLabel, validDate, capability, taskInfo, allTasks,
+  return Object.freeze({ clone, parse, stripMarkers, refMarker, escapeLabel, targetId, linkFor, linkMatches, validDate, capability, taskInfo, allTasks,
     activeProjects, projectOf, applyEdit, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace });
 });

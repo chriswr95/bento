@@ -1,7 +1,6 @@
 ---
 bento_version: 1
 id: meeting-coordination
-database: db-meetings
 schema_version: 1
 title: Weekly coordination
 tags: [coordination, review]

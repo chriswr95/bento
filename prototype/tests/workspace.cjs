@@ -112,7 +112,7 @@ test('special labels round-trip and Markdown exports contain record metadata/bod
  assert.equal(model.allTasks(workspace).length,1);
  const exported=model.serializeDocument(workspace.records[todo.id]);
  assert.match(exported,/^---\nbento_version: 1\nid: "todo-/);
- assert.match(exported,/database: "db-todos"/);
+ assert.doesNotMatch(exported,/^database:/m);
  assert.match(exported,/field-task-status/);
 });
 

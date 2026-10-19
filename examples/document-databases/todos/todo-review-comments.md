@@ -1,7 +1,6 @@
 ---
 bento_version: 1
 id: todo-review-comments
-database: db-todos
 schema_version: 1
 title: Review drainage comments
 tags: [review]
@@ -21,4 +20,4 @@ Start with the latest marked-up plan. Record any unresolved questions here.
 
 ## Source
 
-[Weekly coordination](../meetings/coordination.md)
+[Weekly coordination](../meetings/meeting-coordination.md)

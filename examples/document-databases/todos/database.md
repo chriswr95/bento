@@ -7,11 +7,12 @@ schema_version: 1
 fields:
   - id: field-task-status
     name: Status
-    type: select
+    type: status
     default: option-open
     options:
-      - {id: option-open, name: Open}
-      - {id: option-done, name: Done}
+      - {id: option-open, name: Todo, group: not-started}
+      - {id: option-started, name: In progress, group: in-progress}
+      - {id: option-done, name: Done, group: complete}
   - id: field-task-due
     name: Due date
     type: date
@@ -20,6 +21,17 @@ fields:
     type: relation
     target_database: db-projects
     cardinality: one
+  - id: field-task-priority
+    name: Priority
+    type: select
+    options:
+      - {id: priority-low, name: Low}
+      - {id: priority-medium, name: Medium}
+      - {id: priority-high, name: High}
+  - id: field-task-effort
+    name: Estimated hours
+    type: number
+    min: 0
 capabilities:
   task:
     completion:
