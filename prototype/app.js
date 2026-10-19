@@ -24,6 +24,8 @@ import BentoFileSession from './file-session.js';
     const dark = isDark(appearance.theme, systemAppearance.matches);
     toggle.setAttribute('aria-pressed', String(dark));
     toggle.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    toggle.querySelector('[data-theme-icon="sun"]').toggleAttribute('hidden', !dark);
+    toggle.querySelector('[data-theme-icon="moon"]').toggleAttribute('hidden', dark);
   }
   async function changeAppearance(theme) {
     appearance.theme = theme; applyAppearance();
