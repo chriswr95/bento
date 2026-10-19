@@ -8,7 +8,7 @@ Bento aims to combine portable files with a calm, Notion-inspired interface and 
 
 ## Status
 
-Planning. There is no application implementation yet.
+Planning, with an interactive workflow prototype. There is no desktop application implementation yet.
 
 - [Product specification](docs/spec.md): audience, workflows, features, and success criteria.
 - [Design document](docs/design.md): implementation proposals, tradeoffs, and technical decisions.
@@ -21,6 +21,14 @@ Planning. There is no application implementation yet.
 - Integrated document, project, and task views.
 - Configurable layouts and installable themes.
 - Agent assistance for workspace content and for changing Bento itself.
+
+## Try the workflow prototype
+
+Open [`prototype/index.html`](prototype/index.html) in a modern browser; no install, build, account, or server is needed. Download or clone the repository first, since GitHub displays the source instead of running it.
+
+The prototype uses fictional projects and a fixed sample date of October 19, 2026. It demonstrates daily review, active-project summaries, meeting-note editing, checkbox capture, shared completion state, and one-step undo. Changes last only for the current page session; refreshing restores the sample workspace.
+
+Agent suggestions are explicitly simulated. It does not read or write actual Markdown files, connect to an agent, or implement Copilot integration. Editing uses a text field and a separate checkbox capture control to explore the workflow; the production editor remains a design decision.
 
 ## Development
 
