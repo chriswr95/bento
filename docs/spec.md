@@ -25,7 +25,7 @@ Civil engineering provides the context for organizing work. Engineering calculat
 - Every document checkbox is a tracked todo, with no promotion step.
 - The default daily overview surfaces upcoming work across all projects and a summary for each active project.
 
-A locally installed agent on her Windows laptop is the proposed initial agent entry point. Where its model processes information is a separate question; a fully offline model is not currently required or ruled out.
+A locally installed agent on her Windows laptop is the proposed initial agent entry point. Model requests may use a hosted service; running a fully local model is not a requirement.
 
 ## 2. Product principles
 
@@ -50,6 +50,7 @@ A locally installed agent on her Windows laptop is the proposed initial agent en
 | Tags | Allow free-form string tags on notes, projects, and todos, including spaces and Unicode. |
 | Navigation | Provide search and useful project, todo, and tag views. |
 | Agent-assisted content | Let Makena use natural language to find, summarize, create, and update workspace content. |
+| Microsoft Copilot | Bonus goal: support the relevant Microsoft Copilot experience if feasible; confirm the product, account access, and integration requirements before implementation. |
 | Agent-assisted customization | Let Makena describe changes to Bento's behavior or appearance and work with an agent to review, try, and adopt them. |
 | Appearance | Provide a calm, Notion-inspired interface with installable themes, including the flexibility to express Catppuccin, Darcula, or Tokyo Night styles. |
 | Interface customization | Allow layout and interface customization inspired by VS Code, with a useful default experience. The initial depth of extension support remains open. |
@@ -153,7 +154,7 @@ The experience must let her identify the workspace, project, notes, or selection
 
 Applied changes must appear in ordinary Bento views and remain inspectable and recoverable. An interrupted or unsuccessful operation must report what changed and what remains. The agent must not silently overwrite concurrent edits.
 
-Local writing and project management should remain available when an agent is unavailable. Before workspace information is sent to an external agent service, the experience must make the destination and content scope clear and obtain authorization. A local-only agent requirement has not been decided.
+Local writing and project management should remain available when an agent is unavailable. Before workspace information is sent to an external agent service, the experience must make the destination and content scope clear and obtain authorization. Hosted model processing is an acceptable starting assumption; fully local inference is not required.
 
 ### B. Help change Bento itself
 
@@ -207,7 +208,8 @@ Record usability observations and unresolved friction. Do not substitute a passi
 - What does a typical meeting note and follow-up look like in Makena's current workflow?
 - Which project details, status labels, meeting templates, summary fields, and upcoming-work time horizon matter most day to day?
 - What agent tools can she use in her work environment, and what project information may they access?
-- Is an external agent installed on her Windows laptop the preferred initial entry point, with a Bento-integrated experience later? Local execution does not by itself establish local-only model processing.
+- How should the initial external-agent handoff work, and when would an integrated Bento assistant be useful?
+- Which Microsoft Copilot product does Makena use, and what work-account integrations are available to her? Copilot integration is optional and does not block the core workflow.
 - What would make reviewing content changes and trying application changes feel understandable to her?
 - How much interface customization is useful initially beyond themes, typography, and panel arrangement?
 - Is existing content migration, backup, or use across multiple computers needed for her first trial?

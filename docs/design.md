@@ -179,7 +179,7 @@ Measure prototypes with a representative workspace of 10,000 Markdown files and 
 
 ### Content assistance
 
-Propose starting with an agent installed on Makena's Windows laptop, operating on an authorized local Bento workspace. This does not select the provider or require its model to run offline. Confirm the model service and permitted content before real project material is used. Local tool access, local file storage, and model processing location are separate properties.
+Propose starting with an agent installed on Makena's Windows laptop, operating on an authorized local Bento workspace. Hosted model processing is acceptable as an architectural assumption; fully local model support is not required. The provider is not selected. Confirm the model service and permitted content before real project material is used. Local tool access, local file storage, and model processing location are separate properties.
 
 Possible integration paths are direct file edits with Bento reconciling external changes, a local command/tool adapter with validated domain operations, or an embedded Bento assistant using that adapter. Prefer validating a small external-agent workflow first; the exact transport remains open. Direct file edits must still provide inspectable changes and recovery rather than bypass the product requirements.
 
@@ -199,6 +199,16 @@ Proposed operation flow:
 A journal should record intended changes and before/after revisions for recoverable batches. Filesystem updates across multiple records are not inherently atomic. Define recovery for interruption and partial success, and never report the whole batch as complete when only some changes succeeded. An undo operation must check for later edits and resolve conflicts rather than overwrite them.
 
 Keep credentials in platform-appropriate credential storage; never put them in Markdown, workspace settings, or operation logs. Record only the minimum content needed for recovery and provide a retention policy. Provider choice, permission persistence, operation-log storage, and exact undo semantics need design validation before implementation.
+
+### Optional Microsoft Copilot integration
+
+Treat this as a bonus investigation rather than a dependency for the first release. Confirm which product Makena uses: Microsoft 365 Copilot, a consumer Copilot experience, and GitHub Copilot have different integration surfaces. Do not treat them as interchangeable or imply that support for one establishes support for the others.
+
+For Microsoft 365 Copilot, the documented declarative-agent route supports MCP/API tools. That route requires an internet-reachable endpoint; a local-only tool server on the laptop is insufficient. See Microsoft's [plugin overview](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/overview-plugins) and [local debugging requirements](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/plugin-debug-local), checked 2026-10-19.
+
+Design implication: retain provider-neutral domain commands, then evaluate a separately authenticated remote adapter or approved bridge if this route is useful. Determine packaging, work-account availability, tenant policies, and authentication before promising compatibility. A development tunnel is not a selected production architecture. This investigation does not authorize exposing the laptop or publishing workspace content.
+
+First validation target: query a synthetic project's open todos and apply a reviewed checkbox update through the same domain commands. No Copilot integration is implemented in the workflow prototype.
 
 ### Changing Bento itself
 
