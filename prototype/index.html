@@ -4,180 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bento · Workflow prototype</title>
-<style>
-#bento-workflow { color-scheme: light dark; --b-paper:light-dark(#fffefa,#202127); --b-side:light-dark(#f5f3ed,#282930); --b-ink:light-dark(#33382e,#eeeee4); --b-soft:light-dark(#666b60,#b8bbb1); --b-line:light-dark(#e4e4da,#41433f); --b-accent:light-dark(#53623f,#c6d6ac); --b-wash:light-dark(#e9efdf,#3b4432); --b-warn:light-dark(#984b33,#f1b79f); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--b-ink); background:var(--b-paper); border:1px solid var(--b-line); border-radius:12px; overflow-wrap:anywhere; }
-#bento-workflow[data-theme="light"] {color-scheme:light} #bento-workflow[data-theme="dark"] {color-scheme:dark}
-#bento-workflow * {box-sizing:border-box}
-#bento-workflow [hidden] {display:none!important}
-#bento-workflow button,#bento-workflow input,#bento-workflow textarea {font:inherit;color:inherit}
-#bento-workflow button {cursor:var(--cursor-interaction,pointer)}
-#bento-workflow button:focus-visible,#bento-workflow input:focus-visible,#bento-workflow textarea:focus-visible,#bento-workflow summary:focus-visible {outline:2px solid var(--b-accent);outline-offset:3px}
-#bento-workflow .b-chrome {display:flex;align-items:center;gap:12px;padding:16px 110px 16px 20px;border-bottom:1px solid var(--b-line);flex-wrap:wrap}
-#bento-workflow .b-brand {font-weight:650;letter-spacing:-.5px;font-size:20px;display:flex;gap:8px;align-items:center}
-#bento-workflow .b-mark {display:grid;grid-template-columns:repeat(2,7px);gap:2px} #bento-workflow .b-mark span {height:7px;background:var(--b-accent);border-radius:2px}
-#bento-workflow .b-demo {font-size:12px;color:var(--b-soft)}
-#bento-workflow .b-shell {display:grid;grid-template-columns:195px minmax(0,1fr);min-height:640px}
-#bento-workflow aside {background:var(--b-side);padding:22px 12px;border-right:1px solid var(--b-line);border-radius:0 0 0 12px}
-#bento-workflow .b-nav {display:flex;flex-direction:column;gap:6px}
-#bento-workflow .b-nav button {background:none;border:0;border-radius:6px;padding:9px 10px;text-align:left;display:flex;gap:9px;align-items:center}
-#bento-workflow .b-nav button[aria-current="page"] {background:var(--b-wash);color:var(--b-accent)}
-#bento-workflow .b-nav button:hover {background:var(--b-wash)}
-#bento-workflow .b-sidebar-label {color:var(--b-soft);font-size:12px;padding:24px 10px 8px;margin:0;letter-spacing:.04em}
-#bento-workflow main {padding:32px 36px;min-width:0}
-#bento-workflow .b-eyebrow {color:var(--b-soft);font-size:12px;margin:0 0 6px}
-#bento-workflow h1 {font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-.8px;margin:0 0 10px}
-#bento-workflow h2 {font-size:17px;font-weight:600;margin:26px 0 12px}
-#bento-workflow h3 {font-size:14px;font-weight:600;margin:0 0 6px}
-#bento-workflow p {margin:0 0 12px} #bento-workflow .b-muted {color:var(--b-soft)}
-#bento-workflow .b-actions {display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0}
-#bento-workflow .b-button {border:1px solid var(--b-line);background:var(--b-paper);padding:7px 11px;border-radius:6px;display:inline-flex;align-items:center;gap:7px;text-align:left}
-#bento-workflow .b-primary {background:var(--b-accent);color:var(--b-paper);border-color:var(--b-accent)}
-#bento-workflow .b-button:disabled {opacity:.5;cursor:default}
-#bento-workflow .b-summary-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,165px),1fr));gap:12px}
-#bento-workflow .b-project {border:1px solid var(--b-line);border-radius:8px;padding:15px;min-width:0}
-#bento-workflow .b-project button {padding:0;border:0;background:none;text-align:left;text-decoration:underline;text-decoration-color:var(--b-line);text-underline-offset:4px;font-weight:600}
-#bento-workflow .b-project p {font-size:12px;margin:8px 0 0;color:var(--b-soft)}
-#bento-workflow .b-list {margin:0;padding:0;list-style:none}
-#bento-workflow .b-task {display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;padding:12px 0;border-bottom:1px solid var(--b-line);align-items:start}
-#bento-workflow input[type="checkbox"] {width:17px;height:17px;margin:3px 0 0;accent-color:var(--b-accent)}
-#bento-workflow .b-source {display:block;font-size:12px;background:none;border:0;color:var(--b-soft);padding:3px 0;text-align:left;text-decoration:underline;text-underline-offset:3px}
-#bento-workflow .b-date {font-size:12px;color:var(--b-soft);white-space:nowrap;padding-top:2px}
-#bento-workflow .b-overdue {color:var(--b-warn)}
-#bento-workflow .b-done .b-task-title {text-decoration:line-through;color:var(--b-soft)}
-#bento-workflow .b-tag {display:inline-block;padding:2px 8px;border-radius:4px;background:var(--b-wash);font-size:12px;color:var(--b-accent)}
-#bento-workflow .b-note-body {width:100%;min-height:130px;resize:vertical;background:transparent;border:1px solid var(--b-line);border-radius:6px;padding:12px}
-#bento-workflow label {display:block}
-#bento-workflow .b-form {display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:10px}
-#bento-workflow .b-field {min-width:0;font-size:12px;color:var(--b-soft)}
-#bento-workflow .b-field input {display:block;width:100%;background:var(--b-paper);border:1px solid var(--b-line);border-radius:6px;padding:9px;margin-top:4px;font-size:14px;color:var(--b-ink)}
-#bento-workflow .b-proposal {border-left:3px solid var(--b-accent);padding:4px 0 4px 16px;margin-top:18px}
-#bento-workflow pre {white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;background:var(--b-side);padding:14px;border-radius:6px}
-#bento-workflow .b-status {border-top:1px solid var(--b-line);padding:10px 20px;color:var(--b-soft);font-size:12px;min-height:40px}
-#bento-workflow details {margin-top:20px} #bento-workflow summary {cursor:var(--cursor-interaction,pointer);color:var(--b-soft)}
-@media(max-width:650px) {#bento-workflow .b-shell {grid-template-columns:1fr} #bento-workflow aside {border-right:0;border-bottom:1px solid var(--b-line);border-radius:0;padding:12px} #bento-workflow .b-nav {flex-direction:row;flex-wrap:wrap} #bento-workflow .b-sidebar-label {padding:8px 10px} #bento-workflow main {padding:24px 18px} #bento-workflow .b-form {grid-template-columns:1fr} #bento-workflow .b-task {grid-template-columns:22px minmax(0,1fr)} #bento-workflow .b-date {grid-column:2} #bento-workflow .b-chrome {padding-right:100px}}
-@media(pointer:coarse) {#bento-workflow button,#bento-workflow input {min-height:44px} #bento-workflow input[type="checkbox"] {min-height:24px;min-width:24px} #bento-workflow .b-task {grid-template-columns:28px minmax(0,1fr)} #bento-workflow .b-field input,#bento-workflow textarea {font-size:16px}}
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body style="margin:0">
 <div id="bento-workflow" aria-label="Bento meeting workflow prototype">
-  <header class="b-chrome"><div class="b-brand"><span class="b-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>Bento</div><span class="b-demo">Workflow study · sample workspace · session only</span></header>
+  <header class="b-chrome"><div class="b-brand"><span class="b-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>Bento</div><span class="b-demo">Workflow study · sample workspace</span></header>
   <div class="b-shell">
     <aside aria-label="Workspace navigation"><nav class="b-nav"><button type="button" class="cursor-interaction" data-view="daily"><i data-lucide="sun" aria-hidden="true"></i>Daily overview</button><button type="button" class="cursor-interaction" data-view="meeting"><i data-lucide="file-pen-line" aria-hidden="true"></i>Meeting note</button></nav><p class="b-sidebar-label">ACTIVE PROJECTS</p><nav id="b-project-nav" class="b-nav" aria-label="Projects"></nav></aside>
     <main id="b-main"></main>
   </div>
   <footer class="b-status" id="b-status" role="status" aria-live="polite">Sample workspace ready. Changes last for this session.</footer>
 </div>
-<script>
-(() => {
-  const root = document.getElementById('bento-workflow');
-  const main = root.querySelector('#b-main');
-  const status = root.querySelector('#b-status');
-  const projects = [
-    {id:'creek',title:'Creekside improvements',status:'Active'},
-    {id:'elm',title:'Elm Street drainage',status:'Active'},
-    {id:'park',title:'Park access review',status:'Active'}
-  ];
-  const notes = [
-    {id:'coordination',project:'creek',title:'Weekly coordination',date:'October 19, 2026',body:'Discussed review comments and the next coordination meeting.\n\nDecision: use the latest marked-up plan as the working reference.\n\nNext step: prepare a short agenda for the next coordination meeting.',tags:['coordination','review']},
-    {id:'drainage',project:'elm',title:'Drainage review',date:'October 16, 2026',body:'Reviewed the comment log. Follow up on the outstanding reference notes before the next review.',tags:['review']}
-  ];
-  const defaults = {
-    view:'daily',project:null,note:'coordination',bodies:Object.fromEntries(notes.map(n=>[n.id,n.body])),
-    tasks:[
-      {id:'comments',note:'coordination',title:'Review the marked-up plan comments',due:'2026-10-19',done:false},
-      {id:'references',note:'drainage',title:'Collect the outstanding reference notes',due:'2026-10-16',done:false},
-      {id:'summary',note:'coordination',title:'Draft the coordination follow-up',due:'2026-10-22',done:false},
-      {id:'questions',note:'drainage',title:'List questions for the next drainage review',due:'',done:false},
-      {id:'working-plan',note:'coordination',title:'Link the latest working plan in the notes',due:'2026-10-19',done:true}
-    ]
-  };
-  const clone = value => JSON.parse(JSON.stringify(value));
-  function validSnapshot(value) {
-    return value && ['daily','meeting'].includes(value.view) && (value.project===null || projects.some(p=>p.id===value.project)) && notes.some(n=>n.id===value.note) && value.bodies && notes.every(n=>typeof value.bodies[n.id]==='string') && Array.isArray(value.tasks) && value.tasks.length<100 && new Set(value.tasks.map(t=>t.id)).size===value.tasks.length && value.tasks.every(t=>typeof t.id==='string'&&typeof t.title==='string'&&notes.some(n=>n.id===t.note)&&typeof t.done==='boolean'&&typeof t.due==='string'&&(!t.due||/^\d{4}-\d{2}-\d{2}$/.test(t.due)));
-  }
-  const stored = window.openai?.widgetState?.privateContent;
-  let state = validSnapshot(stored) ? clone(stored) : clone(defaults);
-  let previous = null;
-  let proposal = false;
-  const appearance = {theme:'system'};
-  const escape = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const getNote = id => notes.find(n=>n.id===id);
-  const getProject = id => projects.find(p=>p.id===id);
-  const tasksFor = id => state.tasks.filter(t=>getNote(t.note).project===id);
-  const dueLabel = due => !due ? 'No date' : due==='2026-10-19' ? 'Today' : new Date(due+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  function persist() {
-    window.openai?.setWidgetState?.({modelContent:{screen:state.view,project:state.project,openTodos:state.tasks.filter(t=>!t.done).length},privateContent:clone(state)})?.catch(()=>{});
-  }
-  function notify(message) {status.textContent=message;}
-  function change(operation,message) {previous=clone(state);operation();render();persist();notify(message);}
-  function navigate(view,project=null,note='coordination') {state.view=view;state.project=project;state.note=note;proposal=false;render();persist();}
-  function taskRow(task,context='daily') {
-    const note=getNote(task.note),project=getProject(note.project);
-    return `<li class="b-task ${task.done?'b-done':''}"><input class="cursor-interaction" type="checkbox" data-task="${escape(task.id)}" aria-label="Complete ${escape(task.title)}" ${task.done?'checked':''}><div><span class="b-task-title">${escape(task.title)}</span>${context==='daily'?`<button class="b-source cursor-interaction" data-note="${note.id}" type="button">${escape(project.title)} · ${escape(note.title)} ↗</button>`:''}</div><span class="b-date ${!task.done&&task.due&&task.due<'2026-10-19'?'b-overdue':''}">${escape(dueLabel(task.due))}</span></li>`;
-  }
-  function projectCard(project) {
-    const tasks=tasksFor(project.id),open=tasks.filter(t=>!t.done),next=open.filter(t=>t.due).sort((a,b)=>a.due.localeCompare(b.due))[0];
-    return `<section class="b-project"><button type="button" class="cursor-interaction" data-project="${project.id}">${escape(project.title)}</button><p>${project.status} · ${open.length} open · ${tasks.length-open.length} complete</p><p>${next?'Next due: '+escape(dueLabel(next.due)):open.length?'No dated work':'No outstanding work'}</p></section>`;
-  }
-  function renderDaily() {
-    const tasks=state.tasks.filter(t=>!state.project||getNote(t.note).project===state.project);
-    const open=tasks.filter(t=>!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
-    const groups=[['Overdue',t=>t.due&&t.due<'2026-10-19'],['Today',t=>t.due==='2026-10-19'],['Upcoming',t=>t.due>'2026-10-19'],['Without a date',t=>!t.due]];
-    const selected=state.project?getProject(state.project):null;
-    main.innerHTML=`<p class="b-eyebrow">Monday, October 19 · ${selected?'Project overview':'All projects'}</p><h1>${selected?escape(selected.title):'A little clarity for your day.'}</h1><p class="b-muted">${open.length} open actions${selected?' in this project':' across your workspace'}.</p><div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-open-meeting="${selected?.id==='elm'?'drainage':'coordination'}">Open meeting note</button>${selected?'<button type="button" class="b-button cursor-interaction" data-view="daily">All projects</button>':''}<button type="button" class="b-button cursor-interaction" data-undo ${previous?'':'disabled'}>Undo last change</button></div><h2>${selected?'Project summary':'Active projects'}</h2><div class="b-summary-grid">${projects.filter(p=>!selected||p.id===selected.id).map(projectCard).join('')}</div>${groups.map(([title,test])=>{const items=open.filter(test);return items.length?`<section><h2>${title} <span class="b-muted">${items.length}</span></h2><ul class="b-list">${items.map(t=>taskRow(t)).join('')}</ul></section>`:''}).join('')}${open.length?'':'<p class="b-muted">No outstanding work. Your project notes are still here.</p>'}<details><summary>Completed (${tasks.length-open.length})</summary><ul class="b-list">${tasks.filter(t=>t.done).map(t=>taskRow(t)).join('')}</ul></details>`;
-    if(selected?.id==='park') main.querySelector('[data-open-meeting]')?.remove();
-  }
-  function markdown(note) {return `# ${note.title}\n\n${state.bodies[note.id]}\n\n## Action items\n\n`+state.tasks.filter(t=>t.note===note.id).map(t=>`- [${t.done?'x':' '}] ${t.title}${t.due?' (due '+t.due+')':''}`).join('\n');}
-  function renderMeeting() {
-    const note=getNote(state.note),project=getProject(note.project),tasks=state.tasks.filter(t=>t.note===note.id);
-    main.innerHTML=`<p class="b-eyebrow">${escape(project.title)} / Meeting notes</p><h1>${escape(note.title)}</h1><p class="b-muted">${note.date} · Personal work</p><div class="b-actions">${note.tags.map(tag=>`<span class="b-tag">${escape(tag)}</span>`).join('')}<button type="button" class="b-button cursor-interaction" data-project="${project.id}">View project</button><button type="button" class="b-button cursor-interaction" data-undo ${previous?'':'disabled'}>Undo last change</button></div><h2>Discussion & decisions</h2><label><span class="b-eyebrow">Meeting notes</span><textarea class="b-note-body" id="b-note-body" aria-label="Meeting notes">${escape(state.bodies[note.id])}</textarea></label><h2>Action items</h2><ul class="b-list">${tasks.map(t=>taskRow(t,'meeting')).join('')}</ul><form id="b-add-form"><h3 style="margin-top:20px">Add a checkbox</h3><div class="b-form"><label class="b-field">Your next action<input id="b-task-title" name="title" required maxlength="200" placeholder="What needs to happen next?"></label><label class="b-field">Due date (optional)<input name="due" type="date" aria-label="Due date"></label></div><div class="b-actions"><button class="b-button b-primary cursor-interaction" type="submit">Add checkbox</button><button class="b-button cursor-interaction" type="button" data-propose>Preview agent suggestion</button></div></form><section id="b-proposal" class="b-proposal" hidden aria-label="Sample agent suggestion"><h3>Sample agent suggestion</h3><p id="b-suggestion-text"></p><p class="b-muted">From this note · no due date specified · simulated assistance</p><div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Add this checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section><details><summary>Markdown preview</summary><pre id="b-markdown"></pre></details>`;
-    main.querySelector('#b-markdown').textContent=markdown(note);
-    if(proposal) showProposal();
-  }
-  const suggestion='Prepare an agenda for the next coordination meeting';
-  function showProposal() {
-    const panel=main.querySelector('#b-proposal');
-    const note=state.bodies[state.note];
-    const available=state.note==='coordination'&&note.includes('prepare a short agenda')&&!state.tasks.some(t=>t.note===state.note&&t.title===suggestion);
-    panel.hidden=false;
-    main.querySelector('#b-suggestion-text').textContent=available?suggestion:'No additional sample suggestion for the current note.';
-    panel.querySelector('[data-apply]').hidden=!available;
-  }
-  function render() {
-    root.dataset.theme=appearance.theme;
-    root.querySelectorAll('[data-view]').forEach(b=>{if(b.dataset.view===state.view&&!state.project)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
-    root.querySelector('#b-project-nav').innerHTML=projects.map(p=>`<button type="button" class="cursor-interaction" data-project="${p.id}" ${state.project===p.id?'aria-current="page"':''}>${escape(p.title)}</button>`).join('');
-    if(state.view==='daily')renderDaily();else renderMeeting();
-    if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}});
-  }
-  root.addEventListener('click',event=>{
-    const button=event.target.closest('button');if(!button)return;
-    if(button.dataset.view)navigate(button.dataset.view);
-    else if(button.dataset.project)navigate('daily',button.dataset.project);
-    else if(button.dataset.note||button.dataset.openMeeting)navigate('meeting',null,button.dataset.note||button.dataset.openMeeting);
-    else if(button.hasAttribute('data-undo')&&previous){const saved=previous;previous=null;state=saved;proposal=false;render();persist();notify('Last change undone.');}
-    else if(button.hasAttribute('data-propose')){proposal=true;showProposal();}
-    else if(button.hasAttribute('data-dismiss')){proposal=false;main.querySelector('#b-proposal').hidden=true;}
-    else if(button.hasAttribute('data-apply'))change(()=>{state.tasks.push({id:crypto.randomUUID(),note:state.note,title:suggestion,due:'',done:false});proposal=false;},'Added the reviewed sample suggestion.');
-  });
-  root.addEventListener('change',event=>{
-    if(event.target.dataset.task){const task=state.tasks.find(t=>t.id===event.target.dataset.task);change(()=>{task.done=event.target.checked;},task.done?'Todo reopened.':'Todo completed.');}
-    else if(event.target.id==='b-note-body'){
-      const note=state.note,value=event.target.value;
-      if(value!==state.bodies[note]){previous=clone(state);state.bodies[note]=value;persist();main.querySelector('#b-markdown').textContent=markdown(getNote(note));notify('Meeting notes updated for this session.');main.querySelector('[data-undo]').disabled=false;}
-    }
-  });
-  root.addEventListener('submit',event=>{
-    if(event.target.id!=='b-add-form')return;event.preventDefault();
-    const data=new FormData(event.target),title=String(data.get('title')||'').trim(),due=String(data.get('due')||'');
-    if(!title){main.querySelector('#b-task-title').setCustomValidity('Enter an action.');main.querySelector('#b-task-title').reportValidity();return;}
-    change(()=>{state.tasks.push({id:crypto.randomUUID(),note:state.note,title,due,done:false});},'Checkbox added to the note, project, and daily overview.');
-  });
-  root.addEventListener('input',event=>{if(event.target.id==='b-task-title')event.target.setCustomValidity('');});
-  window.addEventListener('openai:set_globals',event=>{const value=event.detail?.globals?.widgetState?.privateContent;if(validSnapshot(value)){state=clone(value);previous=null;proposal=false;render();}});
-  render();
-  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:()=>{root.dataset.theme=appearance.theme;}});tweak.addSelect(appearance,'theme',{label:'Appearance',options:['system','light','dark']});}
-})();
-</script>
+<script src="vendor/marked.umd.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

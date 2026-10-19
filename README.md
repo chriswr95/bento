@@ -26,9 +26,11 @@ Planning, with an interactive workflow prototype. There is no desktop applicatio
 
 Open [`prototype/index.html`](prototype/index.html) in a modern browser; no install, build, account, or server is needed. Download or clone the repository first, since GitHub displays the source instead of running it.
 
+Keep the `prototype/` directory together when opening the page; its Markdown parser is bundled for offline use.
+
 The prototype uses fictional projects and a fixed sample date of October 19, 2026. It demonstrates daily review, active-project summaries, meeting-note editing, checkbox capture, shared completion state, and one-step undo. Changes last only for the current page session; refreshing restores the sample workspace.
 
-Agent suggestions are explicitly simulated. It does not read or write actual Markdown files, connect to an agent, or implement Copilot integration. Editing uses a text field and a separate checkbox capture control to explore the workflow; the production editor remains a design decision.
+Agent suggestions are explicitly simulated. The meeting note is one Markdown document: typing a checkbox creates a tracked todo, and changing completion from the overview updates its source. It does not read or write actual workspace files, connect to an agent, or implement Copilot integration. The production editor remains a design decision.
 
 ## Development
 

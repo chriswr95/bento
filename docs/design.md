@@ -83,6 +83,10 @@ Meeting notes, decisions, and follow-up actions.
 
 ### Checkbox todos
 
+The workflow prototype now edits a complete Markdown document as its only content authority. A bundled, pinned Marked parser recognizes task-list nodes, including nested and ordered lists. The Write/Read modes use the same source; the overview updates checkbox markers in that source. Preview rendering escapes raw HTML and does not load document images or activate links.
+
+Prototype task references use document ID and current source line. A temporary parse copy carries line annotations; the user’s document is not modified to add markers. This is sufficient for current-view interactions but is not the stable identity contract for a production workspace.
+
 Every Markdown task-list checkbox is a tracked todo, including checked boxes and nested entries. Parse task-list nodes rather than matching raw text so fenced code samples are not tasks. Opening an existing note must discover its todos without rewriting the file.
 
 Propose keeping each todo's authoritative text and completion state inline in its source document. The Todos, project, and daily views project that record; they do not create a second task file. Editing a task in any view uses the same application service to update the source node and refresh the index.

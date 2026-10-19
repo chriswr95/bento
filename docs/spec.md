@@ -84,7 +84,7 @@ A meeting title, date, attendees, and agenda are candidate template fields to va
 
 #### Turn discussion into action
 
-1. Add a checkbox while writing; it immediately becomes a tracked todo. An agent can also propose checkboxes from the discussion.
+1. Type a Markdown checkbox (`- [ ]`) anywhere in the meeting document; it immediately becomes a tracked todo. There is no separate task-entry form. An agent can also propose checkboxes from the discussion.
 2. Optionally add project context, a due date, or tags to a todo without interrupting note capture.
 3. For agent suggestions, review and correct the proposed details before applying them; manually adding a checkbox needs no separate confirmation.
 4. See the same todos in the note, project, and central Todos views; no separate promotion or duplicate entry is required.

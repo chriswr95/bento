@@ -1,31 +1,31 @@
-# Meeting-to-follow-up workflow study
+# Markdown meeting workflow study
 
-Open `index.html` in a modern browser. This is a self-contained interaction prototype with fictional data and a fixed sample date of October 19, 2026. It has no network requests or dependencies.
+Open `index.html` in a modern browser. Keep this directory together: its local styles, application script, and vendored parser allow offline use with no build step. It uses fictional projects and a fixed sample planning date of October 19, 2026.
 
-## Try these journeys
+## Try the workflow
 
-1. Start on Daily overview. Review overdue, today, upcoming, and undated work, plus a summary for each active project. Park access review intentionally has no tasks.
-2. Open Meeting note. Edit the discussion notes and use Add a checkbox to capture an action, optionally with a due date.
-3. Return to Daily overview. Find the action under the correct date group, then use its source link to return to the note.
-4. Complete a task from either screen. Verify the other screen and project summary reflect the same task. Completed tasks remain available in the overview's Completed section.
-5. Preview the sample agent suggestion, add it, and undo it. The suggestion is scripted from the sample note; no agent or model is connected.
-6. Select a project to narrow the overview. Return to All projects for the daily review.
+1. Open Meeting note. The entire note is one Markdown document.
+2. Type `- [ ] Your next action` anywhere in the document. The tracked-todo count updates immediately. Optional prototype due-date syntax is `(due YYYY-MM-DD)` at the end of the task line.
+3. Open Daily overview. Your action appears in the relevant date group with its source note and project.
+4. Complete it from the overview. Return to the note to see `[x]` in the Markdown source.
+5. Switch to Read for formatted Markdown and interactive checkboxes. Both modes use the same document.
+6. Rename, move, nest, or remove a checkbox in the source; views are derived from the current document. Code examples and HTML blocks are not tracked as tasks.
+7. Preview the sample agent suggestion, insert its Markdown checkbox, and undo it. Assistance is simulated and performs no network requests.
 
 ## Review with Makena
 
-- Is the daily overview the right starting point? What does each project summary need to tell her?
-- Does recording an action as a checkbox feel natural while taking notes?
-- Is moving between a todo and its source note clear?
-- Is reviewing an agent suggestion understandable? What information would she need before applying a batch?
+- Does a Markdown document provide the right writing experience, or should source editing become an optional mode of a richer editor?
+- Are project summaries and the daily overview useful for deciding what needs attention?
+- Is the source context clear when completing tasks away from their notes?
 
 ## Boundaries
 
-Changes stay in memory for the current page session and reset on refresh. This prototype has no filesystem persistence, Markdown parser, rich-text editor, account integration, or actual agent connection. The note body and the Add a checkbox control are separate; typing Markdown checkbox syntax in the note body is not parsed into tasks here. The production editor must satisfy automatic checkbox tracking throughout a document.
+Documents stay in memory for the page session and reset on refresh. The inline conversation preview may restore documents through optional host widget state. No actual workspace files are read or written; no agent or Copilot integration is connected.
 
-The inline conversation preview can restore state through the host's optional widget-state API. It also offers a host appearance control where available. The standalone page follows the browser's light/dark preference.
+Task references use the document and current source line. Reparse after edits before acting on a task; this prototype does not establish durable IDs across edits. Raw document HTML is escaped; images are represented by their alternate text, and links by their text, without loading external content.
 
-The source is a workflow study, not a selection of the desktop application framework or final file schema.
+Marked 17.0.5 is vendored in `vendor/marked.umd.js`; its license is preserved in `vendor/MARKED-LICENSE.md`. The production desktop framework, editor, and task identity schema remain open.
 
 ## Validation
 
-Checked in headless Chrome on macOS: cross-view completion, empty-project summaries, new-task capture, text escaping, reviewed suggestion application without duplicates, one-step undo, note-to-Markdown preview updates, refresh reset, and layout overflow at widths of 320, 736, and 1024 pixels. Light and dark layouts were visually inspected. Native Windows/macOS packaging and production persistence remain unimplemented.
+Browser checks cover Markdown task capture, nested/quoted/ordered tasks, fenced and indented code exclusion, duplicate-title targeting, source completion from both views, raw HTML escaping, agent insertion, undo, and layout widths of 320, 736, and 1024 pixels. Native desktop packaging and workspace-file persistence remain unimplemented.
