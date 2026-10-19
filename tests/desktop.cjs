@@ -3,11 +3,28 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
 const root = path.resolve(__dirname, '..');
 let application, temporary;
+async function stop(app) {
+  if (!app) return;
+  const child = app.process();
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exited = new Promise(resolve => child.once('exit', resolve));
+  // Playwright launches through cmd.exe on Windows; terminate its owned process tree.
+  if (process.platform === 'win32') await promisify(execFile)('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, timeout: 10000 });
+  else child.kill('SIGKILL');
+  await exited;
+}
+const watchdog = setTimeout(() => {
+  console.error('Native workflow exceeded 120 seconds.');
+  stop(application).catch(console.error).finally(() => process.exit(1));
+}, 120000);
 async function launch(workspace, userData) {
   const packaged = process.env.BENTO_PACKAGED_EXECUTABLE;
   const app = await electron.launch({ executablePath: packaged || require('electron'), args: packaged ? ['--user-data-dir=' + userData] : [root], env: { ...process.env, BENTO_TEST_MODE: '1', BENTO_TEST_USER_DATA: userData, ...(workspace ? { BENTO_TEST_WORKSPACE: workspace } : {}) } });
+  application = app;
   const page = await app.firstWindow(); page.setDefaultTimeout(12000);
   page.on('dialog', dialog => dialog.accept().catch(() => {}));
   await page.waitForLoadState('domcontentloaded');
@@ -31,6 +48,7 @@ async function saved(page) {
   await application.evaluate(({ dialog }, folder) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] }); }, workspace);
   await page.getByRole('button', { name: 'New workspace', exact: true }).click();
   await saved(page);
+  console.log('Created workspace through the native dialog.');
   await page.getByRole('button', { name: 'Meeting note', exact: true }).click();
   await page.getByRole('button', { name: 'Write a note…', exact: true }).click();
   await page.getByRole('textbox', { name: 'Meeting Markdown', exact: true }).pressSequentially('[] ');
@@ -39,6 +57,7 @@ async function saved(page) {
   let filename;
   for (const name of (await fs.readdir(path.join(workspace, 'todos'))).filter(name => name.startsWith('todo-'))) if ((await fs.readFile(path.join(workspace, 'todos', name), 'utf8')).includes('title: Desktop action')) filename = name;
   assert.ok(filename, 'Typed checkbox creates a real Markdown todo file');
+  console.log('Captured a checkbox into its Markdown todo file.');
   assert.match(await fs.readFile(path.join(workspace, 'meetings/meeting-coordination.md'), 'utf8'), new RegExp('../todos/' + filename));
   await page.getByRole('button', { name: 'Open Desktop action', exact: true }).click();
   await page.getByRole('button', { name: 'Write a note…', exact: true }).click();
@@ -55,6 +74,7 @@ async function saved(page) {
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);
   await application.close(); application = null;
+  console.log('Closed the app after saving. Reopening workspace.');
   launched = await launch(workspace, userData); application = launched.app; page = launched.page;
   await saved(page);
   await page.getByRole('navigation', { name: 'Documents', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).click();
@@ -73,10 +93,8 @@ async function saved(page) {
   assert.equal(await page.evaluate(() => Object.keys(localStorage).some(key => key.startsWith('bento.desktop.draft.') && localStorage.getItem(key).includes('Unsaved local detail'))), true);
   console.log('Passed native create/open, typed checkbox → Markdown files, grouped status, todo notes, restart, completion propagation, sandbox bridge, external-change protection, and retained draft.');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
-  if (application) {
-    const child = application.process();
-    const exited = new Promise(resolve => child.once('exit', resolve));
-    child.kill('SIGKILL'); await exited;
-  }
-  if (temporary) await fs.rm(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  try {
+    await stop(application);
+    if (temporary) await fs.rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  } finally { clearTimeout(watchdog); }
 });
