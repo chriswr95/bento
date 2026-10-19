@@ -4,15 +4,17 @@ Open `index.html` in a modern browser. Keep this directory together: scripts, st
 
 ## Try the flow
 
-1. Open Meeting note and type `- [ ] Your next action` into the Markdown document. Bento creates a todo document and inserts a linked checkbox. Continue typing within the link label; Enter at its end starts another checkbox.
-2. Switch to Read and click the todo title, or click its title from Daily overview. The todo opens with its own Markdown body, title, completion, optional due date, and project.
-3. Write context or progress notes in Todo Markdown. Use Save properties for title/date/project changes. Completion is applied immediately, together with any other valid property edits currently in the form.
-4. Return to the meeting using the source button. Completing the todo from its document, the meeting, or the overview updates the same record and linked checkbox markers.
-5. Remove the meeting reference. The todo and its notes remain accessible through the overview, including its Completed section when appropriate.
-6. Download Markdown exports the current document with its metadata and body. Todo references use stable ID filenames; keeping exported related files together preserves their relative links.
-7. Open a project from the sidebar, then Open project document to edit its Markdown body.
+1. Open Meeting note. Notes are formatted in one editable page; there is no Read/Write switch.
+2. Click a paragraph or heading to edit that block's Markdown. Click elsewhere or press Escape to render it again. Tab to a block and press Enter also opens its source.
+3. Choose Write a note… and type `[] ` or `- [ ] `. The marker immediately becomes a checkbox with an editable title. Start typing; the first nonempty title creates its todo document. Enter continues the checklist; Enter on an empty checkbox returns to a new text block.
+4. Edit a todo label directly, or use its ↗ button to open its own document. Write context in its body and use Save properties for title/date/project changes. Completion is applied immediately, together with valid property edits currently in the form.
+5. Return through the source button. Completing a todo from its document, the meeting, or the overview updates the same record and linked checkbox markers.
+6. To remove a reference, focus its containing Markdown block and press Enter to edit its source. Removing the line leaves the todo and its notes accessible through the overview.
+7. Download Markdown exports the current document with metadata and body. Todo references use stable ID filenames; keeping exported related files together preserves their relative links. Project documents use the same editor.
 
-Plain checkbox text can include `(due YYYY-MM-DD)` during initial capture. Thereafter, use the todo's due-date property. The production editor and final property syntax remain design decisions. Agent suggestions are scripted and make no model requests.
+Pasted plain checkbox text can include `(due YYYY-MM-DD)` during initial capture. Use the todo's date property for ordinary live editing. Agent suggestions are scripted and make no model requests.
+
+`live-editor.js` implements a limited block-based live preview over the Markdown source. Ordinary blocks expose source while active; task labels and checkboxes are inline controls. It preserves Markdown instead of converting arbitrary HTML back into source. The source control, native selection, and IME composition stay intact while editing an ordinary block. Todo titles are single-line controls; full rich-text selection across blocks, native editor undo, multiline title wrapping, and production editor accessibility require further work. The toolbar provides workspace undo. Select a production editor through a separate evaluation.
 
 ## Record model and persistence
 
@@ -20,7 +22,7 @@ Plain checkbox text can include `(due YYYY-MM-DD)` during initial capture. There
 
 Workspace snapshots are stored under `bento.prototype.workspace.v4`, separately from the personal profile. When storage is available, notes and todo records survive reload. Writes replace one complete browser snapshot; undo restores the previous in-memory snapshot. Invalid stored data is retained unchanged with a warning. A detected competing page update stops further overwrites of that saved copy. Browser persistence is a single-tab prototype facility, not a desktop folder, backup system, or multi-device synchronization protocol.
 
-Where browser storage is unavailable or full, the prototype reports session-only operation. The conversation preview may restore small workspace snapshots through host widget state; larger snapshots rely on browser storage. Version 3 browser snapshots migrate while retaining the original saved copy. Disagreeing legacy checkpoints block migration instead of overwriting the saved data. Earlier inline-note host snapshots can migrate into record documents. Profile values are never included in host workspace snapshots.
+Where browser storage is unavailable or full, the prototype reports session-only operation. The conversation preview may restore small workspace snapshots through host widget state; larger snapshots rely on browser storage. Version 3 document snapshots migrate to version 4 while preserving todo IDs, notes, and agreed checkpoints. The original version 3 storage key is retained. Conflicting legacy checkpoints block migration without overwriting the original copy. Earlier inline-note host snapshots can migrate into record documents. Profile values are never included in host workspace snapshots.
 
 ## References and conflicts
 

@@ -52,7 +52,7 @@
           .map(task => `- [${task.done ? 'x' : ' '}] ${String(task.title)}${task.due ? ` (due ${task.due})` : ''}`).join('\n');
       }
     }
-    return { version: 4, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', editor: 'write', workspace: model.createWorkspace(documents) };
+    return { version: 4, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', workspace: model.createWorkspace(documents) };
   }
   let state = loadWorkspace();
   let profile = BentoProfile.read();
@@ -63,27 +63,29 @@
   const dueLabel = due => !due ? 'No date' : due === planDate ? 'Today'
     : new Date(due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
+  let renderOffset = 0, liveEditor = null;
   const markdown = new marked.Marked({ renderer: {
     html({ text }) {
       if (/^<!-- bento-ref: [\w-]+ -->$/.test(text.trim())) return '';
       return escape(model.stripMarkers(text));
     },
-    link({ href, tokens, todoId }) {
-      if (todoId) {
-        const reference = record().references[todoId];
-        if (!reference || href !== `${todoId}.md` || !model.taskInfo(workspace(), workspace().records[todoId])) return this.parser.parseInline(tokens);
-      }
+    link({ href, tokens, todoId, sourceLine, taskTitle }) {
       const target = /^([\w-]+)\.md$/.exec(href)?.[1];
+      if (todoId) {
+        const todo = model.taskInfo(workspace(), workspace().records[target]);
+        if (!todo || !record().references[target]) return this.parser.parseInline(tokens);
+        return `<span class="b-live-task"><input type="text" class="b-task-label" data-task-title="${sourceLine + renderOffset}" aria-label="Todo text" value="${escape(taskTitle)}"><button type="button" class="b-open-todo cursor-interaction" data-record="${target}" aria-label="Open ${escape(todo.title)}" title="Open todo document">↗</button></span>`;
+      }
       return target && Object.hasOwn(workspace().records, target)
         ? `<button class="b-document-link cursor-interaction" type="button" data-record="${target}">${this.parser.parseInline(tokens)}</button>`
         : this.parser.parseInline(tokens);
     },
     image({ text }) { return `<span>[Image: ${escape(text)}]</span>`; },
     checkbox(token) {
-      const reference = token.todoId && record().references[token.todoId];
-      const unresolved = token.todoId && (!reference || token.sourceHref !== `${token.todoId}.md` || !model.taskInfo(workspace(), workspace().records[token.todoId]));
+      const unresolved = token.sourceHref && (!token.todoId || !record().references[token.todoId] || !model.taskInfo(workspace(), workspace().records[token.todoId]));
+      const line = token.sourceLine + renderOffset;
       return Number.isInteger(token.sourceLine)
-        ? `<input type="checkbox" class="cursor-interaction" data-source-line="${token.sourceLine}" aria-label="Complete ${escape(token.taskTitle)}" ${token.checked ? 'checked' : ''} ${unresolved ? 'disabled' : ''}>` : '';
+        ? `<input type="checkbox" class="cursor-interaction" data-source-line="${line}" aria-label="Complete ${escape(token.taskTitle)}" ${token.checked ? 'checked' : ''} ${unresolved ? 'disabled' : ''}>${!token.sourceHref && !token.taskTitle ? `<input class="b-task-label" type="text" data-task-title="${line}" aria-label="Todo text" placeholder="To-do">` : ''}` : '';
     }
   } });
 
@@ -168,20 +170,16 @@
   }
 
   function resizeEditor() {
-    const editor = main.querySelector('#b-markdown-editor');
-    if (!editor) return;
-    editor.style.height = 'auto'; editor.style.height = Math.max(320, editor.scrollHeight + 4) + 'px';
+    main.querySelectorAll('[data-block-source]').forEach(editor => liveEditor?.resize(editor));
   }
   function refreshDocument() {
     const parsed = model.parse(record().body);
-    main.querySelector('#b-reading').innerHTML = markdown.parser(parsed.tokens);
     const targets = new Set(parsed.tasks.map(task => task.todoId).filter(id => record().references[id]));
     main.querySelector('#b-task-count').textContent = `${targets.size} linked todos in this document`;
     const issues = workspace().issues.filter(item => item.document === record().id);
     const panel = main.querySelector('#b-document-issues');
     panel.hidden = !issues.length;
     panel.textContent = issues.map(item => `Line ${item.line + 1}: ${item.message}`).join(' ');
-    resizeEditor();
   }
   function taskProperties(task) {
     const sources = model.sourcesFor(workspace(), task.id);
@@ -202,18 +200,16 @@
       ${task ? `<h1>${escape(doc.title)}</h1>${taskProperties(task)}` : ''}
       <div class="b-actions"><button type="button" class="b-button cursor-interaction" data-export>Download Markdown</button>
         <button type="button" class="b-button cursor-interaction" data-undo ${previous ? '' : 'disabled'}>Undo last change</button></div>
-      <div class="b-actions" role="group" aria-label="Document mode">
-        <button class="b-button cursor-interaction" type="button" data-editor="write" aria-pressed="${state.editor === 'write'}">Write Markdown</button>
-        <button class="b-button cursor-interaction" type="button" data-editor="read" aria-pressed="${state.editor === 'read'}">Read</button>
-      </div>
-      <label id="b-editor-label" ${state.editor === 'write' ? '' : 'hidden'}><span class="b-eyebrow">${label}</span>
-        <textarea class="b-editor" id="b-markdown-editor" aria-label="${label}" spellcheck="false" placeholder="Write notes and supporting context…"></textarea></label>
-      <article id="b-reading" class="b-reading" aria-label="Rendered document" ${state.editor === 'read' ? '' : 'hidden'}></article>
+      <article id="b-reading" class="b-reading" aria-label="Editable Markdown document"></article>
       <p id="b-task-count" class="b-muted" role="status" aria-live="polite"></p><p id="b-document-issues" class="b-issues" role="alert" hidden></p>
       ${doc.id === 'coordination' ? `<div class="b-actions"><button class="b-button cursor-interaction" type="button" data-propose>Preview agent suggestion</button></div>
         <section id="b-proposal" class="b-proposal" hidden><h3>Sample agent suggestion</h3><p id="b-suggestion-text"></p><p class="b-muted">From this note · no due date specified · simulated assistance</p>
           <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
-    main.querySelector('#b-markdown-editor').value = doc.body;
+    liveEditor = new BentoLiveEditor(main.querySelector('#b-reading'), {
+      body: () => record().body, label,
+      change: body => editDocument(body),
+      render: (body, offset) => { renderOffset = offset; return markdown.parser(model.parse(body).tokens); }
+    });
     refreshDocument(); if (proposal && main.querySelector('#b-proposal')) showProposal();
   }
   const suggestion = 'Prepare an agenda for the next coordination meeting';
@@ -247,32 +243,11 @@
     if (globalThis.lucide) lucide.createIcons({ attrs: { width: 16, height: 16 } });
   }
 
-  function mapCaret(source, position, edits) {
-    let shift = 0;
-    const lines = source.split('\n');
-    for (const edit of edits.sort((a, b) => a.line - b.line)) {
-      const start = lines.slice(0, edit.line).reduce((sum, line) => sum + line.length + 1, 0), end = start + edit.old.length;
-      if (position < start) break;
-      if (edit.capture && position >= start + edit.prefixLength && position <= end) {
-        const offset = Math.min(position - start - edit.prefixLength, edit.title.length);
-        return start + shift + edit.prefixLength + 1 + model.escapeLabel(edit.title.slice(0, offset)).length;
-      }
-      if (position >= end) shift += edit.replacement.length - edit.old.length;
-    }
-    return position + shift;
-  }
-  function editDocument(editor) {
+  function editDocument(body) {
     if (!editingSnapshot) { editingSnapshot = clone(state); previous = editingSnapshot; }
-    const source = editor.value, start = editor.selectionStart, end = editor.selectionEnd;
-    const result = model.applyEdit(workspace(), state.document, source);
-    state.workspace = result.workspace;
-    const canonical = record().body;
-    if (canonical !== source) {
-      editor.value = canonical;
-      editor.setSelectionRange(mapCaret(source, start, result.edits), mapCaret(source, end, result.edits));
-    }
+    state.workspace = model.applyEdit(workspace(), state.document, body).workspace;
     refreshDocument(); main.querySelector('[data-undo]').disabled = false;
-    persist(); notify('Document updated. Linked todos use their own records.');
+    persist(); notify('Document saved.');
   }
   function exportDocument() {
     const blob = new Blob([model.serializeDocument(record())], { type: 'text/markdown;charset=utf-8' });
@@ -287,7 +262,6 @@
       else if (button.dataset.view) navigate(button.dataset.view);
       else if (button.dataset.record) openRecord(button.dataset.record);
       else if (button.dataset.project) navigate('daily', button.dataset.project);
-      else if (button.dataset.editor) { state.editor = button.dataset.editor; editingSnapshot = null; render(); persist(); }
       else if (button.hasAttribute('data-undo') && previous) {
         const snapshot = previous; previous = null; state = snapshot; editingSnapshot = null; proposal = false;
         render(); persist(); notify('Last document change undone.');
@@ -309,18 +283,6 @@
   });
   root.addEventListener('input', event => {
     if (event.target.closest('#b-profile-form')) { event.target.setCustomValidity(''); return; }
-    if (event.target.id === 'b-markdown-editor') {
-      try { editDocument(event.target); } catch (error) { notify(error.message); }
-    }
-  });
-  root.addEventListener('keydown', event => {
-    const editor = event.target;
-    if (editor.id !== 'b-markdown-editor' || event.key !== 'Enter' || editor.selectionStart !== editor.selectionEnd) return;
-    const pos = editor.selectionStart, lineEnd = editor.value.indexOf('\n', pos);
-    const end = lineEnd < 0 ? editor.value.length : lineEnd;
-    if (!editor.value.slice(pos, end).startsWith('](') || !/^\]\([\w-]+\.md\)$/.test(editor.value.slice(pos, end))) return;
-    event.preventDefault(); editor.setRangeText('\n- [ ] ', end, end, 'end');
-    editor.dispatchEvent(new Event('input', { bubbles: true }));
   });
   root.addEventListener('submit', event => {
     event.preventDefault();

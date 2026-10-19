@@ -17,7 +17,7 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 | Database definitions | Required: user-managed schemas; Projects and Todos are customizable, removable defaults |
 | Desktop shell and editor | Open; validate on Windows and macOS |
 | Todo representation | Required: a Markdown document per todo; proposed checkbox references with the todo document authoritative |
-| Everyday editing | Must support discoverable formatting; exact editor model remains open |
+| Everyday editing | Single live Markdown surface; production editor library remains open |
 | Content agent | Proposed: scoped query and command interface sharing application services |
 | Application agent | Proposed: external coding-agent integration with isolated trial and explicit adoption |
 | Theme system | Proposed: declarative theme packages over shared design tokens |
@@ -67,7 +67,7 @@ The prototype stores record envelopes and Markdown bodies together in one browse
 
 Mutations operate on cloned workspace snapshots and validate before replacing state. Browser storage writes the complete snapshot, and undo restores the preceding snapshot. Detect observed changes from another page and stop overwriting the saved copy; this is single-tab prototype persistence, not a production synchronization protocol. Invalid saved snapshots are retained unchanged, with a visible warning and session-only sample operation. Storage/quota failures are reported as session-only operation. Older inline-host snapshots migrate to record documents when possible.
 
-Markdown source edits automatically materialize linked todos; generated links preserve the editor caret while typing, and Enter at a task-label boundary continues the checkbox list. The prototype can preview reference conflicts and disable unresolved task links. It does not offer a dedicated conflict-resolution dialog or claim safe arbitrary external-file edits. Schema evolution, migrations, folder recovery, and the full database editor remain to be built. Keep personal profile settings outside workspace records and host snapshots.
+A single live Markdown page replaces separate Read/Write modes. Ordinary blocks render until activated for source editing. Typing `[] ` or `- [ ] ` in a new block immediately renders a checkbox; its first nonempty title materializes a todo. Task labels edit inline, Enter continues the list, and an adjacent control opens the todo document. The browser slice uses a small block editor over source Markdown; production editor selection, cross-block rich-text selection, native undo, and full accessibility evaluation remain open. Version 3 browser snapshots migrate to the new single-ID representation while retaining the original saved copy. The prototype can preview reference conflicts and disable unresolved task links. It does not offer a dedicated conflict-resolution dialog or claim safe arbitrary external-file edits. Schema evolution, migrations, folder recovery, and the full database editor remain to be built. Keep personal profile settings outside workspace records and host snapshots.
 
 ## 5. Interface and customization
 
