@@ -59,7 +59,7 @@ default_task_database: db-todos
 default_project_database: db-projects
 ```
 
-Defaults select existing databases; they do not make Todos or Projects mandatory. A missing task destination leaves checkboxes pending instead of recreating a database. The project default is recorded for future creation commands; current summaries use project capabilities across databases.
+Defaults select existing databases; they do not make Todos or Projects mandatory. A missing task destination leaves checkboxes pending instead of recreating a database. Current creation controls and summaries use project capabilities across databases.
 
 Database folders must be distinct and non-nested. Ordinary subfolders are allowed. A new `database.md` in an unregistered location is reported as a control document needing configuration; arbitrary folders do not silently become databases. Renaming a database folder requires updating its registered path while retaining its ID. Automatic folder-rename repair is not implemented.
 
@@ -172,4 +172,4 @@ The YAML document API retains unknown values and comments where possible, and up
 
 The Electron app creates/opens folders, discovers registered definitions, edits notes/todo bodies and title/status/date/project properties, creates todo files from checkboxes, saves, reloads, and recovers interrupted saves. The browser-only sample still uses its independent local snapshot. Profile/drafts remain in local app storage, separate from workspace content and agent context.
 
-Next: database/schema controls, generic record property editing and creation, explicit transfer/conversion tools, recovery/conflict review, incremental external-change watching, production editor/accessibility work, and Windows/macOS distribution validation. No real agent or Copilot integration is implemented.
+Next: database/schema controls, generic record property editing, explicit transfer/conversion tools, recovery/conflict review, incremental external-change watching, production editor/accessibility work, and Windows/macOS distribution validation. No real agent or Copilot integration is implemented.

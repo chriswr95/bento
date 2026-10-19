@@ -13,4 +13,4 @@ default_project_database: db-projects
 
 # My workspace
 
-Fictional data for exploring Bento. Database locations are declared here; the enclosing database folder determines record membership.
+Your notes, projects, and todos live here. Database locations are declared here; the enclosing database folder determines record membership.

@@ -69,7 +69,7 @@ import BentoFileSession from './file-session.js';
   const dueLabel = due => !due ? 'No date' : due === planDate ? 'Today'
     : new Date(due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  let renderOffset = 0, liveEditor = null;
+  let renderOffset = 0, liveEditor = null, creation = null;
   const markdown = new marked.Marked({ renderer: {
     html({ text }) {
       if (/^<!-- bento-ref: [\w-]+ -->$/.test(text.trim())) return '';
@@ -134,6 +134,52 @@ import BentoFileSession from './file-session.js';
     if (Object.hasOwn(workspace().records, documentId)) navigate('document', null, documentId);
   }
 
+  function projectDatabase() {
+    return Object.values(workspace().databases).find(database => database.capabilities.project);
+  }
+  function projectField(database) {
+    return database?.fields.find(field => field.type === 'relation' && workspace().databases[field.target_database]?.capabilities.project);
+  }
+  function meetingDatabase() {
+    return Object.values(workspace().databases).find(database => !database.capabilities.task && !database.capabilities.project && projectField(database));
+  }
+  function creationLabel(database) {
+    return database.capabilities.project ? 'New project' : database.capabilities.task ? 'New todo' : database.id === meetingDatabase()?.id ? 'New meeting note' : `New page in ${database.title}`;
+  }
+  function showCreate(databaseId, project = null) {
+    if (files?.view?.readOnly) return notify('Repair this workspace before creating documents.');
+    creation = { database: databaseId, project, previous: { view: state.view, project: state.project, document: state.document } };
+    state.view = 'create'; render();
+    main.querySelector('[name="title"]').focus();
+  }
+  function renderCreation() {
+    const database = workspace().databases[creation.database], relation = projectField(database);
+    const projects = Object.values(workspace().records).filter(doc => model.capability(workspace(), doc, 'project') && (model.activeProjects(workspace()).some(active => active.id === doc.id) || doc.id === creation.project));
+    main.innerHTML = `<p class="b-eyebrow">${escape(database.title)}</p><h1>${escape(creationLabel(database))}</h1>
+      <p class="b-muted">A Markdown document for your notes and details.</p>
+      <form id="b-create-document"><label class="b-field">Title<input name="title" aria-label="Document title" required maxlength="200" placeholder="${database.capabilities.project ? 'e.g. Creekside improvements' : 'Give this page a title'}"></label>
+      ${relation ? `<label class="b-field">Project<select name="project" aria-label="Project"><option value="">Unassigned</option>${projects.map(project => `<option value="${project.id}" ${creation.project === project.id ? 'selected' : ''}>${escape(project.title)}</option>`).join('')}</select></label>` : ''}
+      <p id="b-create-error" class="b-issues" role="alert" hidden></p>
+      <div class="b-actions"><button type="submit" class="b-button b-primary">${database.capabilities.project ? 'Create project' : 'Create page'}</button><button type="button" class="b-button" data-cancel-create>Cancel</button></div></form>`;
+  }
+  function renderSidebar() {
+    const sidebar = root.querySelector('aside');
+    sidebar.hidden = !files?.view;
+    if (sidebar.hidden) return;
+    const docs = Object.values(workspace().records);
+    const link = doc => `<button type="button" data-record="${escape(doc.id)}" ${state.view === 'document' && state.document === doc.id ? 'aria-current="page"' : ''}>${escape(doc.title)}</button>`;
+    sidebar.innerHTML = `<nav class="b-nav" aria-label="Workspace"><button type="button" data-view="daily" ${state.view === 'daily' ? 'aria-current="page"' : ''}>Daily overview</button></nav>
+      ${Object.values(workspace().databases).sort((a,b) => (a.capabilities.project ? 0 : a.capabilities.task ? 2 : 1) - (b.capabilities.project ? 0 : b.capabilities.task ? 2 : 1)).map(database => {
+        const records = docs.filter(doc => doc.database === database.id).sort((a,b) => a.title.localeCompare(b.title));
+        const selected = state.view === 'document' && record()?.database === database.id;
+        const content = `<nav class="b-nav" aria-label="${escape(database.title)}">${records.map(link).join('')}</nav>${records.length ? '' : '<p class="b-sidebar-empty">No pages yet</p>'}`;
+        return `<section class="b-sidebar-group"><div class="b-sidebar-heading"><span>${escape(database.title)}</span><button type="button" data-create="${escape(database.id)}" aria-label="${escape(creationLabel(database))}" title="${escape(creationLabel(database))}" ${files.view.readOnly ? 'disabled' : ''}>+</button></div>
+          ${database.capabilities.task ? `<details ${selected ? 'open' : ''}><summary>${records.length} ${records.length === 1 ? 'todo' : 'todos'}</summary>${content}</details>` : content}</section>`;
+      }).join('')}
+      ${docs.some(doc => !doc.database) ? `<section class="b-sidebar-group"><div class="b-sidebar-heading">Pages</div><nav class="b-nav" aria-label="Pages">${docs.filter(doc => !doc.database).map(link).join('')}</nav></section>` : ''}
+      <nav class="b-nav b-sidebar-settings" aria-label="Settings"><button type="button" data-view="profile" ${state.view === 'profile' ? 'aria-current="page"' : ''}>Profile</button></nav>`;
+  }
+
   function taskRow(task) {
     const project = getProject(task.project), source = model.sourcesFor(workspace(), task.id)[0];
     return `<li class="b-task ${task.done ? 'b-done' : ''}">
@@ -146,7 +192,7 @@ import BentoFileSession from './file-session.js';
   function projectCard(project) {
     const tasks = allTasks().filter(task => task.project === project.id), open = tasks.filter(task => !task.done);
     const next = open.filter(task => task.due).sort((a, b) => a.due.localeCompare(b.due))[0];
-    return `<section class="b-project"><button type="button" class="cursor-interaction" data-project="${project.id}">${escape(project.title)}</button>
+    return `<section class="b-project"><button type="button" class="cursor-interaction" ${desktop ? `data-record="${project.id}"` : `data-project="${project.id}"`}>${escape(project.title)}</button>
       <p>Active · ${open.length} open · ${tasks.length - open.length} complete</p>
       <p>${next ? 'Next due: ' + dueLabel(next.due) : open.length ? 'No dated work' : 'No outstanding work'}</p></section>`;
   }
@@ -159,6 +205,13 @@ import BentoFileSession from './file-session.js';
     }).join('');
   }
   function renderDaily() {
+    if (desktop && !Object.keys(workspace().records).length) {
+      const projects = projectDatabase();
+      main.innerHTML = `<p class="b-eyebrow">Your workspace is ready</p><h1>${escape(BentoProfile.greeting(profile))}</h1>
+        <section class="b-onboarding"><h2>Create your first project</h2><p>Start with a project, then add meeting notes and turn checkboxes into todos.</p>
+        ${projects ? `<button type="button" class="b-button b-primary" data-create="${projects.id}" ${files.view.readOnly ? 'disabled' : ''}>Create your first project</button>` : '<p>Add a page using a database in the sidebar.</p>'}</section>`;
+      return;
+    }
     const tasks = allTasks().filter(task => !state.project || task.project === state.project);
     const open = tasks.filter(task => !task.done).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
     const selected = getProject(state.project);
@@ -205,9 +258,11 @@ import BentoFileSession from './file-session.js';
   }
   function renderDocument() {
     const doc = record(), database = workspace().databases[doc.database], task = model.taskInfo(workspace(), doc);
-    const label = task ? 'Todo Markdown' : doc.database === 'db-meetings' ? 'Meeting Markdown' : 'Project Markdown';
+    const label = task ? 'Todo Markdown' : doc.database === meetingDatabase()?.id ? 'Meeting Markdown' : model.capability(workspace(), doc, 'project') ? 'Project Markdown' : 'Page Markdown';
+    const isProject = model.capability(workspace(), doc, 'project'), meetings = meetingDatabase();
     main.innerHTML = `<p class="b-eyebrow">${escape(database?.title || 'Documents')} / ${escape(doc.title)}</p>
       ${task ? `<h1>${escape(doc.title)}</h1>${taskProperties(task)}` : ''}
+      ${desktop && isProject ? `<div class="b-actions">${meetings ? `<button type="button" class="b-button b-primary" data-create="${meetings.id}" data-for-project="${doc.id}">New meeting note</button>` : ''}<button type="button" class="b-button" data-project="${doc.id}">Review project work</button></div>` : ''}
       <div class="b-actions"><button type="button" class="b-button cursor-interaction" data-export>Download Markdown</button>
         <button type="button" class="b-button cursor-interaction" data-undo ${previous ? '' : 'disabled'}>Undo last change</button></div>
       <article id="b-reading" class="b-reading" aria-label="Editable Markdown document"></article>
@@ -244,18 +299,22 @@ import BentoFileSession from './file-session.js';
   }
   function render() {
     if (desktop && !files?.view) {
-      main.innerHTML = '<h1>Your workspace, in Markdown.</h1><p>Open a workspace folder or create one in an empty folder.</p>';
+      root.querySelector('aside').hidden = true;
+      root.querySelector('.b-shell').classList.add('b-welcome-shell');
+      root.querySelector('.b-file-controls').hidden = true;
+      main.innerHTML = `<section class="b-welcome"><p class="b-eyebrow">Welcome to Bento</p><h1>Your workspace, in Markdown.</h1><p>Keep project notes, capture meetings, and follow through on your work.</p>
+        <div class="b-actions"><button type="button" class="b-button b-primary" data-files="create">New workspace</button><button type="button" class="b-button" data-files="open">Open workspace</button></div>
+        <p class="b-muted">Choose an empty folder for a new workspace. Your Markdown files stay in that folder.</p></section>`;
       return;
     }
-    const documents = root.querySelector('#b-document-nav');
-    if (documents) documents.innerHTML = Object.values(workspace().records).map(doc => `<button type="button" class="cursor-interaction" data-record="${escape(doc.id)}">${escape(doc.title)}</button>`).join('');
+    if (desktop) { root.querySelector('.b-shell').classList.remove('b-welcome-shell'); root.querySelector('.b-file-controls').hidden = false; renderSidebar(); }
     root.dataset.theme = appearance.theme;
     root.querySelectorAll('[data-view]').forEach(button => {
       const selected = button.dataset.view === state.view || button.dataset.view === 'meeting' && state.view === 'document' && record()?.database === 'db-meetings';
       if (selected && !state.project) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     });
-    root.querySelector('#b-project-nav').innerHTML = model.activeProjects(workspace()).map(project => `<button type="button" class="cursor-interaction" data-project="${project.id}" ${state.project === project.id ? 'aria-current="page"' : ''}>${escape(project.title)}</button>`).join('');
-    if (state.view === 'daily') renderDaily(); else if (state.view === 'profile') renderProfile(); else renderDocument();
+    if (!desktop) root.querySelector('#b-project-nav').innerHTML = model.activeProjects(workspace()).map(project => `<button type="button" class="cursor-interaction" data-project="${project.id}" ${state.project === project.id ? 'aria-current="page"' : ''}>${escape(project.title)}</button>`).join('');
+    if (state.view === 'create') renderCreation(); else if (state.view === 'daily') renderDaily(); else if (state.view === 'profile') renderProfile(); else if (record()) renderDocument(); else renderDaily();
     if (globalThis.lucide) lucide.createIcons({ attrs: { width: 16, height: 16 } });
   }
 
@@ -274,7 +333,9 @@ import BentoFileSession from './file-session.js';
   root.addEventListener('click', event => {
     const button = event.target.closest('button'); if (!button) return;
     try {
-      if (button.dataset.view === 'meeting') openRecord(state.note);
+      if (button.dataset.create) showCreate(button.dataset.create, button.dataset.forProject || null);
+      else if (button.hasAttribute('data-cancel-create')) { Object.assign(state, creation.previous); creation = null; render(); }
+      else if (button.dataset.view === 'meeting') openRecord(state.note);
       else if (button.dataset.view) navigate(button.dataset.view);
       else if (button.dataset.record) openRecord(button.dataset.record);
       else if (button.dataset.project) navigate('daily', button.dataset.project);
@@ -303,7 +364,18 @@ import BentoFileSession from './file-session.js';
   root.addEventListener('submit', event => {
     event.preventDefault();
     const form = event.target, values = new FormData(form);
-    if (form.id === 'b-todo-properties') {
+    if (form.id === 'b-create-document') {
+      try {
+        const database = workspace().databases[creation.database], relation = projectField(database), project = String(values.get('project') || '');
+        const properties = relation && project ? { [relation.id]: relation.cardinality === 'many' ? [project] : project } : {};
+        const result = model.createDocument(workspace(), { database: database.id, title: String(values.get('title')), properties });
+        previous = null;
+        state.workspace = result.workspace; creation = null;
+        navigate('document', null, result.documentId);
+        notify('Created a Markdown document.');
+        main.querySelector('[data-start]')?.focus();
+      } catch (error) { const panel = main.querySelector('#b-create-error'); panel.hidden = false; panel.textContent = error.message; }
+    } else if (form.id === 'b-todo-properties') {
       try { change(() => model.updateTodo(workspace(), state.document, { title: String(values.get('title')), due: String(values.get('due')), project: String(values.get('project')), status: String(values.get('status')) }), 'Todo properties saved.'); }
       catch (error) { notify(error.message); }
     } else if (form.id === 'b-profile-form') {
@@ -326,9 +398,9 @@ import BentoFileSession from './file-session.js';
   });
   if (desktop) {
     root.querySelector('.b-demo').textContent = 'Markdown workspace';
-    root.querySelector('.b-chrome').insertAdjacentHTML('beforeend', `<div class="b-file-controls"><button class="b-button" type="button" data-files="open">Open workspace</button><button class="b-button" type="button" data-files="create">New workspace</button><button class="b-button" type="button" data-files="save" disabled>Save files</button><button class="b-button" type="button" data-files="reload" disabled>Reload files</button><button class="b-button" type="button" data-files="restore" hidden>Restore draft</button><button class="b-button" type="button" data-files="draft" hidden>Download draft</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
+    root.querySelector('.b-chrome').insertAdjacentHTML('beforeend', `<div class="b-file-controls"><details class="b-workspace-menu"><summary>Workspace</summary><div><button class="b-button" type="button" data-files="open">Open workspace</button><button class="b-button" type="button" data-files="create">New workspace</button><button class="b-button" type="button" data-files="reload" disabled>Reload files</button></div></details><button class="b-button" type="button" data-files="save" disabled>Save files</button><button class="b-button" type="button" data-files="restore" hidden>Restore draft</button><button class="b-button" type="button" data-files="draft" hidden>Download draft</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
     root.querySelector('.b-shell').insertAdjacentHTML('beforebegin', '<p id="b-file-errors" class="b-issues" role="alert" hidden></p>');
-    root.querySelector('aside').insertAdjacentHTML('beforeend', '<p class="b-sidebar-label">DOCUMENTS</p><nav id="b-document-nav" class="b-nav" aria-label="Documents"></nav>');
+
     const errors = root.querySelector('#b-file-errors');
     files = new BentoFileSession(desktop, {
       workspace,
@@ -336,7 +408,7 @@ import BentoFileSession from './file-session.js';
         root.querySelector('.b-demo').textContent = view.title;
         document.title = view.title + ' · Bento';
         state.workspace = view.workspace;
-        state.view = 'daily'; state.project = null;
+        state.view = 'daily'; state.project = null; creation = null;
         state.document = Object.hasOwn(workspace().records, state.document) ? state.document : Object.keys(workspace().records)[0];
         state.note = Object.values(workspace().records).find(doc => doc.database === 'db-meetings')?.id;
         previous = null; editingSnapshot = null; proposal = false;
@@ -354,6 +426,7 @@ import BentoFileSession from './file-session.js';
     });
     root.addEventListener('click', event => {
       const action = event.target.closest('[data-files]')?.dataset.files;
+      if (action) root.querySelector('.b-workspace-menu').open = false;
       if (action === 'open' || action === 'create' || action === 'reload') files.open(() => desktop[action]());
       else if (action === 'save') files.save();
       else if (action === 'restore') files.restore();

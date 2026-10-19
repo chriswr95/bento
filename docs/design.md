@@ -238,3 +238,10 @@ Use small, focused commits and meaningful checks at domain, persistence, agent, 
 - Repository license.
 
 Product questions about Makena's workflow remain in the [specification](spec.md). Resolve design choices against observed needs rather than adding speculative infrastructure.
+
+
+### Current first-time flow and modules
+
+New desktop workspaces contain database definitions and no fictional content. The empty overview guides the user to create a project and immediately opens that project’s Markdown document. Projects can create linked meeting notes; captured checkboxes inherit their project. Sidebar navigation lists each record once under its database; project navigation opens documents, while project work summaries remain a separate action. Creation validates defaults and entered properties before inserting a record; schema fields requiring values without defaults currently block creation with an error.
+
+All first-party JavaScript except the sandboxed Electron preload uses native ES modules. `preload.cjs` remains a deliberately narrow CommonJS bridge. The browser sample uses a loopback static server (`pnpm demo`) for module loading; the desktop app still loads local files without a server.

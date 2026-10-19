@@ -1,0 +1,38 @@
+# Test plan
+
+Bento must preserve Markdown and make the meeting → todo workflow work across Windows and macOS. Tests use disposable workspaces and fictional data.
+
+## Automated checks
+
+| Command | Scope |
+| --- | --- |
+| `pnpm test` | Unit tests for capture/reconciliation, typed schemas, document creation, profiles, and save coordination; repository tests against actual temporary Markdown files. No GUI required. |
+| `pnpm test:desktop` | Real Electron app: first-time welcome, empty workspace, create/open project Markdown, cancel creation, linked meeting, typed checkbox, todo notes/status, restart, completion propagation, sandbox bridge, external conflict, and retained draft. Only the directory chooser is stubbed. |
+| `pnpm test:browser` | Shared editor interactions, checkbox shortcuts, title edits, copies, exports, reload, safe HTML, responsive widths, profiles, unavailable storage, and legacy snapshot migration. The runner starts its own loopback sample server. |
+| `pnpm package` | Build an unsigned bundle for the current platform. |
+
+Install prerequisites with `pnpm install --frozen-lockfile` and `pnpm setup:desktop`. Browser checks also need `pnpm exec playwright install chromium`, or `BENTO_CHROME_PATH` pointing to an installed Chrome. Node.js 22.12+ is required.
+
+CI runs unit/repository and native workflows on Windows and macOS, and browser checks on Ubuntu. Packaging runs on both desktop platforms. A packaged-app smoke test can be run locally with `BENTO_PACKAGED_EXECUTABLE` set to the packaged executable; it exercises the same native workflow through the actual bundle. Packaging alone does not prove installation, signing, or OS approval behavior.
+
+## Data safety cases
+
+- Invalid creation must not insert a partial record or lose existing text.
+- Checkbox capture creates one stable todo identity; repeated links agree and removing a reference retains the todo's notes.
+- Project relationships survive save/reopen and are inherited by meeting actions.
+- Unknown properties, YAML comments, and line endings survive a small edit.
+- External changes stop saves instead of overwriting files; local drafts remain available.
+- Interrupted saves recover idempotently; divergent external edits preserve both copies and stop writes.
+- Edits made during an in-flight save remain dirty until their own save completes.
+- Invalid schemas, paths, duplicate IDs and symlinks never permit ambiguous writes.
+
+Add regression coverage at the layer owning each behavior. Use storage tests for file guarantees and desktop tests for navigation/focus; avoid tests that only duplicate implementation details.
+
+## Manual checks before everyday use
+
+1. On Windows and macOS, start a fresh app and create a workspace with no coaching. Create a project, take meeting notes, capture three actions, set dates, and find upcoming work.
+2. Navigate with keyboard only. Check visible focus, readable labels, dialog cancellation, narrow windows, and light/dark appearance. Screen-reader evaluation remains outstanding.
+3. Exercise multi-paragraph editing, paste, undo/redo, selection, and IME composition with realistic notes. Full cross-block editor behavior remains an implementation gap.
+4. Reopen a workspace after closing the app; edit files in another editor and review how Bento retains drafts when a save stops.
+5. Measure startup, typing and navigation with larger synthetic workspaces. No large-workspace performance target has been validated yet.
+6. Check packaged-app launch and native folder selection on both platforms. Signing, installers, automatic updates, real agent integration, and multi-device sync are outside current validation.

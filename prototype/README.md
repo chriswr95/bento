@@ -1,6 +1,6 @@
 # Shared editor and browser sample
 
-For the native folder-backed app, see the [root README](../README.md). Run `pnpm demo` from the repository root and open http://127.0.0.1:4173/. Native ES modules require HTTP serving instead of opening `index.html` directly. Keep this directory together: scripts, styles, and the vendored Markdown parser work offline without a build step. The fictional planning records use October 19, 2026; birthday greetings use the real local date.
+For the native folder-backed app, see the [root README](../README.md). Run `pnpm demo` from the repository root and open http://127.0.0.1:4173/. The shared JavaScript uses native ES modules; browsers require HTTP serving rather than opening `index.html` directly. Scripts, styles, and the vendored Markdown parser work without a build step or external network requests. The fictional planning records use October 19, 2026; birthday greetings use the real local date.
 
 ## Try the flow
 

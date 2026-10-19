@@ -109,6 +109,25 @@ function projectOf(workspace, record) {
 function makeRecord(recordId, database, title, body, properties = {}) {
   return { bento_version: 1, id: recordId, database, schema_version: 1, title, tags: [], properties, references: {}, body };
 }
+function createDocument(workspace, { database, title, properties = {} }) {
+  assertWorkspace(workspace);
+  const definition = Object.hasOwn(workspace.databases, database) && workspace.databases[database];
+  if (!definition) throw new Error('Choose an existing database.');
+  if (typeof title !== 'string' || !title.trim() || title.trim().length > 200 || /[\r\n]/.test(title)) throw new Error('Enter a title between 1 and 200 characters on one line.');
+  if (!schema.object(properties)) throw new Error('Invalid document properties.');
+  const next = clone(workspace);
+  const prefix = definition.capabilities.project ? 'project' : definition.capabilities.task ? 'todo' : 'note';
+  const documentId = id(prefix);
+  const record = makeRecord(documentId, database, title.trim(), definition.capabilities.task ? '' : `# ${escapeLabel(title.trim())}\n\n`, {
+    ...schema.defaults(definition), ...clone(properties)
+  });
+  record.schema_version = definition.schema_version;
+  next.records[documentId] = record;
+  if (next.paths) next.paths[documentId] = `${next.databasePaths[database]}/${documentId}.md`;
+  assertWorkspace(next);
+  return { workspace: next, documentId };
+}
+
 function createTodo(workspace, source, task) {
   const database = workspace.defaultTaskDatabase;
   const cap = workspace.databases[database]?.capabilities?.task;
@@ -350,14 +369,14 @@ function migrateWorkspace(value) {
 function createWorkspace(documents = {}) {
   const workspace = { version: 4, defaultTaskDatabase: 'db-todos', issues: [], databases: {
     'db-todos': { id: 'db-todos', title: 'Todos', schema_version: 1, fields: [
-      { id: 'field-task-status', name: 'Status', type: 'select', options: [{ id: 'option-open', name: 'Open' }, { id: 'option-done', name: 'Done' }] },
+      { id: 'field-task-status', name: 'Status', type: 'select', default: 'option-open', options: [{ id: 'option-open', name: 'Open' }, { id: 'option-done', name: 'Done' }] },
       { id: 'field-task-due', name: 'Due date', type: 'date' },
       { id: 'field-task-project', name: 'Project', type: 'relation', target_database: 'db-projects', cardinality: 'one' }
     ], capabilities: { task: {
       completion: { field: 'field-task-status', checked: 'option-done', unchecked: 'option-open' },
       due: { field: 'field-task-due' }, project: { field: 'field-task-project' }
     } } },
-    'db-projects': { id: 'db-projects', title: 'Projects', schema_version: 1, fields: [{ id: 'field-project-status', name: 'Status', type: 'select', options: [{ id: 'option-active', name: 'Active' }, { id: 'option-completed', name: 'Completed' }] }], capabilities: { project: { active: { field: 'field-project-status', values: ['option-active'] } } } },
+    'db-projects': { id: 'db-projects', title: 'Projects', schema_version: 1, fields: [{ id: 'field-project-status', name: 'Status', type: 'select', default: 'option-active', options: [{ id: 'option-active', name: 'Active' }, { id: 'option-completed', name: 'Completed' }] }], capabilities: { project: { active: { field: 'field-project-status', values: ['option-active'] } } } },
     'db-meetings': { id: 'db-meetings', title: 'Meeting Notes', schema_version: 1, fields: [{ id: 'field-meeting-projects', name: 'Related projects', type: 'relation', target_database: 'db-projects', cardinality: 'many' }], capabilities: {} }
   }, records: {} };
   for (const [recordId, title] of [['creek', 'Creekside improvements'], ['elm', 'Elm Street drainage'], ['park', 'Park access review']]) {
@@ -376,4 +395,4 @@ function createWorkspace(documents = {}) {
 }
 
 export default Object.freeze({ clone, parse, stripMarkers, refMarker, escapeLabel, targetId, linkFor, linkMatches, validDate, capability, taskInfo, allTasks,
-  activeProjects, projectOf, applyEdit, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace });
+  activeProjects, projectOf, applyEdit, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace, createDocument });

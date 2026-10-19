@@ -12,7 +12,7 @@ import model from '../prototype/workspace.js';
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-files-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  await fs.cp(path.join(__dirname, '..', 'templates', 'workspace'), root, { recursive: true });
+  await fs.cp(path.join(__dirname, '..', 'examples', 'document-databases'), root, { recursive: true });
   return root;
 }
 const edit = (repo, text) => model.applyEdit(repo.workspace, 'meeting-coordination', repo.workspace.records['meeting-coordination'].body + text).workspace;
@@ -156,6 +156,7 @@ test('new workspaces use folder definitions and creation refuses a populated fol
   assert.equal(repo.info.title, 'Test workspace');
   assert.equal(repo.workspace.defaultTaskDatabase, 'db-todos');
   assert.deepEqual(repo.errors, []);
+  assert.deepEqual(repo.workspace.records, {});
   await assert.rejects(create(root), /empty folder/);
 });
 
@@ -174,4 +175,20 @@ test('database folder names with spaces, parentheses and Unicode produce portabl
   const reopened=await WorkspaceRepository.open(root);
   assert.equal(reopened.workspace.records[task.id].title,'Action in renamed folder');
   assert.ok(await fs.readFile(path.join(root,folder,task.id+'.md')));
+});
+
+
+test('new project and meeting documents persist their identity, defaults and project relationship', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-new-documents-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const repo = await create(root, 'Personal workspace');
+  const project = model.createDocument(repo.workspace, { database: 'db-projects', title: 'My project' });
+  await repo.save(project.workspace);
+  const meeting = model.createDocument(repo.workspace, { database: 'db-meetings', title: 'Kickoff', properties: { 'field-meeting-projects': [project.documentId] } });
+  await repo.save(meeting.workspace);
+  const reopened = await WorkspaceRepository.open(root);
+  assert.deepEqual(reopened.errors, []);
+  assert.equal(model.activeProjects(reopened.workspace)[0].id, project.documentId);
+  assert.equal(model.projectOf(reopened.workspace, reopened.workspace.records[meeting.documentId]), project.documentId);
+  assert.match(await fs.readFile(path.join(root, 'projects', project.documentId + '.md'), 'utf8'), /# My project/);
 });
