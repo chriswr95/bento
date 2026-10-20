@@ -85,3 +85,5 @@ Desktop tests create isolated temporary workspaces and stub only the native dire
 - [Design document](docs/design.md): implementation choices and remaining work.
 - [Data-model contract](docs/data-model.md): folders, schemas, metadata, links and save/recovery behavior.
 - [Example workspace](examples/document-databases/README.md): inspectable schemas and fictional records.
+
+The [app assets](assets/README.md) include the transparent icon master, macOS/Windows icons, favicon, and header mark. Export regeneration is optional; normal packaging uses the checked-in files.

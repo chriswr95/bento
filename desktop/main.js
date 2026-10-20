@@ -10,6 +10,7 @@ import { WorkspaceRepository, create } from '../files/repository.js';
 let window, settings, lastSession, startupWarning = '', startupLocation = null, repository = null, pending = Promise.resolve();
 const entry = path.join(__dirname, '..', 'prototype', 'index.html');
 const trustedURL = pathToFileURL(entry).href;
+const icon = path.join(__dirname, '..', 'prototype', 'assets', 'bento-256.png');
 const hiddenTestWindow = process.env.BENTO_TEST_MODE === '1' && process.env.BENTO_TEST_SHOW_WINDOW !== '1';
 if (hiddenTestWindow && process.platform === 'darwin') app.setActivationPolicy('prohibited');
 if (!app.isPackaged && process.env.BENTO_TEST_MODE === '1' && process.env.BENTO_TEST_USER_DATA) app.setPath('userData', process.env.BENTO_TEST_USER_DATA);
@@ -38,6 +39,7 @@ async function choose(makeNew, example = false) {
   return { ...next.view(), location: startupLocation, resumeWarning: startupWarning };
 }
 async function start() {
+  if (!app.isPackaged && !hiddenTestWindow && process.platform === 'darwin') app.dock.setIcon(icon);
   await fs.mkdir(app.getPath('userData'), { recursive: true });
   settings = new SettingsStore(app.getPath('userData'));
   lastSession = new SessionStore(app.getPath('userData'));
@@ -45,7 +47,7 @@ async function start() {
   repository = restored.repository; startupWarning = restored.warning; startupLocation = restored.location;
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
-  window = new BrowserWindow({ show: !hiddenTestWindow, skipTaskbar: hiddenTestWindow, width: 1160, height: 900, minWidth: 380, minHeight: 500, title: 'Bento', webPreferences: { offscreen: hiddenTestWindow, backgroundThrottling: !hiddenTestWindow, preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  window = new BrowserWindow({ icon, show: !hiddenTestWindow, skipTaskbar: hiddenTestWindow, width: 1160, height: 900, minWidth: 380, minHeight: 500, title: 'Bento', webPreferences: { offscreen: hiddenTestWindow, backgroundThrottling: !hiddenTestWindow, preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());

@@ -289,7 +289,6 @@ The [future-ideas backlog](design.md#11-future-ideas) tracks suggestions separat
 
 - **Clickable directory path:** show where the current page lives, with every path segment navigable.
 - **Page references:** reference any other page from the document using `[[...]]` or a similar writing interaction.
-- **Cute logo:** give Bento a friendly, recognizable visual identity.
 - **External file references:** link pages to files outside Bento.
 - **Subpages:** create pages beneath a current page.
 - **Slash commands:** create or insert different content by typing `/`.

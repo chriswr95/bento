@@ -16,7 +16,8 @@
     "test:desktop": "node scripts/build-editor.js && node tests/desktop.js",
     "package": "node scripts/package.js",
     "demo": "node scripts/build-editor.js && node scripts/serve.js",
-    "build": "node scripts/build-editor.js"
+    "build": "node scripts/build-editor.js",
+    "assets:icons": "node scripts/build-icons.js"
   },
   "dependencies": {
     "yaml": "2.9.1"
