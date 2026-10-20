@@ -1,5 +1,6 @@
 import './vendor/marked.umd.js';
 import schema from './schema.js';
+import { validateHierarchy } from './page-hierarchy.js';
 import { validColor } from './colors.js';
 const marked = globalThis.marked;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -120,21 +121,24 @@ function projectOf(workspace, record) {
 function makeRecord(recordId, database, title, body, properties = {}) {
   return { bento_version: 1, id: recordId, database, schema_version: 1, title, tags: [], properties, references: {}, body };
 }
-function createDocument(workspace, { database, title, properties = {} }) {
+function createDocument(workspace, { database, title, properties = {}, parent = null }) {
   assertWorkspace(workspace);
-  const definition = Object.hasOwn(workspace.databases, database) && workspace.databases[database];
-  if (!definition) throw new Error('Choose an existing database.');
+  const definition = Object.hasOwn(workspace.databases, database) ? workspace.databases[database] : undefined;
+  if (!definition && database !== null) throw new Error('Choose an existing database.');
+  if (parent !== null && !Object.hasOwn(workspace.records, parent)) throw new Error('Parent page not found.');
   if (typeof title !== 'string' || !title.trim() || title.trim().length > 200 || /[\r\n]/.test(title)) throw new Error('Enter a title between 1 and 200 characters on one line.');
   if (!schema.object(properties)) throw new Error('Invalid document properties.');
   const next = clone(workspace);
-  const prefix = definition.capabilities.project ? 'project' : definition.capabilities.task ? 'todo' : 'note';
+  const prefix = definition?.capabilities.project ? 'project' : definition?.capabilities.task ? 'todo' : 'note';
   const documentId = id(prefix);
-  const record = makeRecord(documentId, database, title.trim(), definition.capabilities.task ? '' : `# ${escapeLabel(title.trim())}\n\n`, {
-    ...schema.defaults(definition), ...clone(properties)
+  const record = makeRecord(documentId, database, title.trim(), definition?.capabilities.task ? '' : `# ${escapeLabel(title.trim())}\n\n`, {
+    ...(definition ? schema.defaults(definition) : {}), ...clone(properties)
   });
-  record.schema_version = definition.schema_version;
+  if (definition) record.schema_version = definition.schema_version;
+  else { delete record.database; delete record.schema_version; }
+  if (parent) record.parent = parent;
   next.records[documentId] = record;
-  if (next.paths) next.paths[documentId] = `${next.databasePaths[database]}/${documentId}.md`;
+  if (next.paths) next.paths[documentId] = definition ? `${next.databasePaths[database]}/${documentId}.md` : `${documentId}.md`;
   assertWorkspace(next);
   return { workspace: next, documentId };
 }
@@ -277,10 +281,14 @@ function updateTagColor(workspace, tag, color) {
 function updateDocument(workspace, documentId, patch) {
   const next = clone(workspace), record = next.records[documentId];
   if (!record) throw new Error('Document not found.');
-  if (Object.keys(patch).some(key => !['title', 'tags', 'properties', 'color'].includes(key))) throw new Error('Only document title, tags, color and properties can be edited.');
+  if (Object.keys(patch).some(key => !['title', 'tags', 'properties', 'color', 'parent'].includes(key))) throw new Error('Only document title, tags, color, parent and properties can be edited.');
   if ('title' in patch) {
     if (typeof patch.title !== 'string' || !patch.title.trim() || patch.title.trim().length > 200 || /[\r\n]/.test(patch.title)) throw new Error('Enter a single-line title between 1 and 200 characters.');
     record.title = patch.title.trim();
+  }
+  if ('parent' in patch) {
+    if (patch.parent !== null && !Object.hasOwn(next.records, patch.parent)) throw new Error('Parent page not found.');
+    record.parent = patch.parent;
   }
   if ('color' in patch) { if (patch.color !== null && !validColor(patch.color)) throw new Error('Choose one of the eight named colors.'); record.color = patch.color; }
   if ('tags' in patch) {
@@ -354,6 +362,7 @@ const isObject = value => value !== null && typeof value === 'object' && !Array.
 function assertWorkspace(workspace) {
   if (!workspace || workspace.version !== 4 || !isObject(workspace.records) || !isObject(workspace.databases) || !Array.isArray(workspace.issues)) throw new Error('Invalid workspace.');
   if (workspace.home !== undefined && (!schema.identity(workspace.home) || !Object.hasOwn(workspace.records, workspace.home) || workspace.records[workspace.home].database !== undefined)) throw new Error('Invalid workspace page.');
+  validateHierarchy(workspace.records, workspace.home);
   if (workspace.tagColors !== undefined && (!isObject(workspace.tagColors) || Object.entries(workspace.tagColors).some(([tag, color]) => !tag.trim() || tag !== tag.trim() || !validColor(color)))) throw new Error('Invalid workspace tag colors.');
   for (const [key, database] of Object.entries(workspace.databases)) {
     if (database.id !== key || !Array.isArray(database.fields) || !isObject(database.capabilities)) throw new Error('Invalid database definition.');

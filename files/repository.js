@@ -128,6 +128,7 @@ class WorkspaceRepository {
     for (const record of Object.values(workspace.records)) {
       const known = new Set(workspace.databases[record.database]?.fields.map(field => field.id) || []);
       const unknown = Object.keys(record.properties).filter(id => !known.has(id));
+      if (record.parent && !workspace.records[record.parent]) errors.push({ path: workspace.paths[record.id], message: 'Parent page is unavailable. The page is retained at the top level until its parent is restored or changed.' });
       if (unknown.length) errors.push({ path: workspace.paths[record.id], message: `Unmapped property values retained: ${unknown.join(', ')}. Review schema or folder transfer.` });
       try { if (record.database) schema.properties(workspace.databases[record.database], record, workspace.records); }
       catch (error) { errors.push({ path: workspace.paths[record.id], message: error.message }); this.readOnly = true; }
@@ -135,6 +136,8 @@ class WorkspaceRepository {
         if (occurrence.href && (!workspace.records[occurrence.todoId] || !model.linkMatches(workspace, record.id, occurrence.href, occurrence.todoId))) errors.push({ path: workspace.paths[record.id], message: `Unresolved link on line ${occurrence.line + 1}.` });
       }
     }
+    try { model.assertWorkspace(workspace); }
+    catch (error) { this.readOnly = true; errors.push({ path: 'workspace.md', message: error.message }); }
     this.files = files; this.workspace = workspace; this.info = info; this.errors = errors;
     return this.view();
   }
@@ -162,8 +165,8 @@ class WorkspaceRepository {
         const before = this.workspace.records[record.id];
         if (before && record.database !== before.database) throw new Error('Move files between folders to transfer database membership.');
         if (!before) {
-          if (!Object.hasOwn(next.databases, record.database)) throw new Error('Choose a database for the new document.');
-          next.paths[record.id] = `${next.databasePaths[record.database]}/${record.id}.md`;
+          if (record.database !== undefined && !Object.hasOwn(next.databases, record.database)) throw new Error('Choose a database for the new document.');
+          next.paths[record.id] = record.database ? `${next.databasePaths[record.database]}/${record.id}.md` : `${record.id}.md`;
           if (this.files.has(next.paths[record.id])) throw new Error('New document path already exists.');
         }
         if (isDeepStrictEqual(record, before)) continue;
