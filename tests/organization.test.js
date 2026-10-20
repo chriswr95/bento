@@ -174,3 +174,9 @@ test('reserved schema folders cannot silently absorb ordinary content during upg
   assert.ok(repo.errors.some(error => error.path === 'databases/external.md' && /managed databases folder/.test(error.message)));
   assert.equal(await fs.readFile(path.join(repo.root, 'databases/external.md'), 'utf8'), '# External notes\n');
 });
+
+test('moving a page retains query-only references and directory destination semantics', () => {
+  const body = '[Query](?view=notes) [Here](#part) [Assets](../assets/) [Directory](.)';
+  const next = moveLinks(body, 'notes/a.md', 'projects/Design/a.md', new Map([['notes/a.md', 'projects/Design/a.md']]));
+  assert.equal(next, '[Query](?view=notes) [Here](#part) [Assets](../../assets/) [Directory](../../notes/)');
+});

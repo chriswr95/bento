@@ -41,11 +41,15 @@ function destination(source, node) {
 function rebased(url, before, after, moved) {
   if (!url || url.startsWith('#') || url.startsWith('/') || /^[a-z][a-z\d+.-]*:/i.test(url)) return null;
   const [, pathname, suffix = ''] = /^([^?#]*)([\s\S]*)$/.exec(url);
+  if (!pathname) return null;
   let decoded; try { decoded = decodeURIComponent(pathname); } catch { throw new Error('Repair the malformed Markdown link before moving this page.'); }
   const target = path.posix.normalize(path.posix.join(path.posix.dirname(before), decoded));
   if (target === '..' || target.startsWith('../')) return null;
   if (before === after && !moved.has(target)) return null;
-  const relative = path.posix.relative(path.posix.dirname(after), moved.get(target) || target) || path.posix.basename(target);
+  const directory = decoded.endsWith('/') || ['.', '..'].includes(decoded);
+  let relative = path.posix.relative(path.posix.dirname(after), moved.get(target) || target);
+  if (directory) relative = relative ? relative + '/' : './';
+  else relative ||= path.posix.basename(target);
   return relative.split('/').map(part => encodeURIComponent(part).replace(/[!'()*]/g, char => '%' + char.charCodeAt(0).toString(16).toUpperCase())).join('/') + suffix;
 }
 // Edit only destination spans. Labels, titles, references, code and unrelated bytes survive.
