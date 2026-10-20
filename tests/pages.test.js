@@ -98,3 +98,37 @@ test('page links resolve real paths including Workspace; backlinks ignore code a
   assert.equal(resolvePageLink(renamed, second, href), first);
   for (const invalid of ['../../outside.md', '/workspace.md', 'https://host/workspace.md', '%ZZ.md', 'missing.md']) assert.equal(resolvePageLink(workspace, second, invalid), null);
 });
+
+test('child links are ordinary Markdown, restored after edits, and retained as references after reparenting', () => {
+  const { workspace, first, second } = withPages();
+  assert.ok(workspace.records.creek.body.includes(`](${first}.md)`));
+  assert.ok(workspace.records[first].body.includes(`](${second}.md)`));
+  let next = model.applyEdit(workspace, first, 'Replaced notes.\n').workspace;
+  assert.ok(next.records[first].body.includes(`](${second}.md)`));
+  next = model.updateDocument(next, second, { parent: 'elm' });
+  assert.ok(next.records.elm.body.includes(`](${second}.md)`));
+  assert.ok(next.records[first].body.includes(`](${second}.md)`), 'Old references remain authored content');
+  const body = next.records.elm.body;
+  next = model.applyEdit(next, 'elm', body).workspace;
+  assert.equal(next.records.elm.body, body, 'Existing child links are not duplicated');
+});
+test('legacy child links are projected without writes on open and child creation saves atomically', async t => {
+  const folder = await fixture(t), repo = await WorkspaceRepository.open(folder);
+  await fs.writeFile(path.join(folder, 'legacy.md'), '---\nid: legacy\nparent: project-creekside\n---\n# Legacy\n');
+  const loaded = await WorkspaceRepository.open(folder), parentFile = path.join(folder, 'projects/project-creekside.md');
+  const before = await fs.readFile(parentFile, 'utf8');
+  assert.equal(loaded.workspace.records['project-creekside'].body.includes('legacy.md'), false);
+  assert.ok(model.readingBody(loaded.workspace, 'project-creekside').includes('legacy.md'));
+  assert.equal(await fs.readFile(parentFile, 'utf8'), before);
+  const result = model.createDocument(repo.workspace, { database: null, parent: 'project-creekside', title: 'Atomic child' });
+  await assert.rejects(repo.save(result.workspace), /changed on disk/);
+  await assert.rejects(fs.access(path.join(folder, `${result.documentId}.md`)));
+});
+
+
+test('adding a child to a protected parent fails without changing either page', () => {
+  const { workspace } = withPages(); workspace.readOnlyRecords = ['elm'];
+  const before = structuredClone(workspace);
+  assert.throws(() => model.createDocument(workspace, { database: null, parent: 'elm', title: 'Blocked child' }), /parent page is read-only/);
+  assert.deepEqual(workspace, before);
+});

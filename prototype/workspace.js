@@ -1,6 +1,7 @@
 import './vendor/marked.umd.js';
 import schema from './schema.js';
 import { validateHierarchy } from './page-hierarchy.js';
+import { bodyWithChildLinks, ensureChildLinks } from './page-children.js';
 import { validColor } from './colors.js';
 const marked = globalThis.marked;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -140,6 +141,7 @@ function createDocument(workspace, { database, title, properties = {}, parent = 
   next.records[documentId] = record;
   if (next.paths) next.paths[documentId] = definition ? `${next.databasePaths[database]}/${documentId}.md` : `${documentId}.md`;
   assertWorkspace(next);
+  if (parent) ensureChildLinks(next, parent, linkFor, escapeLabel);
   return { workspace: next, documentId };
 }
 
@@ -269,6 +271,7 @@ function applyEdit(workspace, documentId, body) {
   }
   const edits = reconcileAll(next, documentId);
   assertWorkspace(next);
+  ensureChildLinks(next, documentId, linkFor, escapeLabel);
   return { workspace: next, edits };
 }
 function updateTagColor(workspace, tag, color) {
@@ -305,6 +308,7 @@ function updateDocument(workspace, documentId, patch) {
   }
   // Validate atomically before projecting any changed task title/completion into notes.
   assertWorkspace(next);
+  if ('parent' in patch && record.parent) ensureChildLinks(next, record.parent, linkFor, escapeLabel);
   if (capability(next, record, 'task')) reconcileAll(next);
   assertWorkspace(next);
   return next;
@@ -448,5 +452,7 @@ function createWorkspace(documents = {}) {
   return workspace;
 }
 
-export default Object.freeze({ clone, parse, stripMarkers, refMarker, escapeLabel, targetId, linkFor, linkMatches, validDate, capability, taskInfo, allTasks,
+const readingBody = (workspace, id) => bodyWithChildLinks(workspace, id, linkFor, escapeLabel);
+
+export default Object.freeze({ readingBody, clone, parse, stripMarkers, refMarker, escapeLabel, targetId, linkFor, linkMatches, validDate, capability, taskInfo, allTasks,
   activeProjects, projectOf, applyEdit, updateTagColor, updateDocument, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace, createDocument });
