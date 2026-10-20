@@ -12,14 +12,14 @@ export default class PageLinkPicker {
     this.reposition = event => { if (!(event.target instanceof Node) || !this.menu.contains(event.target)) this.close(); };
     window.addEventListener('resize', this.reposition); window.addEventListener('scroll', this.reposition, true);
   }
-  query() {
+  query(pattern = /\[\[([^\]\n[]{0,100})$/) {
     const { selection } = this.editor.view.state, { $from } = selection;
     if (!selection.empty || !$from.parent.isTextblock || $from.parent.type.spec.code || $from.marks().some(mark => mark.type.name === 'code')) return null;
     for (let depth = $from.depth; depth > 0; depth--) {
       const node = $from.node(depth);
       if (node.type.name === 'list_item' && node.attrs.checked !== null && $from.index(depth) === 0) return null;
     }
-    const match = /\[\[([^\]\n[]{0,100})$/.exec($from.parent.textBetween(0, $from.parentOffset, '\n', '\ufffc'));
+    const match = pattern.exec($from.parent.textBetween(0, $from.parentOffset, '\n', '\ufffc'));
     return match ? { from: $from.pos - match[0].length, to: $from.pos, text: match[1] } : null;
   }
   update() {
@@ -30,14 +30,14 @@ export default class PageLinkPicker {
     if (this.menu.hidden) this.entries = this.options.pages();
     const text = query.text.toLocaleLowerCase();
     const rank = page => page.title.toLocaleLowerCase() === text ? 0 : page.title.toLocaleLowerCase().startsWith(text) ? 1 : page.title.toLocaleLowerCase().includes(text) ? 2 : 3;
-    this.results = this.entries.filter(page => `${page.title} ${page.detail}`.toLocaleLowerCase().includes(text)).sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title) || a.detail.localeCompare(b.detail)).slice(0, 12);
+    this.results = this.entries.filter(page => `${page.title} ${page.detail}`.toLocaleLowerCase().includes(text)).sort((a, b) => text ? rank(a) - rank(b) || a.title.localeCompare(b.title) || a.detail.localeCompare(b.detail) : 0).slice(0, 12);
     this.index = 0; this.menu.replaceChildren();
     for (const [index, page] of this.results.entries()) {
-      const option = document.createElement('div'); option.id = `b-page-option-${index}`; option.dataset.pageOption = index; option.setAttribute('role', 'option');
+      const option = document.createElement('div'); option.id = `${this.menu.id}-option-${index}`; option.dataset.pageOption = index; option.setAttribute('role', 'option');
       const title = document.createElement('span'), detail = document.createElement('small'); title.textContent = page.title; detail.textContent = page.detail;
       option.append(title, detail); this.menu.append(option);
     }
-    if (!this.results.length) this.menu.textContent = 'No matching pages';
+    if (!this.results.length) this.menu.textContent = this.options.emptyMessage || 'No matching pages';
     this.menu.hidden = false; this.select(0, false);
     const position = this.editor.view.coordsAtPos(query.to), box = this.menu.getBoundingClientRect();
     this.menu.style.left = `${Math.max(8, Math.min(position.left, innerWidth - box.width - 8))}px`;
@@ -48,7 +48,7 @@ export default class PageLinkPicker {
     if (!this.results.length) { this.editor.view.dom.removeAttribute('aria-activedescendant'); return; }
     this.index = (index + this.results.length) % this.results.length;
     this.menu.querySelectorAll('[role=option]').forEach((option, at) => option.setAttribute('aria-selected', String(at === this.index)));
-    this.editor.view.dom.setAttribute('aria-activedescendant', `b-page-option-${this.index}`);
+    this.editor.view.dom.setAttribute('aria-activedescendant', `${this.menu.id}-option-${this.index}`);
     if (scroll) this.menu.children[this.index]?.scrollIntoView({ block: 'nearest' });
   }
   keydown(event) {
@@ -70,7 +70,10 @@ export default class PageLinkPicker {
     this.close(); view.dispatch(transaction); view.focus();
   }
   close() {
-    this.menu.hidden = true; this.editor.view.dom.removeAttribute('aria-controls'); this.editor.view.dom.removeAttribute('aria-activedescendant');
+    this.menu.hidden = true;
+    if (this.editor.view.dom.getAttribute('aria-controls') === this.menu.id) {
+      this.editor.view.dom.removeAttribute('aria-controls'); this.editor.view.dom.removeAttribute('aria-activedescendant');
+    }
   }
   destroy() {
     this.close(); this.menu.remove(); this.editor.view.dom.removeEventListener('blur', this.blur);

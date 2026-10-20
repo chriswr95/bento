@@ -6,10 +6,11 @@ import { history, undo, redo, closeHistory } from 'prosemirror-history';
 import { inputRules, InputRule, textblockTypeInputRule, wrappingInputRule, undoInputRule } from 'prosemirror-inputrules';
 import { splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import { tableEditing, goToNextCell } from 'prosemirror-tables';
-import { Slice } from 'prosemirror-model';
+import { Slice, Fragment } from 'prosemirror-model';
 import { editorSchema as schema, MarkdownBridge, taskPositions } from './rich-markdown.js';
 import model from './workspace.js';
 import PageLinkPicker from './page-link-picker.js';
+import SlashPicker from './slash-picker.js';
 
 function taskRule(state, match, start, end) {
   const $from = state.doc.resolve(start); if ($from.parent.type !== schema.nodes.paragraph) return null;
@@ -103,7 +104,7 @@ export default class RichEditor {
       dispatchTransaction: tr => this.dispatch(tr),
       decorations: state => DecorationSet.create(state.doc, taskPositions(state.doc).filter(({ node }) => node.attrs.todoId && options.validTask?.(node.attrs.todoId, node.attrs.href)).map(({ node, position }) => Decoration.node(position + 1, position + 1 + node.firstChild.nodeSize, { role: 'link', tabindex: '0', 'data-todo-link': node.attrs.todoId, 'aria-label': node.firstChild.textContent, title: 'Open todo · Alt-click to edit text' }))),
       handleKeyDown: (_view, event) => {
-        if (this.pagePicker?.keydown(event)) return true;
+        if (this.slashPicker?.keydown(event) || this.pagePicker?.keydown(event)) return true;
         const link = event.target.closest('[data-todo-link]');
         if (link && event.target === link && event.key === 'Enter') { event.preventDefault(); options.openRecord?.(link.dataset.todoLink); return true; }
         return false;
@@ -111,7 +112,7 @@ export default class RichEditor {
       nodeViews: { list_item: (node, view, getPos) => new ListItemView(node, view, getPos, this) },
       clipboardTextParser: text => Slice.maxOpen(new MarkdownBridge(text).doc.content),
       transformPastedHTML: safePaste,
-      handleDOMEvents: { compositionend: () => { setTimeout(() => { if (!this.destroyed) { this.publish(); this.pagePicker?.update(); } }, 0); return false; } },
+      handleDOMEvents: { compositionend: () => { setTimeout(() => { if (!this.destroyed) { this.publish(); this.pagePicker?.update(); this.slashPicker?.update(); } }, 0); return false; } },
       handleClick: (_view, _pos, event) => {
         const todo = event.target.closest('[data-todo-link]');
         if (todo && !event.altKey && event.detail < 2 && this.view.state.selection.empty) { event.preventDefault(); options.openRecord?.(todo.dataset.todoLink); return true; }
@@ -122,7 +123,7 @@ export default class RichEditor {
         return false;
       }
     });
-    this.syncTasks(); this.pagePicker = new PageLinkPicker(this, options);
+    this.syncTasks(); this.pagePicker = new PageLinkPicker(this, options); this.slashPicker = new SlashPicker(this, options);
   }
   dispatch(tr) {
     if (this.options.readOnly && tr.docChanged) return;
@@ -130,13 +131,13 @@ export default class RichEditor {
     if (tr.docChanged && !previous.selection.empty) tr = closeHistory(tr);
     this.view.updateState(previous.apply(tr));
     if (tr.docChanged && !this.view.composing) this.publish(previous);
-    this.pagePicker?.update();
+    this.pagePicker?.update(); this.slashPicker?.update();
   }
   publish(previous) {
     try {
       const body = this.bridge.serialize(this.view.state.doc);
       if (body !== this.options.body()) this.options.change(body);
-      this.syncTasks(); this.bridge.remember(this.view.state.doc, this.options.body());
+      this.syncTasks(); this.syncChildren(); this.bridge.remember(this.view.state.doc, this.options.body());
     } catch (error) { if (previous) this.view.updateState(previous); this.options.error?.(error.message); }
   }
   syncTasks() {
@@ -156,11 +157,30 @@ export default class RichEditor {
     }
     if (tr.docChanged) this.view.updateState(this.view.state.apply(tr.setMeta('addToHistory', false)));
   }
+  syncChildren() {
+    const children = this.options.children?.() || [], linked = new Set();
+    if (!children.length) return;
+    this.view.state.doc.descendants(node => {
+      for (const mark of node.marks) if (mark.type === schema.marks.link) linked.add(this.options.pageTarget?.(mark.attrs.href));
+    });
+    const missing = children.filter(child => !linked.has(child.id)); if (!missing.length) return;
+    const paragraphs = missing.map(child => schema.nodes.paragraph.create(null, schema.text(child.title, [schema.marks.link.create({ href: this.options.pageHref(child.id) })])));
+    const transaction = this.view.state.tr.insert(this.view.state.doc.content.size, Fragment.fromArray(paragraphs)).setMeta('addToHistory', false);
+    this.view.updateState(this.view.state.apply(transaction));
+  }
+  pageInsertion(range) {
+    const state = this.view.state, bridge = this.bridge;
+    return (title, href) => {
+      const transaction = state.tr.insertText(title, range.from, range.to);
+      transaction.addMark(range.from, range.from + title.length, schema.marks.link.create({ href }));
+      return bridge.serialize(transaction.doc);
+    };
+  }
   navigationState() { return { selection: this.view.state.selection.toJSON(), focused: this.view.hasFocus() }; }
   restoreNavigationState(value) {
     try { this.view.dispatch(this.view.state.tr.setSelection(Selection.fromJSON(this.view.state.doc, value.selection))); } catch { /* Content may have changed since this visit. */ }
     if (value.focused) this.view.focus();
   }
   focus() { this.view.focus(); }
-  destroy() { this.destroyed = true; this.pagePicker?.destroy(); this.view.destroy(); }
+  destroy() { this.destroyed = true; this.pagePicker?.destroy(); this.slashPicker?.destroy(); this.view.destroy(); }
 }

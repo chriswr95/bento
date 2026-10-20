@@ -47,3 +47,7 @@ Repository unit tests cover workspace body/title edits, checkbox capture with ro
 ### Subpage and link coverage
 
 Unit tests cover standalone creation, independent database membership, stable paths, cycle/self/multiple-parent rejection, missing-parent recovery, external-cycle protection, hierarchy projection, parent clearing, relative link resolution, Workspace links, preserved links after title changes, backlink deduplication, and excluded code/external paths. Browser checks cover New subpage, ancestor/child navigation, `[[` keyboard insertion, standard Markdown persistence, backlinks, empty suggestions, cancellation, and reload. Native checks add nested page trees, Parent selection, descendant exclusion, no file moves, restart restoration, and switching back to Files. Native windows remain hidden.
+
+### Slash-command coverage
+
+Unit tests validate block structures, one-step undo, preserved invalid commands, child-link restoration and deduplication, reparented references, read-only parent rejection, legacy projections without writes on open, and atomic save conflicts. Browser checks exercise slash headings, tracked todos, `/page` creation at the cursor, child-link restoration, unknown/cancelled commands, and retained hierarchy. Native checks create a nested child through `/page`, verify the parent Markdown on disk and nested sidebar, and restore links after restart. Physical directory tests select Files explicitly now that Pages is the default.

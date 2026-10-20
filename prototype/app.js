@@ -114,7 +114,7 @@ import BentoFileSession from './file-session.js';
     return { version: 4, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', workspace: model.createWorkspace(documents) };
   }
   let files = null, directoryState = null, walkthrough = null;
-  let sidebarMode = 'files';
+  let sidebarMode = 'pages';
   let state = desktop ? { version: 4, view: 'daily', project: null, document: null, note: null, workspace: { version: 4, databases: {}, records: {}, issues: [] } } : loadWorkspace();
   let profile = BentoProfile.read();
   const workspace = () => state.workspace;
@@ -257,12 +257,12 @@ import BentoFileSession from './file-session.js';
   }
   function creationLabel(database) { return `New page in ${database.title}`; }
   function readOnly(doc) { return !!files?.view?.readOnly || !!workspace().readOnlyRecords?.includes(doc.id); }
-  function showCreate(databaseId, project = null, parent = null) {
+  function showCreate(databaseId, project = null, parent = null, insertChild = null) {
     if (propertyEditor && !propertyEditor.commit()) return;
     rememberPresentation();
     if (files?.view?.readOnly) return notify('Repair this workspace before creating documents.');
     if (databaseId !== null && !workspace().databases[databaseId]) return notify('This database is unavailable. Reload or restore its definition.');
-    creation = { database: databaseId, project, parent, previous: { view: state.view, project: state.project, document: state.document } };
+    creation = { database: databaseId, project, parent, insertChild, previous: { view: state.view, project: state.project, document: state.document } };
     state.view = 'create'; render();
     main.querySelector('[name="title"]').focus();
   }
@@ -424,8 +424,11 @@ import BentoFileSession from './file-session.js';
       }
     });
     liveEditor = new RichEditor(main.querySelector('#b-reading'), {
-      body: () => record().body, label, readOnly: readOnly(doc),
+      body: () => model.readingBody(workspace(), record().id), label, readOnly: readOnly(doc),
       change: body => editDocument(body), error: notify, openRecord,
+      createPage: insertChild => showCreate(null, null, record().id, insertChild),
+      children: () => Object.values(workspace().records).filter(page => page.parent === record().id),
+      pageTarget: href => resolvePageLink(workspace(), record().id, href),
       validTask: (id, href) => !!record().references[id] && !!model.taskInfo(workspace(), workspace().records[id]) && model.linkMatches(workspace(), record().id, href, id),
       pages: () => Object.values(workspace().records).filter(page => page.id !== record().id).sort((a, b) => a.title.localeCompare(b.title)).map(page => ({ id: page.id, title: page.title, detail: pagePath(workspace(), page.id) + ' · ' + (workspace().paths?.[page.id] || page.id + '.md') + (workspace().databases[page.database] ? ' · ' + workspace().databases[page.database].title : '') })),
       pageHref: id => workspace().records[id] ? model.linkFor(workspace(), record().id, id) : null,
@@ -438,10 +441,9 @@ import BentoFileSession from './file-session.js';
     const panel = main.querySelector('#b-page-relations'); if (!panel || !record()) return;
     const parents = ancestors(workspace(), record().id), trail = main.querySelector('#b-page-parents');
     trail.hidden = !parents.length; trail.innerHTML = parents.map(page => `<button type="button" data-record="${escape(page.id)}">${escape(page.title)}</button>`).join('<span aria-hidden="true"> / </span>');
-    const children = Object.values(workspace().records).filter(page => page.parent === record().id).sort((a, b) => a.title.localeCompare(b.title));
     const sources = backlinks(workspace(), record().id);
     const list = pages => pages.map(page => `<li><button type="button" class="b-document-link" data-record="${escape(page.id)}">${escape(page.title)}</button><span class="b-muted">${escape(pagePath(workspace(), page.id))}</span></li>`).join('');
-    panel.innerHTML = `${children.length ? `<section aria-label="Subpages"><h2>Subpages</h2><ul class="b-page-list">${list(children)}</ul></section>` : ''}${sources.length ? `<details class="b-backlinks"><summary>Linked from (${sources.length})</summary><ul class="b-page-list">${list(sources)}</ul></details>` : ''}`;
+    panel.innerHTML = `${sources.length ? `<details class="b-backlinks"><summary>Linked from (${sources.length})</summary><ul class="b-page-list">${list(sources)}</ul></details>` : ''}`;
   }
   const suggestion = 'Prepare an agenda for the next coordination meeting';
   function showProposal() {
@@ -610,6 +612,11 @@ import BentoFileSession from './file-session.js';
         const database = workspace().databases[creation.database], relation = projectField(database, getProject(creation.project)), project = String(values.get('project') || '');
         const properties = relation && project ? { [relation.id]: relation.cardinality === 'many' ? [project] : project } : {};
         const result = model.createDocument(workspace(), { database: database?.id || null, parent: creation.parent, title: String(values.get('title')), properties });
+        if (creation.insertChild) {
+          const href = model.linkFor(result.workspace, creation.parent, result.documentId);
+          const body = creation.insertChild(result.workspace.records[result.documentId].title, href);
+          result.workspace = model.applyEdit(result.workspace, creation.parent, body).workspace;
+        }
         previous = null;
         state.workspace = result.workspace;
         if (creation.parent && desktop) { sidebarMode = 'pages'; directoryState.set('view:pages', true); }
@@ -660,7 +667,7 @@ import BentoFileSession from './file-session.js';
         root.querySelector('[data-workspace-name]').textContent = view.title;
         document.title = view.title + ' · Bento';
         const treeKey = 'bento.sidebar.tree.v1:' + view.folder;
-        if (directoryState?.key !== treeKey) { directoryState = new DirectoryState(treeKey); sidebarMode = directoryState.expanded('view:pages', false) ? 'pages' : 'files'; }
+        if (directoryState?.key !== treeKey) { directoryState = new DirectoryState(treeKey); sidebarMode = directoryState.expanded('view:pages', true) ? 'pages' : 'files'; }
         state.workspace = view.workspace;
         state.view = view.location?.view || 'daily'; state.project = view.location?.project || null; creation = null;
         if (view.location?.document) state.document = view.location.document;

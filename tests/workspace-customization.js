@@ -32,6 +32,7 @@ export async function checkWorkspaceCustomization({ launch, stop, temporary, roo
     launched = await launch(null, userData); app = launched.app; page = launched.page;
     await page.getByRole('textbox', { name: 'Workspace Markdown', exact: true }).waitFor();
     assert.equal(await page.locator('[data-workspace-name]').innerText(), 'Makena’s desk');
+    await page.getByRole('button', { name: 'Files', exact: true }).click();
     if (await page.locator('aside details[data-directory="todos"]').getAttribute('open') === null) await page.locator('aside details[data-directory="todos"]>summary').click();
     await page.locator('aside').getByRole('button', { name: 'Plan the week', exact: true }).click();
     const protectedEditor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });

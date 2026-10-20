@@ -11,7 +11,7 @@ export async function checkPages(browser, url) {
     const editor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
     await editor.locator('h1').filter({ hasText: 'Drainage calculations' }).waitFor();
     await page.getByRole('navigation', { name: 'Page parents', exact: true }).getByRole('button', { name: 'Weekly coordination', exact: true }).click();
-    await page.getByRole('region', { name: 'Subpages', exact: true }).getByRole('button', { name: 'Drainage calculations', exact: true }).click();
+    await editor.getByRole('link', { name: 'Drainage calculations', exact: true }).click();
     await editor.press('ControlOrMeta+End'); await editor.press('Enter'); await editor.pressSequentially('See [[Weekly');
     const picker = page.getByRole('listbox', { name: 'Link a page', exact: true });
     await picker.getByRole('option').filter({ hasText: 'Weekly coordination' }).waitFor();

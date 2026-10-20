@@ -96,6 +96,7 @@ async function addTag(page, value) {
   assert.equal(await page.getByRole('button', { name: 'Save files', exact: true }).isVisible(), true);
   await page.keyboard.press('Escape');
   console.log('Created workspace through the native dialog.');
+  await page.getByRole('button', { name: 'Files', exact: true }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByLabel('First name', { exact: true }).fill('Maki');
   await page.getByRole('button', { name: 'Save profile', exact: true }).click();

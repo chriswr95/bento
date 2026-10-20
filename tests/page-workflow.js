@@ -17,12 +17,22 @@ export async function checkPageWorkflow({ launch, stop, temporary, root }) {
   try {
     await page.locator('aside').getByRole('button', { name: 'Creekside improvements', exact: true }).click();
     await createChild('Drainage calculations');
-    await createChild('Assumptions');
+    const parentEditor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
+    await parentEditor.press('ControlOrMeta+End'); await parentEditor.press('Enter'); await parentEditor.pressSequentially('/');
+    await page.getByRole('listbox', { name: 'Slash commands', exact: true }).waitFor();
+    await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/slash-commands.png') });
+    await parentEditor.pressSequentially('page');
+    await page.getByRole('listbox', { name: 'Slash commands', exact: true }).getByRole('option', { name: /^Page/ }).waitFor();
+    await parentEditor.press('Enter');
+    await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Assumptions');
+    await page.getByRole('button', { name: 'Create page', exact: true }).click(); await saved();
     const repo = await WorkspaceRepository.open(folder);
     const child = Object.values(repo.workspace.records).find(doc => doc.title === 'Drainage calculations');
     const grandchild = Object.values(repo.workspace.records).find(doc => doc.title === 'Assumptions');
     assert.equal(child.parent, 'project-creekside'); assert.equal(grandchild.parent, child.id);
     assert.equal(child.database, undefined); assert.equal(grandchild.database, undefined);
+    assert.ok(repo.workspace.records[child.id].body.includes(`](${grandchild.id}.md)`));
+    assert.doesNotMatch(repo.workspace.records[child.id].body, /\/page/);
     assert.equal(await page.getByRole('navigation', { name: 'Workspace pages', exact: true }).getByRole('button', { name: 'Assumptions', exact: true }).count(), 1);
     await page.getByRole('button', { name: 'Edit Parent', exact: true }).click();
     assert.equal(await page.getByRole('group', { name: 'Parent', exact: true }).getByRole('radio', { name: /Assumptions/ }).count(), 0);
@@ -49,7 +59,7 @@ export async function checkPageWorkflow({ launch, stop, temporary, root }) {
     launched = await launch(null, userData); app = launched.app; page = launched.page;
     await page.getByRole('textbox', { name: 'Page Markdown', exact: true }).waitFor();
     await page.getByRole('navigation', { name: 'Workspace pages', exact: true }).waitFor();
-    await page.getByRole('region', { name: 'Subpages', exact: true }).getByRole('button', { name: 'Assumptions', exact: true }).click();
+    await page.getByRole('article', { name: 'Editable Markdown document', exact: true }).getByRole('link', { name: 'Assumptions', exact: true }).click();
     assert.equal(await page.getByRole('textbox', { name: 'Page Markdown', exact: true }).getByRole('link', { name: 'Drainage calculations', exact: true }).count(), 1);
     await page.getByRole('button', { name: 'Files', exact: true }).click();
     await page.getByRole('navigation', { name: 'Workspace files', exact: true }).waitFor();

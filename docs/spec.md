@@ -310,3 +310,11 @@ Any ordinary page may have one optional parent page, independently of its zero-o
 The sidebar offers Pages for the logical hierarchy and Files for actual workspace folders. It remembers the chosen view and disclosure state. New subpages open immediately and reveal their ancestry. Pages whose parent is missing remain accessible at the top level for repair.
 
 Typing `[[` in prose opens searchable page suggestions. Titles, parent paths, and filenames distinguish matching pages. Arrow keys and Enter select a target; Escape leaves the literal input intact. The selected reference is a regular Markdown link, with no duplicate reference identity. References open their target on click; Alt-click allows editing the link text. Linked from lists incoming links once per source document, excluding code examples. Raw pasted wiki syntax is retained literally; this release provides an insertion interaction rather than a second stored link syntax.
+
+### Slash commands and embedded child pages
+
+At the beginning of a paragraph, `/` opens a keyboard-accessible menu for Text, Heading 1–3, Bulleted list, Numbered list, Todo, Quote, Code block, Divider, Table, and Page. Typing filters choices; arrows and Enter select; Escape retains the typed text. Code, inline code, tracked todo labels, composition, and read-only documents do not activate the menu. Unknown commands remain literal text.
+
+`/page` opens the subpage title form. Creating the page replaces the command at its original position with a normal Markdown link, assigns Parent, opens the new document, and reveals it in the sidebar tree. Cancel creates no document and retains the typed command. Creating a child from document actions also adds a Markdown link to the parent.
+
+Every child is rendered as a link inside its parent's Markdown document; there is no separate Subpages footer. Parenting or reparenting adds a missing link to the new parent, without moving files or changing database membership. References in a previous parent remain ordinary authored links. Removing a link alone does not clear Parent; use the Parent property to detach the page. Older files missing child links receive a reading projection without writes on open. Pages is the default sidebar view; an explicit Files preference is preserved.

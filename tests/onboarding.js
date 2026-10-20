@@ -36,7 +36,7 @@ export async function checkOnboarding({ launch, stop, temporary, root }) {
   await guide().getByRole('button', { name: 'Capture a meeting and its actions', exact: true }).waitFor();
   assert.match(await editorFor(page).innerText(), /My walkthrough action/);
   await guide().getByRole('button', { name: 'Review upcoming work', exact: true }).click();
-  await page.getByRole('button', { name: 'My walkthrough action', exact: true }).waitFor();
+  await page.locator('main').getByRole('button', { name: 'My walkthrough action', exact: true }).waitFor();
   await page.getByRole('heading', { name: /^Today / }).waitFor();
   await page.getByRole('heading', { name: /^Upcoming / }).waitFor();
   await page.getByRole('checkbox', { name: 'Complete Review the marked-up path comments', exact: true }).click();
