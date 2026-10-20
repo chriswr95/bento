@@ -36,7 +36,7 @@ export async function checkProperties(browser, url) {
   await page.keyboard.press('Escape');
   await edit('Page title'); await page.getByRole('textbox', { name: 'Page title', exact: true }).fill('Keyboard title');
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => window.propertyFixture.workspace.records.creek.title === 'Keyboard title' && document.activeElement?.dataset.editProperty === 'field-project-status');
+  await page.waitForFunction(() => window.propertyFixture.workspace.records.creek.title === 'Keyboard title' && document.activeElement?.dataset.editProperty === '$color');
   assert.equal((await record()).title, 'Keyboard title');
   await edit('Hours'); await page.getByRole('spinbutton', { name: 'Hours', exact: true }).fill('-1');
   await page.keyboard.press('Enter'); assert.equal((await record()).properties.hours, undefined);

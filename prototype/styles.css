@@ -189,3 +189,25 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-theme-swatches {display:flex;gap:5px}
 #bento-workflow .b-theme-swatches span {width:22px;height:22px;border-radius:50%;border:1px solid var(--b-line)}
 #bento-workflow input[type=checkbox],#bento-workflow input[type=radio] {accent-color:var(--b-accent)}
+
+#bento-workflow .b-property-chip[data-color],#bento-workflow .b-project-label[data-color] {color:var(--b-item-color);background:var(--b-item-wash);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--b-item-color) 20%,transparent)}
+#bento-workflow .b-project-label {display:inline-block;padding:0 5px;border-radius:4px}
+#bento-workflow .b-color-dot {display:inline-block;width:8px;height:8px;flex:none;border-radius:50%;background:var(--b-item-color);vertical-align:middle}
+#bento-workflow .b-record-marker {color:var(--b-item-color);font-size:12px}
+#bento-workflow .b-project[data-color] {border-top:3px solid var(--b-item-color)}
+#bento-workflow .b-color-picker {display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:8px 0}
+#bento-workflow .b-color-swatch {display:flex;align-items:center;justify-content:center;border:2px solid transparent;border-radius:50%;width:28px;height:28px;padding:0;background:var(--b-item-color);color:var(--b-item-wash);font-size:15px}
+#bento-workflow .b-color-swatch[aria-pressed=true] {outline:2px solid var(--b-ink);outline-offset:2px}
+#bento-workflow .b-color-auto {border:0;border-radius:4px;background:var(--b-side);color:var(--b-soft);padding:5px 8px;font-size:12px}
+#bento-workflow .b-color-auto[aria-pressed=true] {color:var(--b-ink);background:var(--b-wash)}
+#bento-workflow .b-tag-editor .b-tag-color-button {display:inline-flex;align-items:center;padding:3px 0}
+#bento-workflow [data-tag-palette] {margin-top:5px}
+
+#bento-workflow [data-color="red"] { --b-item-color:var(--b-color-red); --b-item-wash:var(--b-color-red-wash); }
+#bento-workflow [data-color="orange"] { --b-item-color:var(--b-color-orange); --b-item-wash:var(--b-color-orange-wash); }
+#bento-workflow [data-color="yellow"] { --b-item-color:var(--b-color-yellow); --b-item-wash:var(--b-color-yellow-wash); }
+#bento-workflow [data-color="green"] { --b-item-color:var(--b-color-green); --b-item-wash:var(--b-color-green-wash); }
+#bento-workflow [data-color="teal"] { --b-item-color:var(--b-color-teal); --b-item-wash:var(--b-color-teal-wash); }
+#bento-workflow [data-color="blue"] { --b-item-color:var(--b-color-blue); --b-item-wash:var(--b-color-blue-wash); }
+#bento-workflow [data-color="purple"] { --b-item-color:var(--b-color-purple); --b-item-wash:var(--b-color-purple-wash); }
+#bento-workflow [data-color="pink"] { --b-item-color:var(--b-color-pink); --b-item-wash:var(--b-color-pink-wash); }

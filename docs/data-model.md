@@ -173,3 +173,11 @@ The YAML document API retains unknown values and comments where possible, and up
 The Electron app creates/opens folders, discovers registered definitions, edits notes/todo bodies and title/status/date/project properties, creates todo files from checkboxes, saves, reloads, and recovers interrupted saves. The browser-only sample still uses its independent local snapshot. Personal profile/appearance are stored in the per-user app-data `settings.md`, outside workspace content. Drafts remain in local renderer storage. Personal settings are never included in workspace snapshots or agent context automatically.
 
 Next: database/schema controls, generic record property editing, explicit transfer/conversion tools, recovery/conflict review, incremental external-change watching, editor accessibility/IME/scale evaluation, and Windows/macOS distribution validation. No real agent or Copilot integration is implemented.
+
+### Color assignments
+
+Content records may carry a top-level `color` set to `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, or `pink`. Absent/null means Automatic: a stable choice derived from the record ID. This presentation metadata is independent of database schema fields and survives ordinary edits and exports.
+
+Workspace-wide tag overrides live in `workspace.md` under `tag_colors`, mapping exact tag strings to the same eight names. Removing an override restores the stable automatic color derived from that tag string. Tags remain strings on individual records. Changing a tag's color affects every occurrence in this workspace without rewriting the tagged documents. These assignments belong to workspace content; hex colors belong to personal themes.
+
+The repository saves changed tag assignments transactionally with other workspace changes and preserves workspace frontmatter comments and body text. External changes to `workspace.md` stop the save under the existing conflict rules. Select/status option definitions may optionally declare `color` using the same names; absent status colors follow their completion group, and other choices use stable defaults.

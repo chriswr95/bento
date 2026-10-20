@@ -113,6 +113,12 @@ async function addTag(page, value) {
   await setStatus(page, 'option-completed');
   await addTag(page, 'Civil engineering');
   await addTag(page, 'client, internal');
+  await editProperty(page, 'Color');
+  await page.getByRole('group', { name: 'Color', exact: true }).getByRole('button', { name: 'Purple', exact: true }).click();
+  await editProperty(page, 'Tags');
+  await page.getByRole('button', { name: 'Color tag Civil engineering', exact: true }).click();
+  await page.getByRole('group', { name: 'Tag color', exact: true }).getByRole('button', { name: 'Teal', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Tags', exact: true }).press('Escape');
   await saved(page);
   assert.equal(await page.getByRole('button', { name: 'Edit Status', exact: true }).innerText(), 'Completed');
   await setStatus(page, 'option-active');
@@ -121,6 +127,8 @@ async function addTag(page, value) {
   assert.equal(projectFiles.length, 1);
   const projectId = projectFiles[0].slice(0, -3);
   assert.match(await fs.readFile(path.join(workspace, 'projects', projectFiles[0]), 'utf8'), /title: My first project/);
+  assert.match(await fs.readFile(path.join(workspace, 'projects', projectFiles[0]), 'utf8'), /color: purple/);
+  assert.match(await fs.readFile(path.join(workspace, 'workspace.md'), 'utf8'), /Civil engineering: teal/);
   assert.equal(await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).count(), 1);
   await page.locator('aside').getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Canceled project');
@@ -224,6 +232,8 @@ async function addTag(page, value) {
   await page.locator('aside').getByRole('button', { name: 'Weekly coordination', exact: true }).click();
   assert.equal(await page.getByRole('button', { name: 'Edit Meeting date', exact: true }).innerText(), '2026-10-20');
   assert.equal(await page.getByRole('button', { name: 'Edit Tags', exact: true }).innerText(), 'Follow up');
+  await addTag(page, 'Civil engineering');
+  assert.equal(await page.getByRole('button', { name: 'Edit Tags', exact: true }).locator('[data-color="teal"]').count(), 1);
   await editProperty(page, 'Related projects');
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-meeting-properties.png') });
   assert.equal(await page.getByRole('group', { name: 'Related projects', exact: true }).getByRole('checkbox', { name: 'My first project', exact: true }).isChecked(), true);

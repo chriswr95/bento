@@ -1,3 +1,4 @@
+import { checkColors } from './colors.js';
 import { checkThemes } from './themes.js';
 import { checkProperties } from './properties.js';
 import { serve } from '../../scripts/serve.js';
@@ -189,5 +190,6 @@ async function paste(editor, text, html = '') {
  await context.close();
  await checkProperties(browser, url);
  await checkThemes(browser, url, screenshots);
+ await checkColors(browser, url, screenshots);
 
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close(); await server.close();});

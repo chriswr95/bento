@@ -1,3 +1,4 @@
+import { recordColor } from './colors.js';
 import ThemePicker from './theme-picker.js';
 import { applyColorTheme, validateThemePreferences, readThemePreferences, saveThemePreferences, themePreferencesKey } from './themes.js';
 import { projectReview } from './project-review.js';
@@ -187,7 +188,7 @@ import BentoFileSession from './file-session.js';
   }
   function directoryContents(node) {
     const folders = node.folders.map(directoryFolder).join('');
-    const documents = node.documents.map(doc => `<li><button type="button" class="b-tree-document" data-record="${escape(doc.id)}" title="${escape(doc.path)}" ${state.view === 'document' && state.document === doc.id ? 'aria-current="page"' : ''}><span aria-hidden="true">≡</span><span>${escape(doc.title)}</span></button></li>`).join('');
+    const documents = node.documents.map(doc => `<li><button type="button" class="b-tree-document" data-record="${escape(doc.id)}" title="${escape(doc.path)}" ${state.view === 'document' && state.document === doc.id ? 'aria-current="page"' : ''}><span class="b-record-marker" data-record-marker="${escape(doc.id)}" data-color="${recordColor(workspace().records[doc.id])}" aria-hidden="true">●</span><span>${escape(doc.title)}</span></button></li>`).join('');
     return `<ul class="b-tree-children">${folders}${documents}${folders || documents ? '' : '<li class="b-tree-empty">No pages yet</li>'}</ul>`;
   }
   function directoryFolder(node) {
@@ -213,14 +214,14 @@ import BentoFileSession from './file-session.js';
     return `<li class="b-task ${task.done ? 'b-done' : ''}">
       <input class="cursor-interaction" type="checkbox" data-task="${task.id}" aria-label="Complete ${escape(task.title)}" ${task.done ? 'checked' : ''}>
       <div><button class="b-task-title b-document-link cursor-interaction" type="button" data-record="${task.id}">${escape(task.title)}</button>
-        ${source ? `<button class="b-source cursor-interaction" data-record="${source.id}" type="button">${escape(project?.title || 'Unassigned')} · ${escape(source.title)} ↗</button>` : `<span class="b-source">${escape(project?.title || 'Unassigned')} · No source reference</span>`}
+        ${source ? `<button class="b-source cursor-interaction" data-record="${source.id}" type="button"><span class="b-project-label" ${project ? `data-color="${recordColor(project)}"` : ''}>${escape(project?.title || 'Unassigned')}</span> · ${escape(source.title)} ↗</button>` : `<span class="b-source"><span class="b-project-label" ${project ? `data-color="${recordColor(project)}"` : ''}>${escape(project?.title || 'Unassigned')}</span> · No source reference</span>`}
       </div><span class="b-date ${!task.done && task.due && task.due < planDate ? 'b-overdue' : ''}">${dueLabel(task.due)}</span>
     </li>`;
   }
   function projectCard(project) {
     const tasks = allTasks().filter(task => task.project === project.id), open = tasks.filter(task => !task.done);
     const next = open.filter(task => task.due).sort((a, b) => a.due.localeCompare(b.due))[0];
-    return `<section class="b-project"><button type="button" class="cursor-interaction" ${desktop ? `data-record="${project.id}"` : `data-project="${project.id}"`}>${escape(project.title)}</button>
+    return `<section class="b-project" data-color="${recordColor(project)}"><button type="button" class="cursor-interaction" ${desktop ? `data-record="${project.id}"` : `data-project="${project.id}"`}>${escape(project.title)}</button>
       <p><button type="button" data-project="${project.id}">Review work</button></p><p>Active · ${open.length} open · ${tasks.length - open.length} complete</p>
       <p>${next ? 'Next due: ' + dueLabel(next.due) : open.length ? 'No dated work' : 'No outstanding work'}</p></section>`;
   }
@@ -288,7 +289,7 @@ import BentoFileSession from './file-session.js';
       desktop && isProject ? `<button type="button" data-project="${doc.id}">Review project work</button>` : '',
       !desktop ? '<button type="button" data-export>Download Markdown</button>' : ''
     ].join('');
-    main.innerHTML = `<div class="b-document-header"><p class="b-eyebrow">${escape(database?.title || 'Documents')} / ${escape(doc.title)}</p>
+    main.innerHTML = `<div class="b-document-header"><p class="b-eyebrow"><span class="b-color-dot" data-document-color data-color="${recordColor(doc)}" aria-hidden="true"></span> ${escape(database?.title || 'Documents')} / ${escape(doc.title)}</p>
       ${actions ? `<details class="b-document-actions"><summary aria-label="Document actions" title="Document actions">⋯</summary><div class="b-document-action-list">${actions}</div></details>` : ''}</div>
       ${task ? `<h1 data-todo-heading>${escape(doc.title)}</h1>` : ''}
       ${desktop || task ? '<section id="b-document-properties" aria-label="Document properties"></section>' : ''}
@@ -300,6 +301,9 @@ import BentoFileSession from './file-session.js';
           <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
     if (desktop || task) propertyEditor = new InlineProperties(main.querySelector('#b-document-properties'), {
       workspace, record, readOnly: !!files?.view?.readOnly,
+      tagColor(tag, color) {
+        const next = model.updateTagColor(workspace(), tag, color); previous = clone(state); state.workspace = next; persist(); notify('Tag color saved across this workspace.');
+      },
       completed: task ? () => model.taskInfo(workspace(), record()).done : null,
       error: notify,
       change(patch) {
@@ -309,7 +313,8 @@ import BentoFileSession from './file-session.js';
           if (button.dataset.record === doc.id) button.querySelector('span:last-child').textContent = record().title;
         });
         const heading = main.querySelector('[data-todo-heading]'); if (heading) heading.textContent = record().title;
-        main.querySelector('.b-document-header .b-eyebrow').textContent = `${database?.title || 'Documents'} / ${record().title}`;
+        main.querySelector('.b-document-header .b-eyebrow').innerHTML = `<span class="b-color-dot" data-document-color data-color="${recordColor(record())}" aria-hidden="true"></span> ${escape(database?.title || 'Documents')} / ${escape(record().title)}`;
+        root.querySelectorAll('[data-record-marker]').forEach(marker => { if (marker.dataset.recordMarker === doc.id) marker.dataset.color = recordColor(record()); });
         refreshDocument(); persist(); notify('Properties saved.');
       }
     });

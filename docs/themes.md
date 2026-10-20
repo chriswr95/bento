@@ -44,3 +44,11 @@ The eight-token mappings and some companion/contrast colors are Bento adaptation
 - [JetBrains Darcula](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-resources/src/themes/darcula.theme.json)
 - [Tokyo Night](https://github.com/folke/tokyonight.nvim)
 - [Catppuccin palette](https://github.com/catppuccin/palette)
+
+## Project, document and tag colors
+
+Bento uses eight stable color names: **red, orange, yellow, green, teal, blue, purple, pink**. Open a document's **Color** property to choose one; **Automatic** restores a stable default. The assignment appears in navigation, project cards and relation chips. Tags have their own workspace-wide color: open Tags, select the small dot beside a tag, and choose a color. The same tag has the same color everywhere in that workspace. Labels remain visible alongside color.
+
+Themes translate these names into coordinated light/dark palettes. Chip backgrounds are tinted surfaces, with foreground colors adjusted to keep at least 4.5:1 text contrast against the chip background. Switching themes or mode changes the palette without modifying assignments.
+
+A version 1 theme may optionally add an `accents` object inside each palette, with all eight names mapped to `#RRGGBB` values. Exporting a built-in template includes those values. Older/custom files without accents still work: Bento derives eight harmonious hues using that palette's accent saturation and background. All custom accents are subject to the same chip contrast adjustment, so the visible text color can be darker or lighter than the supplied hex value.

@@ -37,6 +37,10 @@ The document is a formatted, directly editable page powered by ProseMirror. Clic
 
 Markdown remains the storage format. Opening a document does not rewrite it. The bridge retains original source for untouched blocks; edited blocks can normalize Markdown syntax. Raw HTML and unsupported block types remain preserved, non-executable atoms; images stay placeholders. Tables, fenced code, nested lists, and rich todo labels are supported. Todo metadata stores a plain title while source labels retain inline formatting.
 
+## Colors
+
+Open a page’s **Color** property to pick one of eight theme-aware accents. Project markers, cards and relation chips follow that choice. In Tags, click a tag’s small dot to set its workspace-wide color. **Automatic** restores a stable default. Assignments survive theme changes and save in Markdown.
+
 ## Themes
 
 Open **Settings → Appearance** to choose Bento, GitHub, One Dark, Darcula, Tokyo Night, or Catppuccin. Each includes light and dark palettes; the sun/moon toggle changes mode within the selected theme. **Install theme…** imports a Bento theme JSON file; **Export template** gives you a file to customize and share. Try [Sakura](examples/themes/sakura.bento-theme.json). See the [theme format and installation guide](docs/themes.md).

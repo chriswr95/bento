@@ -1,3 +1,4 @@
+import { colorLabel, recordColor, tagColor, automaticColor, colorPicker } from './colors.js';
 import { propertyChoices, propertyValue, escapeProperty } from './property-editor.js';
 const escape = escapeProperty;
 const empty = value => value == null || value === '' || Array.isArray(value) && value.length === 0;
@@ -30,16 +31,20 @@ export default class InlineProperties {
   fields() {
     const record = this.options.record();
     return [ { id: '$title', name: 'Page title', type: 'text', required: true, value: record.title },
+      { id: '$color', name: 'Color', type: 'color', value: record.color || 'automatic' },
       ...(this.options.workspace().databases[record.database]?.fields || []).map(field => ({ ...field, value: record.properties[field.id] })),
       { id: '$tags', name: 'Tags', type: 'tags', value: record.tags } ];
   }
   display(field) {
+    if (field.type === 'color') return `<span class="b-property-chip" data-color="${recordColor(this.options.record())}">${field.value === 'automatic' ? 'Automatic' : colorLabel(field.value)}</span>`;
     if (empty(field.value)) return '<span class="b-muted">Empty</span>';
     const values = Array.isArray(field.value) ? field.value : [field.value];
     const choices = ['relation', 'select', 'multi-select', 'status'].includes(field.type) ? propertyChoices(this.options.workspace(), field, field.value) : null;
     return values.map(value => {
       const label = choices ? choices.find(option => option.id === value)?.name || 'Unavailable' : typeof value === 'boolean' ? value ? 'Yes' : 'No' : value;
-      return `<span class="${['tags', 'status', 'multi-select', 'relation'].includes(field.type) ? 'b-property-chip' : ''}">${escape(label)}</span>`;
+      const option = choices?.find(option => option.id === value);
+      const color = field.type === 'tags' ? tagColor(this.options.workspace(), value) : field.type === 'relation' ? recordColor(this.options.workspace().records[value]) : option?.color || (field.type === 'status' ? ({ complete: 'green', 'in-progress': 'blue', 'not-started': 'orange' }[option?.group] || automaticColor(value)) : automaticColor(value));
+      return `<span class="${['tags', 'select', 'status', 'multi-select', 'relation'].includes(field.type) ? 'b-property-chip' : ''}" ${['tags', 'select', 'status', 'multi-select', 'relation'].includes(field.type) ? `data-color="${color}"` : ''}>${escape(label)}</span>`;
     }).join(' ');
   }
   row(field) {
@@ -58,12 +63,13 @@ export default class InlineProperties {
     else if (moreFocus) this.element.querySelector('[data-more-properties]>summary')?.focus();
   }
   control(field) {
+    if (field.type === 'color') return colorPicker(this.options.record().color, 'data-pick-document-color');
     const label = `aria-label="${escape(field.name)}"`;
-    if (field.type === 'tags') return `<div class="b-tag-editor">${field.value.map((tag, index) => `<span class="b-property-chip">${escape(tag)}<button type="button" data-remove-tag="${index}" aria-label="Remove tag ${escape(tag)}">×</button></span>`).join('')}<input ${label} data-tag-input placeholder="Add a tag" autocomplete="off"><span class="b-property-hint">Enter to add</span></div>`;
+    if (field.type === 'tags') return `<div class="b-tag-editor">${field.value.map((tag, index) => `<span class="b-property-chip" data-color="${tagColor(this.options.workspace(), tag)}"><button type="button" class="b-tag-color-button" data-color-tag="${escape(tag)}" aria-label="Color tag ${escape(tag)}" title="Change tag color"><span class="b-color-dot" aria-hidden="true"></span></button>${escape(tag)}<button type="button" data-remove-tag="${index}" aria-label="Remove tag ${escape(tag)}">×</button></span>`).join('')}<input ${label} data-tag-input placeholder="Add a tag" autocomplete="off"><span class="b-property-hint">Enter to add</span></div>`;
     if (field.type === 'relation' || field.type === 'multi-select') {
       const many = field.type === 'multi-select' || field.cardinality === 'many';
       const values = Array.isArray(field.value) ? field.value : [field.value];
-      return `<div class="b-property-picker"><input type="search" data-search aria-label="Search ${escape(field.name)}" placeholder="Search…" autocomplete="off"><fieldset aria-label="${escape(field.name)}"><legend class="b-visually-hidden">${escape(field.name)}</legend>${!many && !field.required ? '<label data-choice-label><input type="radio" name="property-choice" value="" '+label+'>Not set</label>' : ''}${propertyChoices(this.options.workspace(), field, field.value).map(option => `<label data-choice-label><input type="${many ? 'checkbox' : 'radio'}" name="property-choice" value="${escape(option.id)}" ${values.includes(option.id) ? 'checked' : ''}>${escape(option.name)}</label>`).join('') || '<span class="b-muted">No choices available</span>'}</fieldset><span class="b-property-hint">Enter to apply · Escape to cancel</span></div>`;
+      return `<div class="b-property-picker"><input type="search" data-search aria-label="Search ${escape(field.name)}" placeholder="Search…" autocomplete="off"><fieldset aria-label="${escape(field.name)}"><legend class="b-visually-hidden">${escape(field.name)}</legend>${!many && !field.required ? '<label data-choice-label><input type="radio" name="property-choice" value="" '+label+'>Not set</label>' : ''}${propertyChoices(this.options.workspace(), field, field.value).map(option => `<label data-choice-label><input type="${many ? 'checkbox' : 'radio'}" name="property-choice" value="${escape(option.id)}" ${values.includes(option.id) ? 'checked' : ''}><span class="b-color-dot" data-color="${field.type === 'relation' ? recordColor(this.options.workspace().records[option.id]) : option.color || automaticColor(option.id)}" aria-hidden="true"></span>${escape(option.name)}</label>`).join('') || '<span class="b-muted">No choices available</span>'}</fieldset><span class="b-property-hint">Enter to apply · Escape to cancel</span></div>`;
     }
     if (['select', 'status', 'boolean'].includes(field.type)) {
       const choices = field.type === 'boolean' ? [{ id: 'true', name: 'Yes' }, { id: 'false', name: 'No' }] : field.options;
@@ -80,9 +86,31 @@ export default class InlineProperties {
     row.querySelector('[data-edit-property]').hidden = true;
     panel.hidden = false; panel.innerHTML = this.control(field);
     this.active = { field, row, panel };
-    const input = panel.querySelector('input,select'); input?.focus(); if (input?.type === 'text') input.select();
+    const input = panel.querySelector('input,select,button'); input?.focus(); if (input?.type === 'text') input.select();
   }
   click(event) {
+    const documentColor = event.target.closest('[data-pick-document-color]');
+    if (documentColor) {
+      if (this.apply({ color: documentColor.dataset.pickDocumentColor === 'automatic' ? null : documentColor.dataset.pickDocumentColor })) { this.close(); this.render(); this.element.querySelector('[data-edit-property="$color"]').focus(); }
+      return;
+    }
+    const tagButton = event.target.closest('[data-color-tag]');
+    if (tagButton && this.active) {
+      this.active.panel.querySelector('[data-tag-palette]')?.remove();
+      this.colorTag = tagButton.dataset.colorTag;
+      const selected = this.options.workspace().tagColors?.[this.colorTag];
+      this.active.panel.insertAdjacentHTML('beforeend', `<div data-tag-palette>${colorPicker(selected, 'data-pick-tag-color', 'Tag color')}</div>`);
+      this.active.panel.querySelector('[data-tag-palette] button').focus(); return;
+    }
+    const tagChoice = event.target.closest('[data-pick-tag-color]');
+    if (tagChoice && this.active) {
+      try {
+        const pending = this.active.panel.querySelector('[data-tag-input]').value;
+        this.options.tagColor(this.colorTag, tagChoice.dataset.pickTagColor === 'automatic' ? null : tagChoice.dataset.pickTagColor);
+        this.active = null; this.render(); this.open('$tags'); this.active.panel.querySelector('[data-tag-input]').value = pending;
+      } catch (error) { this.error(error.message); }
+      return;
+    }
     const edit = event.target.closest('[data-edit-property]');
     if (edit) { this.open(edit.dataset.editProperty); return; }
     const remove = event.target.closest('[data-remove-tag]');
@@ -91,8 +119,12 @@ export default class InlineProperties {
   keydown(event) {
     if (!this.active) return;
     if (event.isComposing) return;
+    if (event.key === 'Escape' && this.active.panel.querySelector('[data-tag-palette]')) {
+      event.preventDefault(); event.stopPropagation(); this.active.panel.querySelector('[data-tag-palette]').remove();
+      [...this.active.panel.querySelectorAll('[data-color-tag]')].find(button => button.dataset.colorTag === this.colorTag)?.focus(); return;
+    }
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.close(true); }
-    else if (event.key === 'Enter') { event.preventDefault(); if (this.active.field.type === 'tags') this.addTag(); else this.commit(true); }
+    else if (event.key === 'Enter' && event.target.tagName !== 'BUTTON') { event.preventDefault(); if (this.active.field.type === 'tags') this.addTag(); else this.commit(true); }
     else if (event.key === 'Backspace' && event.target.matches('[data-tag-input]') && !event.target.value) {
       event.preventDefault(); this.tags(this.active.field.value.slice(0, -1));
     }
@@ -131,6 +163,7 @@ export default class InlineProperties {
   commit(focus = false) {
     if (!this.active) return true;
     const { field, panel } = this.active;
+    if (field.type === 'color') { this.close(focus); return true; }
     if (field.type === 'tags') {
       const tag = panel.querySelector('[data-tag-input]').value.trim();
       if (tag && !field.value.includes(tag) && !this.apply({ tags: [...field.value, tag] })) return false;

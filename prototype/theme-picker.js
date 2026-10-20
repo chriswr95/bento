@@ -1,3 +1,4 @@
+import { colorNames, colorLabel } from './colors.js';
 import { builtinThemes, selectedTheme, installTheme, removeTheme } from './themes.js';
 import { escapeProperty as escape } from './property-editor.js';
 export default class ThemePicker {
@@ -20,7 +21,7 @@ export default class ThemePicker {
     const missing = preferences.colorTheme !== current.id;
     this.element.innerHTML = `<h2>Appearance</h2><div class="b-form"><label class="b-field">Color theme<select data-color-theme><optgroup label="Built in">${builtinThemes.map(theme => this.option(theme, current)).join('')}</optgroup>${preferences.themes.length ? `<optgroup label="Installed">${preferences.themes.map(theme => this.option(theme, current)).join('')}</optgroup>` : ''}</select></label><label class="b-field">Mode<select data-appearance-mode>${['system','light','dark'].map(mode => `<option value="${mode}" ${this.options.appearance() === mode ? 'selected' : ''}>${mode === 'system' ? 'Follow system' : mode[0].toUpperCase() + mode.slice(1)}</option>`).join('')}</select></label></div>
       <p class="b-muted b-theme-description">${escape(current.description || 'Custom Bento theme.')}</p>
-      <div class="b-theme-swatches" aria-hidden="true">${['paper','side','ink','accent'].map(token => `<span style="background:${current[this.options.dark() ? 'dark' : 'light'][token]}"></span>`).join('')}</div>
+      <div class="b-theme-swatches" aria-hidden="true">${colorNames.map(name => `<span data-color="${name}" style="background:var(--b-item-color)" title="${colorLabel(name)}"></span>`).join('')}</div>
       <div class="b-actions"><button type="button" class="b-button" data-install-theme>Install theme…</button><button type="button" class="b-button" data-export-theme>Export template</button>${!builtinThemes.some(theme => theme.id === current.id) ? '<button type="button" class="b-button" data-remove-theme>Remove theme</button>' : ''}</div>
       <input type="file" accept=".json,application/json" data-theme-file aria-label="Theme file" hidden>
       <p class="b-muted">Install a Bento theme JSON file. Themes include light and dark palettes.</p>
