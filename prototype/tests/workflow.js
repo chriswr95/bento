@@ -140,7 +140,7 @@ async function paste(editor, text, html = '') {
  await profilePage.getByRole('heading',{name:'Good to see you, Maki',exact:true}).waitFor();
  await profilePage.clock.setSystemTime(new Date('2026-10-20T11:58:00Z'));
  await profilePage.clock.runFor(60_001);
- await profilePage.getByRole('heading',{name:'A quiet moment, Maki',exact:true}).waitFor();
+ await profilePage.getByRole('heading',{name:'At your own pace, Maki',exact:true}).waitFor();
  await profilePage.clock.setSystemTime(new Date('2026-10-20T12:05:00Z'));
  await profilePage.clock.runFor(60_001);
  await profilePage.getByRole('heading',{name:'A fresh start, Maki',exact:true}).waitFor();
@@ -160,6 +160,22 @@ async function paste(editor, text, html = '') {
  assert.deepEqual(await greetingEditor.evaluate(() => ({ text: getSelection().anchorNode.textContent, offset: getSelection().anchorOffset })), beforeGreetingRefresh);
  await profilePage.getByRole('button',{name:'Daily overview',exact:true}).click();
  await profilePage.getByRole('heading',{name:'Good morning, Maki',exact:true}).waitFor();
+ await profilePage.getByRole('button',{name:'Settings',exact:true}).click();
+ await profilePage.getByLabel('First name',{exact:true}).fill('Makena');
+ await profilePage.getByLabel('Last name',{exact:true}).fill('Wong');
+ await profilePage.clock.setSystemTime(new Date('2026-10-02T02:00:00-07:00'));
+ await profilePage.getByRole('button',{name:'Save profile',exact:true}).click();
+ await profilePage.getByRole('heading',{name:'Hello, Mak Attack',exact:true}).waitFor();
+ await profilePage.reload();
+ await profilePage.getByRole('heading',{name:'Hello, Mak Attack',exact:true}).waitFor();
+ assert.deepEqual(await profilePage.evaluate(() => {
+   const {firstName,lastName} = JSON.parse(localStorage.getItem('bento.prototype.profile.v1'));
+   return {firstName,lastName};
+ }), {firstName:'Makena',lastName:'Wong'});
+ await profilePage.clock.setSystemTime(new Date('2026-10-02T07:00:00-07:00'));
+ await profilePage.clock.runFor(60_001);
+ await profilePage.getByRole('heading',{name:'A fresh start, Thumper',exact:true}).waitFor();
+
 
  await profilePage.getByRole('button',{name:'Settings',exact:true}).click();
  for(const width of [320,736,1024]){
@@ -177,7 +193,7 @@ async function paste(editor, text, html = '') {
  await blocked.getByRole('button',{name:'Save profile',exact:true}).click();
  await blocked.getByRole('heading',{name:/, Session user\??$/}).waitFor();
  assert.match(await blocked.locator('#b-status').innerText(),/storage is unavailable/);
- console.log('Passed profile persistence/clear/edit, birthday and normal greetings, local date change, leap-day handling, date validation, blocked-storage fallback, no profile in host snapshots, and profile responsive widths.');
+ console.log('Passed profile persistence/clear/edit, birthday and normal greetings, rare nicknames with stable reloads and unchanged profile, local date change, leap-day handling, date validation, blocked-storage fallback, no profile in host snapshots, and profile responsive widths.');
  const corrupt=await browser.newPage();
  await corrupt.goto(url);
  await corrupt.evaluate(()=>localStorage.setItem('bento.prototype.workspace.v4','{"version":4,"invalid":true}'));
