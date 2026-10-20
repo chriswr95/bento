@@ -34,6 +34,25 @@ test('a rejected file save retains the draft and stops automatic retry', async t
   assert.match(f.error(), /Changed on disk/); assert.match(f.stored.get(f.session.key()), /Keep my notes/);
 });
 
+test('returning to saved content clears a transient draft and refreshes save status without writing', async t => {
+  let calls = 0;
+  const f = fixture(t, { save: async () => { calls++; throw new Error('Unexpected write'); } });
+  f.edit('Original @project'); assert.equal(f.session.dirty, true);
+  f.edit('Original');
+  assert.equal(f.session.dirty, false); assert.equal(f.stored.has(f.session.key()), false);
+  assert.equal(f.message(), 'Saved to workspace files'); await f.session.save(); assert.equal(calls, 0);
+});
+
+test('returning to the baseline during a save retains a recovery draft until the in-flight write completes', async t => {
+  let finish;
+  const f = fixture(t, { save: requested => new Promise(resolve => { finish = () => resolve({ ok: true, value: { workspace: requested, folder: 'test', readOnly: false } }); }) });
+  f.edit('Intermediate'); const saving = f.session.save(); f.edit('Original');
+  assert.equal(JSON.parse(f.stored.get(f.session.key())).workspace.records.note.body, 'Original');
+  finish(); await saving; assert.equal(f.session.dirty, true);
+  const final = f.session.save(); finish(); await final;
+  assert.equal(f.session.dirty, false); assert.equal(f.stored.has(f.session.key()), false);
+});
+
 test('edits arriving during an in-flight save remain dirty and are saved next', async t => {
   let finish;
   const f = fixture(t, { save: requested => new Promise(resolve => { finish = () => resolve({ ok: true, value: { workspace: requested, folder: 'test', readOnly: false } }); }) });

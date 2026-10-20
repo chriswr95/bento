@@ -34,9 +34,13 @@ class FileSession {
   changed(workspace) {
     if (!this.view) return;
     this.dirty = signature(workspace) !== signature(this.view.workspace);
-    if (!this.dirty) return;
-    this.keepDraft(workspace);
     clearTimeout(this.timer);
+    if (!this.dirty) {
+      if (this.saving || this.failed) this.keepDraft(workspace);
+      else { try { this.storage.removeItem(this.key()); } catch { this.draftAvailable = false; } }
+      this.status(); return;
+    }
+    this.keepDraft(workspace);
     if (!this.failed && !this.view.readOnly) this.timer = setTimeout(() => this.save(), 750);
     this.status();
   }
