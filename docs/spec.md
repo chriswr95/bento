@@ -22,7 +22,7 @@ Civil engineering provides the context for organizing work. Engineering calculat
 
 - Makena takes meeting notes directly in Bento.
 - Todos track her own work initially. Tracking other people's work is a future extension.
-- Everyday editing uses one mostly formatted Markdown surface. Makena can type Markdown shortcuts such as `[] ` or `- [ ] ` to get an interactive checkbox immediately, edit the todo label in place, and open its document without switching between reading and writing modes.
+- Everyday editing uses one mostly formatted Markdown surface. Makena can type Markdown shortcuts such as `[]` or `- [ ]` followed by a space to get an interactive checkbox immediately, edit the todo label in place, and open its document without switching between reading and writing modes.
 - Every document checkbox creates or references a tracked todo with its own Markdown document, with no promotion step.
 - The default daily overview surfaces upcoming work across all projects and a summary for each active project.
 

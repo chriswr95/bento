@@ -243,13 +243,11 @@ Use small, focused commits and meaningful checks at domain, persistence, agent, 
 
 Product questions about Makena's workflow remain in the [specification](spec.md). Resolve design choices against observed needs rather than adding speculative infrastructure.
 
-
 ### Current first-time flow and modules
 
 New desktop workspaces contain database definitions and no fictional content. The empty overview guides the user to create a project and immediately opens that project’s Markdown document. Projects can create linked meeting notes; captured checkboxes inherit their project. Sidebar navigation lists each record once under its database; project navigation opens documents, while project work summaries remain a separate action. Creation validates defaults and entered properties before inserting a record; schema fields requiring values without defaults currently block creation with an error.
 
 All first-party JavaScript except the sandboxed Electron preload uses native ES modules. `preload.cjs` remains a deliberately narrow CommonJS bridge. The browser sample uses a loopback static server (`pnpm demo`) for module loading; the desktop app still loads local files without a server.
-
 
 ### Page property editing
 
@@ -257,18 +255,15 @@ Non-task pages expose a collapsible Properties form generated from their databas
 
 Projects, meetings and todos share compact schema-driven inline properties. Clicking a value opens its editor; Enter or leaving the field commits a validated patch, while Escape cancels pending input. Select/status values commit on selection. Tags are chips with Enter-to-add and Backspace-to-remove behavior; relations and multi-selects use searchable choices. Empty optional fields are behind More properties, while required and populated fields remain visible. Invalid input stays beside an inline error. Metadata commits preserve the Markdown editor instance and history. Generic todo fields use the shared update command; completion uses the existing capability mapping, and canonical title/completion project into source references. Changing a meeting relationship does not reassign existing todos. Desktop commits use the existing draft and autosave flow.
 
-
 ### Project review
 
 Project review derives personal todos from their project capability binding and groups them by local calendar date: overdue, today, upcoming, undated, and completed. Completed tasks stay out of upcoming/overdue groups. Related notes use direct one/many schema relations targeting the project’s database, with each note appearing once per review even if several relation fields match. Sharing a note across projects does not move or duplicate its existing todos. Custom/inactive project records can still be reviewed from their document. All entries open their underlying Markdown record. No workspace-specific review preferences are introduced in this slice.
-
 
 ### Resume behavior
 
 The main process owns a local, versioned `session.json` under the per-user app-data directory. A successful folder choice records its canonical workspace path. Page navigation records document IDs and the current overview/profile view through a narrow IPC method; the renderer cannot choose the remembered root. Writes use a synced temporary file and rename. Graceful quit waits for already accepted main-process writes. No document content is stored in this file, and it does not replace draft persistence.
 
 Startup opens the previous workspace through the normal repository, including recovery and validation. Missing/disconnected folders return to the welcome screen with a message and retain the previous session until another folder is chosen. Missing page IDs or invalid project references fall back to the overview. Malformed session data is retained until a subsequent successful selection/navigation replaces it. Session restoration does not automatically apply unsaved drafts.
-
 
 ### Formatted editing implementation
 

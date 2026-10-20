@@ -6,7 +6,7 @@ Each record has its own Markdown file. A workspace contains `workspace.md`; data
 
 ## Run the desktop app
 
-Requires Node.js 22.12+ and pnpm 11.25.0. From this repository:
+Requires Node.js 22.13+ and pnpm 11.25.0. From this repository:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -20,7 +20,7 @@ For a guided first visit, choose **Try an example workspace** and an empty folde
 
 1. Choose New workspace, then an empty folder. Create your first project by entering its title.
 2. Bento opens the project’s Markdown document immediately. Write notes, or choose New meeting note to create a note linked to that project.
-3. In the meeting, click into the document, press Enter for a new paragraph, and type `[] ` or `- [ ] `, then an action title. Bento creates a todo Markdown file with the same project and links it from the meeting.
+3. In the meeting, click into the document, press Enter for a new paragraph, and type `[]` or `- [ ]` followed by a space, then an action title. Bento creates a todo Markdown file with the same project and links it from the meeting.
 4. Use ↗ to open the todo. Add notes; edit title, Status, due date, and project. Click a property value to edit it; Enter or leaving the field applies it, and Escape cancels. File autosave persists the change.
 5. Projects, meetings, and todos share compact inline properties. Empty optional fields live under More properties. Tags appear as chips: Enter adds a tag, Backspace on an empty tag input removes the last tag, and spaces and commas remain part of a tag. Relation pickers support search.
 6. Save files flushes changes immediately. The Workspace menu holds open/new/reload actions. Close and reopen the workspace to read documents and schemas from disk.
@@ -35,7 +35,7 @@ Open a project document and choose **Review project work**, or use **Review work
 
 Resume information lives in the app’s local `session.json`, separately from personal settings and workspace Markdown. It stores the last workspace path and page/view IDs.
 
-The document is a formatted, directly editable page powered by ProseMirror. Click a heading, paragraph, or list and type; there is no reading/source switch or block textbox. Workspace commands, manual save, and draft recovery live in the workspace-name menu. Changes autosave; Ctrl/Cmd+S saves immediately. A draft notice appears when recovery needs attention. Project actions live in the ⋯ menu beside the document breadcrumb. Desktop documents are already Markdown files, so no download button is needed. Use Ctrl/Cmd+B and Ctrl/Cmd+I for formatting. Markdown shortcuts such as `# `, `**bold**`, lists, and `[] ` apply formatting as you type. Select and replace text across paragraphs; Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z undo/redo document edits. Plain Markdown pastes become formatted content.
+The document is a formatted, directly editable page powered by ProseMirror. Click a heading, paragraph, or list and type; there is no reading/source switch or block textbox. Workspace commands, manual save, and draft recovery live in the workspace-name menu. Changes autosave; Ctrl/Cmd+S saves immediately. A draft notice appears when recovery needs attention. Project actions live in the ⋯ menu beside the document breadcrumb. Desktop documents are already Markdown files, so no download button is needed. Use Ctrl/Cmd+B and Ctrl/Cmd+I for formatting. Markdown shortcuts such as `#` followed by a space, `**bold**`, lists, and `[]` followed by a space apply formatting as you type. Select and replace text across paragraphs; Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z undo/redo document edits. Plain Markdown pastes become formatted content.
 
 Markdown remains the storage format. Opening a document does not rewrite it. The bridge retains original source for untouched blocks; edited blocks can normalize Markdown syntax. Raw HTML and unsupported block types remain preserved, non-executable atoms; images stay placeholders. Tables, fenced code, nested lists, and rich todo labels are supported. Todo metadata stores a plain title while source labels retain inline formatting.
 
@@ -79,7 +79,7 @@ Desktop tests create isolated temporary workspaces and stub only the native dire
 
 ## Browser sample and documentation
 
-`prototype/index.html` is served by `pnpm demo` at http://127.0.0.1:4173/. ES modules require a local HTTP server in browser sample mode. It uses an independent browser-local sample snapshot and exports individual Markdown files. It does not gain desktop filesystem access. Its fictional planning date is October 19, 2026; desktop planning and birthday greetings use the local date.
+`prototype/index.html` is served by `pnpm demo` at <http://127.0.0.1:4173/>. ES modules require a local HTTP server in browser sample mode. It uses an independent browser-local sample snapshot and exports individual Markdown files. It does not gain desktop filesystem access. Its fictional planning date is October 19, 2026; desktop planning and birthday greetings use the local date.
 
 - [Product specification](docs/spec.md): audience, features, and success criteria.
 - [Design document](docs/design.md): implementation choices and remaining work.
@@ -87,3 +87,5 @@ Desktop tests create isolated temporary workspaces and stub only the native dire
 - [Example workspace](examples/document-databases/README.md): inspectable schemas and fictional records.
 
 The [app assets](assets/README.md) include the transparent icon master, macOS/Windows icons, favicon, and header mark. Export regeneration is optional; normal packaging uses the checked-in files.
+
+See [Contributing](CONTRIBUTING.md) for linting, focused commits, CI checks, and dependency maintenance.

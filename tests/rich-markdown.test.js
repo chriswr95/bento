@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EditorState } from 'prosemirror-state';
-import { MarkdownBridge, editorSchema, taskPositions } from '../prototype/rich-markdown.js';
+import { MarkdownBridge, taskPositions } from '../prototype/rich-markdown.js';
 import model from '../prototype/workspace.js';
 
 const sample = '# Meeting\n\nA **bold** paragraph with *emphasis*, ~~strike~~ and `code`.\n\n- [ ] [Review](todo-review.md)\n  - [x] Child\n\n> Quoted note\n\n```md\n- [ ] Code sample\n```\n\n| Column | Value |\n| :--- | ---: |\n| A | B |\n\n<!-- Keep exact comment -->\n';

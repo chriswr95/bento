@@ -36,8 +36,8 @@ async function lock(root, operation) {
   catch (error) {
     if (error.code !== 'EEXIST') throw error;
     const held = JSON.parse(await read(root, filename));
-    if (held.host !== os.hostname() || !Number.isSafeInteger(held.pid)) throw new Error('Workspace is locked by another process.');
-    try { process.kill(held.pid, 0); throw new Error('Workspace is already being saved by another process.'); }
+    if (held.host !== os.hostname() || !Number.isSafeInteger(held.pid)) throw new Error('Workspace is locked by another process.', { cause: error });
+    try { process.kill(held.pid, 0); throw new Error('Workspace is already being saved by another process.', { cause: error }); }
     catch (probe) { if (probe.code !== 'ESRCH') throw probe; }
     await fs.unlink(await paths.inside(root, filename));
     handle = await fs.open(await paths.inside(root, filename, true), 'wx', 0o600);

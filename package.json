@@ -6,11 +6,12 @@
   "main": "desktop/main.js",
   "packageManager": "pnpm@11.25.0",
   "engines": {
-    "node": ">=22.12.0"
+    "node": "^22.13.0 || >=24"
   },
   "scripts": {
     "setup:desktop": "install-electron",
     "start": "node scripts/build-editor.js && electron .",
+    "lint": "eslint . --max-warnings 0 && markdownlint-cli2",
     "test": "node --test prototype/tests/workspace.js tests/*.test.js",
     "test:browser": "node scripts/build-editor.js && node prototype/tests/workflow.js",
     "test:desktop": "node scripts/build-editor.js && node tests/desktop.js",
@@ -24,9 +25,13 @@
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
+    "@eslint/js": "10.0.1",
     "electron": "44.9.0",
     "entities": "8.1.0",
     "esbuild": "0.28.2",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "markdownlint-cli2": "0.23.3",
     "playwright": "1.64.1",
     "prosemirror-commands": "1.7.2",
     "prosemirror-history": "1.5.1",

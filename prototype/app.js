@@ -459,7 +459,7 @@ import BentoFileSession from './file-session.js';
     if (!desktop) root.querySelector('#b-project-nav').innerHTML = model.activeProjects(workspace()).map(project => `<button type="button" class="cursor-interaction" data-project="${project.id}" ${state.project === project.id ? 'aria-current="page"' : ''}>${escape(project.title)}</button>`).join('');
     if (state.view === 'create') renderCreation(); else if (state.view === 'daily') renderDaily(); else if (state.view === 'profile') renderProfile(); else if (record()) renderDocument(); else renderDaily();
     if (walkthrough?.active) main.insertAdjacentHTML('afterbegin', walkthrough.html());
-    if (globalThis.lucide) lucide.createIcons({ attrs: { width: 16, height: 16 } });
+    if (globalThis.lucide) globalThis.lucide.createIcons({ attrs: { width: 16, height: 16 } });
   }
 
   function handleWalkthrough(action) {
@@ -642,7 +642,7 @@ import BentoFileSession from './file-session.js';
   }
   render(); notify(desktop ? personalSettings?.warning || (files?.view ? 'Workspace ready.' : 'Open a workspace or create one to begin.') : storageWarning ? 'Sample workspace opened.' : 'Sample workspace ready. Edits save in this browser.');
   if (globalThis.Tweak) {
-    const tweak = new Tweak({ container: root, onChange: () => changeAppearance(appearance.theme) });
+    const tweak = new globalThis.Tweak({ container: root, onChange: () => changeAppearance(appearance.theme) });
     tweak.addSelect(appearance, 'theme', { label: 'Appearance', options: ['system', 'light', 'dark'] });
   }
 })();
