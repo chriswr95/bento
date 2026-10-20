@@ -1,3 +1,4 @@
+import { checkInlineMenuScroll } from './inline-menu-scroll.js';
 import { checkDailyReview } from './daily-review.js';
 import { checkSlash } from './slash.js';
 import { checkPages } from './pages.js';
@@ -245,6 +246,7 @@ async function paste(editor, text, html = '') {
  await checkMotion(browser, url, screenshots);
  await checkPages(browser, url);
  await checkSlash(browser, url);
+ await checkInlineMenuScroll(browser, url);
  await checkDailyReview(browser, url, screenshots);
 
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close(); await server.close();});

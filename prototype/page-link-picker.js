@@ -9,7 +9,16 @@ export default class PageLinkPicker {
     this.menu.addEventListener('click', event => { const option = event.target.closest('[data-page-option]'); if (option) this.choose(Number(option.dataset.pageOption)); });
     this.blur = () => { if (!this.menu.contains(document.activeElement)) this.close(); };
     editor.view.dom.addEventListener('blur', this.blur);
-    this.reposition = event => { if (!(event.target instanceof Node) || !this.menu.contains(event.target)) this.close(); };
+    this.reposition = event => {
+      if (this.menu.hidden || event.target instanceof Node && this.menu.contains(event.target)) return;
+      // Editor scrolling and resizing can finish before their queued events arrive.
+      if (event.type === 'resize' && this.anchor?.width === innerWidth && this.anchor?.height === innerHeight) return;
+      if (event.type === 'scroll' && this.anchor) {
+        const position = this.editor.view.coordsAtPos(this.range.to);
+        if (position.left === this.anchor.left && position.top === this.anchor.top) return;
+      }
+      this.close();
+    };
     window.addEventListener('resize', this.reposition); window.addEventListener('scroll', this.reposition, true);
   }
   query(pattern = /\[\[([^\]\n[]{0,100})$/) {
@@ -25,6 +34,7 @@ export default class PageLinkPicker {
   update() {
     if (this.options.readOnly || !this.options.pages || this.editor.view.composing) { this.close(); return; }
     const query = this.query(), key = query && `${query.from}:${query.to}:${query.text}`;
+    if (key !== this.dismissed) this.dismissed = null;
     if (!query || key === this.dismissed) { this.close(); return; }
     this.range = query;
     if (this.menu.hidden) this.entries = this.options.pages();
@@ -39,10 +49,14 @@ export default class PageLinkPicker {
     }
     if (!this.results.length) this.menu.textContent = this.options.emptyMessage || 'No matching pages';
     this.menu.hidden = false; this.select(0, false);
-    const position = this.editor.view.coordsAtPos(query.to), box = this.menu.getBoundingClientRect();
+    this.place();
+    this.editor.view.dom.setAttribute('aria-controls', this.menu.id);
+  }
+  place() {
+    const position = this.editor.view.coordsAtPos(this.range.to), box = this.menu.getBoundingClientRect();
+    this.anchor = { left: position.left, top: position.top, width: innerWidth, height: innerHeight };
     this.menu.style.left = `${Math.max(8, Math.min(position.left, innerWidth - box.width - 8))}px`;
     this.menu.style.top = `${Math.max(8, position.bottom + box.height < innerHeight - 8 ? position.bottom + 4 : position.top - box.height - 4)}px`;
-    this.editor.view.dom.setAttribute('aria-controls', this.menu.id);
   }
   select(index, scroll = true) {
     if (!this.results.length) { this.editor.view.dom.removeAttribute('aria-activedescendant'); return; }
