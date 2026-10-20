@@ -32,6 +32,9 @@ async function launch(workspace, userData) {
   const page = await app.firstWindow(); page.setDefaultTimeout(12000);
   page.on('dialog', dialog => dialog.accept().catch(() => {}));
   await page.waitForLoadState('domcontentloaded');
+  if (process.env.BENTO_TEST_SHOW_WINDOW !== '1') {
+    assert.deepEqual(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(window => ({ visible: window.isVisible(), focused: window.isFocused() }))), [{ visible: false, focused: false }], 'Desktop tests must not show or focus an OS window.');
+  }
   if (packaged && workspace) {
     await app.evaluate(({ dialog }, folder) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] }); }, workspace);
     await page.getByRole('button', { name: 'Open workspace', exact: true }).click();
@@ -253,6 +256,10 @@ async function addTag(page, value) {
   await page.getByRole('article', { name: 'Editable Markdown document' }).waitFor();
   await page.locator('aside details[data-directory="projects"]>summary').click();
   await page.locator('aside details[data-directory="todos"]>summary').click();
+  await page.waitForFunction(key => {
+    const folders = JSON.parse(localStorage.getItem(key) || '{}');
+    return folders.projects === false && folders.todos === false;
+  }, 'bento.sidebar.tree.v1:' + await fs.realpath(workspace));
   await application.close(); application = null;
   console.log('Closed the app after saving. Reopening workspace.');
   launched = await launch(null, userData); application = launched.app; page = launched.page;

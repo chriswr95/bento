@@ -10,6 +10,8 @@ import { WorkspaceRepository, create } from '../files/repository.js';
 let window, settings, lastSession, startupWarning = '', startupLocation = null, repository = null, pending = Promise.resolve();
 const entry = path.join(__dirname, '..', 'prototype', 'index.html');
 const trustedURL = pathToFileURL(entry).href;
+const hiddenTestWindow = process.env.BENTO_TEST_MODE === '1' && process.env.BENTO_TEST_SHOW_WINDOW !== '1';
+if (hiddenTestWindow && process.platform === 'darwin') app.setActivationPolicy('prohibited');
 if (!app.isPackaged && process.env.BENTO_TEST_MODE === '1' && process.env.BENTO_TEST_USER_DATA) app.setPath('userData', process.env.BENTO_TEST_USER_DATA);
 
 function register(channel, operation) {
@@ -43,7 +45,7 @@ async function start() {
   repository = restored.repository; startupWarning = restored.warning; startupLocation = restored.location;
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
-  window = new BrowserWindow({ width: 1160, height: 900, minWidth: 380, minHeight: 500, title: 'Bento', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  window = new BrowserWindow({ show: !hiddenTestWindow, skipTaskbar: hiddenTestWindow, width: 1160, height: 900, minWidth: 380, minHeight: 500, title: 'Bento', webPreferences: { backgroundThrottling: !hiddenTestWindow, preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
@@ -60,8 +62,10 @@ async function start() {
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
-  app.whenReady().then(start).catch(error => { dialog.showErrorBox('Bento could not open', error.message); app.quit(); });
+  app.on('second-instance', () => { if (window && !hiddenTestWindow) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
+  app.whenReady().then(start).catch(error => { if (hiddenTestWindow) console.error('Bento could not open:', error);
+    else dialog.showErrorBox('Bento could not open', error.message);
+    app.quit(); });
 }
 let quitting = false;
 app.on('before-quit', event => {
