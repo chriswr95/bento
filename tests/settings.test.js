@@ -74,3 +74,21 @@ test('an interrupted initial migration retains legacy values and recovers the sa
   assert.equal(recovered.readOnly, false); assert.equal(recovered.appearance, 'dark');
   assert.deepEqual(recovered.profile, person);
 });
+
+test('custom theme installation, selection and removal round-trip through personal Markdown settings', async t => {
+  const { builtinThemes } = await import('../prototype/themes.js');
+  const theme = { ...structuredClone(builtinThemes[0]), id: 'my-theme', name: 'My theme' };
+  const { store, root, filename } = await fixture(t); await store.load();
+  await store.save({ colorTheme: theme.id, themes: [theme] });
+  const next = await new SettingsStore(root).load();
+  assert.equal(next.colorTheme, 'my-theme'); assert.deepEqual(next.themes, [theme]);
+  assert.match(await fs.readFile(filename, 'utf8'), /color_theme: my-theme/);
+  await store.save({ colorTheme: 'bento', themes: [] });
+  assert.deepEqual((await new SettingsStore(root).load()).themes, []);
+});
+
+test('invalid theme settings never modify the personal settings file', async t => {
+  const { store, filename } = await fixture(t); await store.load(); const before = await fs.readFile(filename, 'utf8');
+  for (const patch of [{ colorTheme: null }, { themes: null }, { themes: [{}] }, { colorTheme: '../escape' }]) await assert.rejects(store.save(patch));
+  assert.equal(await fs.readFile(filename, 'utf8'), before);
+});
