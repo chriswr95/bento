@@ -16,7 +16,11 @@ export async function checkColors(browser, url, screenshots) {
       tagColor(tag, color) { workspace = model.updateTagColor(workspace, tag, color); }
     });
   });
-  const edit = name => page.getByRole('button', { name: `Edit ${name}`, exact: true }).click();
+  const edit = async name => {
+    const button = page.getByRole('button', { name: `Edit ${name}`, exact: true });
+    if (!await button.isVisible()) await page.locator('[data-more-properties]>summary').click();
+    await button.click();
+  };
   await edit('Color');
   assert.equal(await page.locator('[data-pick-document-color]:not(.b-color-auto)').count(), 8);
   await page.keyboard.press('Escape');

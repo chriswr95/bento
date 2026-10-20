@@ -1,5 +1,6 @@
 import { colorLabel, recordColor, tagColor, automaticColor, colorPicker } from './colors.js';
 import { propertyChoices, propertyValue, escapeProperty } from './property-editor.js';
+import { propertyLayout } from './property-layout.js';
 const escape = escapeProperty;
 const empty = value => value == null || value === '' || Array.isArray(value) && value.length === 0;
 
@@ -8,7 +9,7 @@ export default class InlineProperties {
     this.element = element; this.options = options; this.active = null;
     let expanded = true;
     try { if (options.disclosureKey) expanded = localStorage.getItem(options.disclosureKey) !== 'false'; } catch { /* Disclosure still works without local storage. */ }
-    element.innerHTML = `<details class="b-properties-disclosure" data-properties-disclosure ${expanded ? 'open' : ''}><summary><span class="b-properties-chevron" aria-hidden="true"></span>Properties</summary><div data-properties-content></div></details>`;
+    element.innerHTML = `<details class="b-properties-disclosure" data-properties-disclosure ${expanded ? 'open' : ''}><summary><span class="b-properties-chevron" aria-hidden="true"></span>Properties${options.arrange && !options.readOnly ? '<button type="button" data-arrange-properties aria-label="Arrange properties" title="Arrange properties">⋯</button>' : ''}</summary><div data-properties-content></div></details>`;
     this.disclosure = element.querySelector('[data-properties-disclosure]');
     this.content = element.querySelector('[data-properties-content]');
     this.disclosure.addEventListener('toggle', () => {
@@ -65,8 +66,17 @@ export default class InlineProperties {
     const completedFocus = focused?.matches('[data-completed]');
     const moreFocus = focused?.matches('[data-more-properties]>summary');
     const expanded = this.element.querySelector('[data-more-properties]')?.open;
-    const fields = this.fields(), visible = fields.filter(field => field.required || !empty(field.value)), hidden = fields.filter(field => !field.required && empty(field.value));
-    this.content.innerHTML = `<div class="b-inline-properties" aria-label="Page properties">${this.options.completed ? `<label class="b-inline-completed"><input type="checkbox" data-completed aria-label="Completed" ${this.options.completed() ? 'checked' : ''} ${this.options.readOnly ? 'disabled' : ''}>Completed</label>` : ''}${visible.map(field => this.row(field)).join('')}${hidden.length ? `<details data-more-properties ${expanded ? 'open' : ''}><summary>More properties <span class="b-muted">${hidden.length}</span></summary>${hidden.map(field => this.row(field)).join('')}</details>` : ''}</div>`;
+    const fields = this.fields(), database = this.options.workspace().databases[this.options.record().database];
+    let visible, hidden;
+    if (database) {
+      const layout = propertyLayout(database), byId = new Map(fields.map(field => [field.id, field]));
+      visible = [...fields.filter(field => field.required), ...layout.important.map(id => byId.get(id)).filter(Boolean)];
+      hidden = layout.detail.map(id => byId.get(id)).filter(Boolean);
+    } else {
+      visible = fields.filter(field => field.required || !empty(field.value));
+      hidden = fields.filter(field => !field.required && empty(field.value));
+    }
+    this.content.innerHTML = `<div class="b-inline-properties" aria-label="Page properties">${this.options.completed ? `<label class="b-inline-completed"><input type="checkbox" data-completed aria-label="Completed" ${this.options.completed() ? 'checked' : ''} ${this.options.readOnly ? 'disabled' : ''}>Completed</label>` : ''}${visible.map(field => this.row(field)).join('')}${hidden.length ? `<details data-more-properties ${expanded ? 'open' : ''}><summary><span class="b-properties-chevron" aria-hidden="true"></span><span class="b-more-label">More</span><span class="b-less-label">Less</span></summary>${hidden.map(field => this.row(field)).join('')}</details>` : ''}</div>`;
     if (focusId) [...this.element.querySelectorAll('[data-edit-property]')].find(button => button.dataset.editProperty === focusId)?.focus();
     else if (completedFocus) this.element.querySelector('[data-completed]')?.focus();
     else if (moreFocus) this.element.querySelector('[data-more-properties]>summary')?.focus();
@@ -98,6 +108,20 @@ export default class InlineProperties {
     const input = panel.querySelector('input,select,button'); input?.focus(); if (input?.type === 'text') input.select();
   }
   click(event) {
+    if (event.target.closest('[data-arrange-properties]')) {
+      event.preventDefault();
+      if (this.commit()) this.options.arrange?.();
+      return;
+    }
+    if (event.target.closest('[data-more-properties]>summary') && this.active) {
+      const details = this.element.querySelector('[data-more-properties]'), expanded = details.open;
+      event.preventDefault();
+      if (this.commit()) {
+        const next = this.element.querySelector('[data-more-properties]');
+        if (next) { next.getBoundingClientRect(); next.open = !expanded; next.querySelector('summary').focus(); }
+      } else this.active?.panel.querySelector('[aria-invalid="true"]')?.focus();
+      return;
+    }
     if (event.target.closest('[data-properties-disclosure]>summary')) {
       if (!this.commit()) {
         event.preventDefault();

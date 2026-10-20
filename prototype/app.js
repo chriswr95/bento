@@ -14,6 +14,8 @@ import FolderDialog from './folder-dialog.js';
 import { legacyPreferences } from './personal-settings.js';
 import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
 import InlineProperties from './inline-properties.js';
+import PropertyLayoutDialog from './property-layout-dialog.js';
+import { withPropertyLayout } from './property-layout.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
 import { folderDatabase, foldersFor, folderAvailable } from './folders.js';
 import { propertyChoices } from './property-editor.js';
@@ -254,7 +256,7 @@ import BentoFileSession from './file-session.js';
       else return paletteCommands().find(command => command.id === entry.id)?.run();
     }, error: notify
   });
-  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => (!desktop || !!files?.view) && !duePicker.dialog.open && !folderDialog.dialog.open && !sidebarExplorer?.open && !files?.operating });
+  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => (!desktop || !!files?.view) && !root.querySelector('dialog[open]:not(.b-quick-open)') && !sidebarExplorer?.open && !files?.operating });
   document.addEventListener('keydown', event => shortcutController.handle(event), true);
   window.addEventListener('blur', () => shortcutController.clear());
   function openRecord(documentId) {
@@ -264,6 +266,18 @@ import BentoFileSession from './file-session.js';
   function projectDatabase() {
     return Object.values(workspace().databases).find(database => database.capabilities.project);
   }
+  const propertyLayoutDialog = new PropertyLayoutDialog(root, {
+    async save(database, layout) {
+      if (desktop) {
+        const result = await files.mutate(() => desktop.setPropertyLayout(database, layout));
+        if (!result) throw new Error(files.lastError || 'Could not save the property layout.');
+      } else {
+        previous = clone(state); state.workspace = withPropertyLayout(workspace(), database, layout);
+        persist(); propertyEditor.render();
+      }
+      notify('Property layout saved for this database.');
+    }
+  });
   function projectField(database, project = null) {
     return database?.fields.find(field => field.type === 'relation' && !field.unavailable && (!project || field.target_database === project.database) && workspace().databases[field.target_database]?.capabilities.project);
   }
@@ -487,6 +501,7 @@ import BentoFileSession from './file-session.js';
           <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
     propertyEditor = new InlineProperties(main.querySelector('#b-document-properties'), {
       workspace, record, readOnly: readOnly(doc), hideTitle: !!isProject,
+      arrange: database && !readOnly(doc) ? () => propertyLayoutDialog.show(workspace().databases[doc.database]) : null,
       disclosureKey: 'bento.properties.expanded.v1:' + JSON.stringify([files?.view?.folder || 'demo', doc.database || null]),
       tagColor(tag, color) {
         const next = model.updateTagColor(workspace(), tag, color); previous = clone(state); state.workspace = next; persist(); notify('Tag color saved across this workspace.');

@@ -11,6 +11,7 @@ export async function checkProperties(browser, url) {
       { id: 'reviewed', name: 'Reviewed', type: 'boolean' },
       { id: 'related', name: 'Related', type: 'relation', cardinality: 'many', target_database: 'db-projects' }
     );
+    workspace.databases[workspace.records[id].database].property_layout = { important: [], detail: ['hours', '$color', '$tags'] };
     window.propertyFixture = { get workspace() { return workspace; }, id, changes: 0 };
     window.propertyFixture.editor = new InlineProperties(document.querySelector('#test-properties'), {
       disclosureKey: 'bento.test.properties.expanded',
@@ -42,10 +43,13 @@ export async function checkProperties(browser, url) {
   await page.keyboard.press('Escape');
   await edit('Page title'); await page.getByRole('textbox', { name: 'Page title', exact: true }).fill('Keyboard title');
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => window.propertyFixture.workspace.records.creek.title === 'Keyboard title' && document.activeElement?.dataset.editProperty === '$color');
+  await page.waitForFunction(() => window.propertyFixture.workspace.records.creek.title === 'Keyboard title' && document.activeElement?.dataset.editProperty === 'field-project-status');
   assert.equal((await record()).title, 'Keyboard title');
   await edit('Hours'); await page.getByRole('spinbutton', { name: 'Hours', exact: true }).fill('-1');
   await page.keyboard.press('Enter'); assert.equal((await record()).properties.hours, undefined);
+  await page.locator('[data-more-properties]>summary').click();
+  assert.equal(await page.locator('[data-more-properties]').getAttribute('open'), '');
+  assert.equal(await page.locator('[data-inline-error]:visible').count(), 1);
   await page.getByRole('spinbutton', { name: 'Hours', exact: true }).fill('0'); await page.keyboard.press('Enter');
   assert.equal((await record()).properties.hours, 0);
   await edit('Reviewed'); await page.getByRole('combobox', { name: 'Reviewed', exact: true }).selectOption('false');

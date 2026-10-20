@@ -43,6 +43,8 @@ Add regression coverage at the layer owning each behavior. Use storage tests for
 
 ### Workspace page and database customization regressions
 
+`pnpm test:desktop:properties` runs an offscreen disposable-workspace check for More/Less, pinned mandatory fields, real drag/drop across groups, keyboard ordering, cancellation, shared layouts, unchanged content bytes and restart persistence. It is also part of `pnpm test:desktop`. Layout unit tests cover invalid IDs/groups, duplicate entries, required-field protection, preserved YAML comments/unknown metadata/body, schema version stability, external changes and journal recovery. Browser tests cover normal property editing and validation with details collapsed or expanded.
+
 Repository unit tests cover workspace body/title edits, checkbox capture with root-relative links, combined manifest/tag-color saves, preserved metadata/comments, forged configuration rejection, external-change protection, missing definitions, broken capability mappings, unregistered folders, retained relation values, and recovery after definition restoration. Native tests cover Workspace navigation/editing/capture, persisted title, commands using renamed database titles, and read-only editor/properties after database removal. These tests use disposable workspaces and keep native windows hidden.
 
 ### File organization and link coverage

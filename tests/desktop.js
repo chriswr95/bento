@@ -1,4 +1,5 @@
 import { checkOrganizationWorkflow } from './organization-workflow.js';
+import { checkPropertyLayout } from './property-layout-workflow.js';
 import { checkSidebarManagement } from './sidebar-management-workflow.js';
 import { checkInlineMenuWorkflow } from './inline-menu-workflow.js';
 import { checkDailyWorkflow } from './daily-workflow.js';
@@ -78,6 +79,7 @@ async function addTag(page, value) {
 (async () => {
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-desktop-'));
   if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); return; }
+  if (process.argv.includes('--properties')) { await checkPropertyLayout({ launch, stop, temporary, root }); return; }
   const workspace = path.join(temporary, 'Workspace'), userData = path.join(temporary, 'UserData');
   await fs.mkdir(workspace);
   let launched = await launch(null, userData); application = launched.app; let page = launched.page;
@@ -262,7 +264,7 @@ async function addTag(page, value) {
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
   assert.doesNotMatch(raw, /^database:/m);
   assert.match(raw, new RegExp(projectId));
-  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'deleteDocument', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'restoreDocument', 'save', 'settingsRead', 'settingsSave'] });
+  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'deleteDocument', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'restoreDocument', 'save', 'setPropertyLayout', 'settingsRead', 'settingsSave'] });
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);
@@ -303,6 +305,7 @@ async function addTag(page, value) {
   assert.equal(await page.locator('aside details[data-directory="projects"]').getAttribute('open'), null);
   await page.locator('aside').getByRole('button', { name: 'Weekly coordination', exact: true }).click();
   assert.equal(await page.getByRole('button', { name: 'Edit Meeting date', exact: true }).innerText(), '2026-10-20');
+  await editProperty(page, 'Tags'); await page.keyboard.press('Escape');
   assert.equal(await page.getByRole('button', { name: 'Edit Tags', exact: true }).innerText(), 'Follow up');
   await addTag(page, 'Civil engineering');
   assert.equal(await page.getByRole('button', { name: 'Edit Tags', exact: true }).locator('[data-color="teal"]').count(), 1);

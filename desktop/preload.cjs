@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('bentoDesktop', Object.freeze({
   moveDocument: (id, folder) => ipcRenderer.invoke('workspace:move', id, folder),
   deleteDocument: id => ipcRenderer.invoke('workspace:delete', id),
   restoreDocument: token => ipcRenderer.invoke('workspace:restore-deleted', token),
+  setPropertyLayout: (database, layout) => ipcRenderer.invoke('workspace:property-layout', database, layout),
   save: workspace => ipcRenderer.invoke('workspace:save', workspace)
 }));

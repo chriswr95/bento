@@ -43,6 +43,7 @@ Bento has three layers: the application, user-managed database definitions, and 
 - Database definitions describe the schema; each record's metadata supplies its values. Views present records without owning another copy of their data.
 - Opening a todo opens its own Markdown document, where Makena can keep notes, context, references, and progress details.
 - Document properties expand and collapse independently of the Markdown body, with disclosure remembered per database on the current device. A subtle divider marks the start of the body.
+- Required fields remain above the fold. Database layouts place other properties in ordered Important (always shown, including empty values) or Details (behind an animated More/Less disclosure, including populated values) groups. Users can arrange these groups by drag and drop or keyboard without changing validation or document values.
 - Schema changes and database removal must offer recoverable behavior that preserves documents and existing values by default.
 
 This requirement covers workspace content and database definitions. Personal profile settings, credentials, caches, and operational state remain separate from workspace records.
