@@ -73,6 +73,7 @@ class WorkspaceRepository {
     catch (error) { recoveryIssue = error.message; }
     const files = await snapshot(this.root), info = manifest(files);
     const workspace = { version: 4, defaultTaskDatabase: info.default_task_database ?? null, databases: {}, records: {}, issues: [], paths: {}, databasePaths: {} };
+    if (info.tag_colors !== undefined) workspace.tagColors = info.tag_colors;
     for (const entry of info.databases) {
       const parsed = parseFile(files, `${entry.path}/database.md`, 'database-definition');
       if (parsed.metadata.id !== entry.id) throw new Error(`Database identity mismatch in ${entry.path}.`);
@@ -140,6 +141,10 @@ class WorkspaceRepository {
         if (isDeepStrictEqual(record, before)) continue;
         const name = next.paths[record.id], original = this.files.get(name) ?? null;
         entries.push({ path: name, before: original, after: markdown.serialize(record, original) });
+      }
+      if (!isDeepStrictEqual(next.tagColors, this.workspace.tagColors)) {
+        const original = this.files.get('workspace.md'), parsed = markdown.parse(original);
+        entries.push({ path: 'workspace.md', before: original, after: markdown.serialize({ ...parsed.metadata, tag_colors: next.tagColors || {}, body: parsed.body }, original) });
       }
       entries.sort((a, b) => Number(a.before !== null) - Number(b.before !== null));
       await transaction.commit(this.root, entries, () => this.verify(), this.options.beforeWrite);

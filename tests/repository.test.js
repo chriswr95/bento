@@ -209,3 +209,32 @@ test('project and meeting property edits survive reopening without rewriting Mar
   assert.equal(reopened.workspace.records[project.id].body, project.body);
   assert.equal(reopened.workspace.records[meeting.id].body, meeting.body);
 });
+
+test('document and global tag colors persist in Markdown while workspace comments and bodies survive', async t => {
+  const root = await fixture(t), workspaceFile = path.join(root, 'workspace.md');
+  const original = (await fs.readFile(workspaceFile, 'utf8')).replace('title:', '# Keep workspace comment\ncustom_note: retained\ntitle:');
+  await fs.writeFile(workspaceFile, original);
+  const repo = await WorkspaceRepository.open(root);
+  let next = model.updateDocument(repo.workspace, 'project-creekside', { color: 'purple' });
+  next = model.updateTagColor(next, 'Civil engineering', 'teal');
+  next = model.updateTagColor(next, '__proto__', 'pink');
+  await repo.save(next);
+  const reopened = await WorkspaceRepository.open(root);
+  assert.equal(reopened.workspace.records['project-creekside'].color, 'purple');
+  assert.equal(reopened.workspace.tagColors['Civil engineering'], 'teal');
+  assert.equal(reopened.workspace.tagColors.__proto__, 'pink');
+  const saved = await fs.readFile(workspaceFile, 'utf8');
+  assert.match(saved, /# Keep workspace comment/); assert.equal(markdown.parse(saved).metadata.custom_note, 'retained');
+  assert.equal(markdown.parse(saved).body, markdown.parse(original).body);
+  await reopened.save(model.updateTagColor(reopened.workspace, 'Civil engineering', null));
+  assert.equal(Object.hasOwn((await WorkspaceRepository.open(root)).workspace.tagColors, 'Civil engineering'), false);
+});
+
+test('tag color saves refuse external workspace edits and preserve both representations', async t => {
+  const root = await fixture(t), repo = await WorkspaceRepository.open(root), filename = path.join(root, 'workspace.md');
+  const next = model.updateTagColor(repo.workspace, 'Follow up', 'red');
+  await fs.appendFile(filename, '\nExternal workspace note\n');
+  await assert.rejects(repo.save(next), /changed on disk/);
+  assert.match(await fs.readFile(filename, 'utf8'), /External workspace note/);
+  assert.equal(next.tagColors['Follow up'], 'red');
+});

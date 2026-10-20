@@ -1,3 +1,4 @@
+import { validColor } from './colors.js';
 const types = ['text', 'number', 'boolean', 'date', 'select', 'multi-select', 'status', 'relation'];
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const identity = value => typeof value === 'string' && /^[a-zA-Z0-9][\w-]*$/.test(value) && !['constructor', 'prototype', '__proto__'].includes(value);
@@ -16,6 +17,7 @@ function definition(database, databases) {
     if (['select', 'multi-select', 'status'].includes(field.type)) {
       if (!Array.isArray(field.options) || !field.options.length || new Set(field.options.map(option => option.id)).size !== field.options.length) throw new Error('Invalid select options.');
       for (const option of field.options) {
+        if (option.color != null && !validColor(option.color)) throw new Error('Invalid option color.');
         if (!identity(option.id) || typeof option.name !== 'string') throw new Error('Invalid option identity.');
         if (field.type === 'status' && !['not-started', 'in-progress', 'complete'].includes(option.group)) throw new Error('Invalid status group.');
       }

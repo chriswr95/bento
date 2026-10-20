@@ -1,5 +1,6 @@
 import './vendor/marked.umd.js';
 import schema from './schema.js';
+import { validColor } from './colors.js';
 const marked = globalThis.marked;
 const clone = value => JSON.parse(JSON.stringify(value));
 const id = prefix => `${prefix}-${globalThis.crypto.randomUUID()}`;
@@ -257,14 +258,22 @@ function applyEdit(workspace, documentId, body) {
   assertWorkspace(next);
   return { workspace: next, edits };
 }
+function updateTagColor(workspace, tag, color) {
+  if (typeof tag !== 'string' || !tag.trim() || tag !== tag.trim()) throw new Error('Choose a valid tag.');
+  if (color !== null && !validColor(color)) throw new Error('Choose one of the eight named colors.');
+  const next = clone(workspace), colors = { ...next.tagColors };
+  if (color === null) delete colors[tag]; else Object.defineProperty(colors, tag, { value: color, enumerable: true, writable: true, configurable: true });
+  next.tagColors = colors; assertWorkspace(next); return next;
+}
 function updateDocument(workspace, documentId, patch) {
   const next = clone(workspace), record = next.records[documentId];
   if (!record) throw new Error('Document not found.');
-  if (Object.keys(patch).some(key => !['title', 'tags', 'properties'].includes(key))) throw new Error('Only document title, tags and properties can be edited.');
+  if (Object.keys(patch).some(key => !['title', 'tags', 'properties', 'color'].includes(key))) throw new Error('Only document title, tags, color and properties can be edited.');
   if ('title' in patch) {
     if (typeof patch.title !== 'string' || !patch.title.trim() || patch.title.trim().length > 200 || /[\r\n]/.test(patch.title)) throw new Error('Enter a single-line title between 1 and 200 characters.');
     record.title = patch.title.trim();
   }
+  if ('color' in patch) { if (patch.color !== null && !validColor(patch.color)) throw new Error('Choose one of the eight named colors.'); record.color = patch.color; }
   if ('tags' in patch) {
     if (!Array.isArray(patch.tags) || !patch.tags.every(tag => typeof tag === 'string')) throw new Error('Tags must be strings.');
     record.tags = [...new Set(patch.tags.map(tag => tag.trim()).filter(Boolean))];
@@ -335,6 +344,7 @@ function serializeDocument(record) {
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 function assertWorkspace(workspace) {
   if (!workspace || workspace.version !== 4 || !isObject(workspace.records) || !isObject(workspace.databases) || !Array.isArray(workspace.issues)) throw new Error('Invalid workspace.');
+  if (workspace.tagColors !== undefined && (!isObject(workspace.tagColors) || Object.entries(workspace.tagColors).some(([tag, color]) => !tag.trim() || tag !== tag.trim() || !validColor(color)))) throw new Error('Invalid workspace tag colors.');
   for (const [key, database] of Object.entries(workspace.databases)) {
     if (database.id !== key || !Array.isArray(database.fields) || !isObject(database.capabilities)) throw new Error('Invalid database definition.');
     schema.definition(database, workspace.databases);
@@ -355,6 +365,7 @@ function assertWorkspace(workspace) {
   }
   for (const [key, record] of Object.entries(workspace.records)) {
     if (record.id !== key || !/^[\w-]+$/.test(key) || typeof record.title !== 'string' || typeof record.body !== 'string') throw new Error('Invalid document.');
+    if (record.color != null && !validColor(record.color)) throw new Error('Invalid document color.');
     if (record.database !== undefined && (typeof record.database !== 'string' || !Object.hasOwn(workspace.databases, record.database))) throw new Error('A document must have zero or one valid database membership.');
     if (!isObject(record.properties) || !isObject(record.references) || !Array.isArray(record.tags) || !record.tags.every(tag => typeof tag === 'string')) throw new Error('Invalid document metadata.');
     if (record.database && record.schema_version !== workspace.databases[record.database].schema_version) throw new Error('Unsupported schema version.');
@@ -432,4 +443,4 @@ function createWorkspace(documents = {}) {
 }
 
 export default Object.freeze({ clone, parse, stripMarkers, refMarker, escapeLabel, targetId, linkFor, linkMatches, validDate, capability, taskInfo, allTasks,
-  activeProjects, projectOf, applyEdit, updateDocument, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace, createDocument });
+  activeProjects, projectOf, applyEdit, updateTagColor, updateDocument, updateTodo, setCheckbox, sourcesFor, serializeDocument, assertWorkspace, migrateWorkspace, createWorkspace, createDocument });
