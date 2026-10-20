@@ -39,7 +39,7 @@ Markdown remains the storage format. Opening a document does not rewrite it. The
 
 ## Keyboard shortcuts
 
-Use **Cmd+[ / Cmd+]** on macOS (**Ctrl+[ / Ctrl+]** or **Alt+Left / Alt+Right** on Windows/Linux) to go back and forward without undoing edits. **Cmd/Ctrl+,** opens Settings. **Cmd/Ctrl+K, then Cmd/Ctrl+S** opens its searchable Keyboard shortcuts section. See the [shortcut reference](docs/keyboard-shortcuts.md).
+Use **Cmd/Ctrl+P** to find pages and run commands (`>` shows commands only; arrows select, Enter runs, Escape returns to editing). Use **Cmd+[ / Cmd+]** on macOS (**Ctrl+[ / Ctrl+]** or **Alt+Left / Alt+Right** on Windows/Linux) to go back and forward without undoing edits. **Cmd/Ctrl+,** opens Settings. **Cmd/Ctrl+K, then Cmd/Ctrl+S** opens its searchable Keyboard shortcuts section. See the [shortcut reference](docs/keyboard-shortcuts.md).
 
 ## Colors
 

@@ -1,5 +1,6 @@
 import NavigationHistory, { sameLocation } from './navigation-history.js';
-import { ShortcutController } from './shortcuts.js';
+import { ShortcutController, shortcuts, bindingsFor, keyLabel, isMac } from './shortcuts.js';
+import QuickOpen from './quick-open.js';
 import ShortcutReference from './shortcut-reference.js';
 import { recordColor } from './colors.js';
 import ThemePicker from './theme-picker.js';
@@ -181,11 +182,54 @@ import BentoFileSession from './file-session.js';
     if (entry.presentation.editor) liveEditor?.restoreNavigationState(entry.presentation.editor);
     window.scrollTo(0, entry.presentation.scrollY || 0);
   }
-  const shortcutController = new ShortcutController({
+  function openQuickOpen() {
+    if (!quickOpen.open && propertyEditor && !propertyEditor.commit()) return;
+    root.querySelectorAll('.b-workspace-menu[open], .b-document-actions[open]').forEach(menu => { menu.open = false; });
+    quickOpen.toggle();
+  }
+  const commandHandlers = {
+    'quick-open': openQuickOpen,
     back: () => travel(-1), forward: () => travel(1), settings: () => navigate('profile'),
     shortcuts: () => { navigate('profile'); shortcutReference?.focus(); },
-    save: () => { if (propertyEditor && !propertyEditor.commit()) return; if (desktop) files?.save(); else { persist(); notify('Changes saved in this browser.'); } }
-  }, { available: () => !desktop || !!files?.view });
+    save: () => { if (propertyEditor && !propertyEditor.commit()) return; if (desktop) files?.save(); else { persist(); notify('Changes saved in this browser.'); } },
+    overview: () => navigate('daily'),
+    appearance: () => { navigate('profile'); main.querySelector('[data-color-theme]')?.focus(); },
+    'toggle-mode': () => changeAppearance(nextTheme(appearance.theme, systemAppearance.matches)).then(() => themePicker?.render())
+  };
+  function paletteCommands() {
+    const commands = shortcuts.filter(shortcut => shortcut.app && shortcut.id !== 'quick-open')
+      .filter(shortcut => shortcut.id !== 'back' || navigation.index > 0 || creation)
+      .filter(shortcut => shortcut.id !== 'forward' || navigation.index < navigation.entries.length - 1)
+      .map(shortcut => ({ id: shortcut.id, title: shortcut.command, detail: 'Command', kind: 'command', shortcut: keyLabel(bindingsFor(shortcut, isMac())[0], isMac()), run: commandHandlers[shortcut.id] }));
+    commands.push({ id: 'overview', title: 'Daily Overview', detail: 'Command', kind: 'command', run: commandHandlers.overview },
+      { id: 'appearance', title: 'Choose Color Theme', detail: 'Command · Appearance settings', kind: 'command', run: commandHandlers.appearance },
+      { id: 'toggle-mode', title: 'Toggle Light / Dark Mode', detail: 'Command · Appearance', kind: 'command', run: commandHandlers['toggle-mode'] });
+    if (desktop && files?.view) {
+      if (!files.view.readOnly) for (const database of Object.values(workspace().databases)) commands.push({ id: 'create:' + database.id, title: creationLabel(database), detail: 'Create a Markdown page · ' + database.title, kind: 'command', run: () => showCreate(database.id, state.project || (record() && (model.capability(workspace(), record(), 'project') ? record().id : model.projectOf(workspace(), record()))) || null) });
+      for (const [id, title] of [['open', 'Open Workspace…'], ['create', 'New Workspace…'], ['reload', 'Reload Workspace Files']]) commands.push({ id: 'workspace:' + id, title, detail: 'Command · Workspace', kind: 'command', run: () => files.open(() => desktop[id]()) });
+    }
+    return commands;
+  }
+  const quickOpen = new QuickOpen(root, {
+    entries: () => [...paletteCommands(), ...Object.values(workspace().records).sort((a, b) => a.title.localeCompare(b.title)).map(doc => ({
+      id: doc.id, kind: 'page', title: doc.title, color: recordColor(doc), type: model.capability(workspace(), doc, 'project') ? 'Project' : model.capability(workspace(), doc, 'task') ? 'Todo' : 'Page',
+      detail: workspace().paths?.[doc.id] || `${workspace().databases[doc.database]?.title || 'Documents'}/${doc.id}.md`, keywords: [workspace().databases[doc.database]?.title || '', ...doc.tags]
+    }))],
+    capture() {
+      const origin = document.activeElement, editor = liveEditor?.navigationState(), scroll = window.scrollY;
+      return () => {
+        if (origin?.isConnected && origin.getClientRects().length) origin.focus({ preventScroll: true });
+        else { main.tabIndex = -1; main.focus({ preventScroll: true }); }
+        if (editor?.focused) liveEditor?.restoreNavigationState(editor);
+        window.scrollTo(0, scroll);
+      };
+    },
+    run(entry) {
+      if (entry.kind === 'page') { if (workspace().records[entry.id]) openRecord(entry.id); else notify('That page is no longer available.'); }
+      else return paletteCommands().find(command => command.id === entry.id)?.run();
+    }, error: notify
+  });
+  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (id !== 'quick-open') quickOpen.close(); run(); }])), { available: () => !desktop || !!files?.view });
   document.addEventListener('keydown', event => shortcutController.handle(event), true);
   window.addEventListener('blur', () => shortcutController.clear());
   function openRecord(documentId) {
@@ -433,6 +477,7 @@ import BentoFileSession from './file-session.js';
     try {
       if (button.hasAttribute('data-reload-settings')) loadPersonal().then(() => { render(); notify(personalSettings?.warning || 'Personal settings reloaded.'); });
       else if (button.hasAttribute('data-theme-toggle')) changeAppearance(nextTheme(appearance.theme, systemAppearance.matches)).then(() => themePicker?.render());
+      else if (button.hasAttribute('data-quick-open')) openQuickOpen();
       else if (button.dataset.create) showCreate(button.dataset.create, button.dataset.forProject || null);
       else if (button.hasAttribute('data-cancel-create')) { Object.assign(state, creation.previous); creation = null; render(); }
       else if (button.dataset.view === 'meeting') openRecord(state.note);
@@ -513,7 +558,7 @@ import BentoFileSession from './file-session.js';
     root.dataset.desktop = 'true';
     root.querySelector('.b-demo').textContent = 'Markdown workspace';
     root.querySelector('.b-demo').hidden = true;
-    root.querySelector('.b-theme-toggle').insertAdjacentHTML('beforebegin', `<div class="b-file-controls"><details class="b-workspace-menu"><summary aria-label="Workspace actions"><span data-workspace-name>Workspace</span><span aria-hidden="true">⌄</span></summary><div><button type="button" data-files="open">Open workspace</button><button type="button" data-files="create">New workspace</button><button type="button" data-files="reload" disabled>Reload files</button><button type="button" data-files="save" disabled>Save files</button><button type="button" data-files="restore" hidden>Restore draft</button><button type="button" data-files="draft" hidden>Download draft</button></div></details><button type="button" class="b-draft-notice" data-draft-notice hidden>Draft available</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
+    root.querySelector('.b-theme-toggle').insertAdjacentHTML('beforebegin', `<div class="b-file-controls"><details class="b-workspace-menu"><summary aria-label="Workspace actions"><span data-workspace-name>Workspace</span><span aria-hidden="true">⌄</span></summary><div><button type="button" data-quick-open>Quick open…</button><button type="button" data-files="open">Open workspace</button><button type="button" data-files="create">New workspace</button><button type="button" data-files="reload" disabled>Reload files</button><button type="button" data-files="save" disabled>Save files</button><button type="button" data-files="restore" hidden>Restore draft</button><button type="button" data-files="draft" hidden>Download draft</button></div></details><button type="button" class="b-draft-notice" data-draft-notice hidden>Draft available</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
     root.querySelector('.b-shell').insertAdjacentHTML('beforebegin', '<p id="b-file-errors" class="b-issues" role="alert" hidden></p>');
 
     const errors = root.querySelector('#b-file-errors');
@@ -532,7 +577,7 @@ import BentoFileSession from './file-session.js';
         state.document = Object.hasOwn(workspace().records, state.document) ? state.document : Object.keys(workspace().records)[0];
         state.note = Object.values(workspace().records).find(doc => doc.database === 'db-meetings')?.id;
         previous = null; editingSnapshot = null; proposal = false;
-        navigation.reset(location()); shortcutController.clear();
+        quickOpen.close(); navigation.reset(location()); shortcutController.clear();
         errors.hidden = !view.errors.length; errors.textContent = view.errors.map(error => `${error.path}: ${error.message}`).join(' ');
         render();
       },

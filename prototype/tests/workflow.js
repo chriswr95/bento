@@ -1,3 +1,4 @@
+import { checkQuickOpen } from './quick-open.js';
 import { checkShortcuts } from './shortcuts.js';
 import { checkColors } from './colors.js';
 import { checkThemes } from './themes.js';
@@ -193,5 +194,6 @@ async function paste(editor, text, html = '') {
  await checkThemes(browser, url, screenshots);
  await checkColors(browser, url, screenshots);
  await checkShortcuts(browser, url, screenshots);
+ await checkQuickOpen(browser, url, screenshots);
 
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close(); await server.close();});

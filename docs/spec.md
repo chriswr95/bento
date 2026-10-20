@@ -265,6 +265,12 @@ Users can select a built-in theme or install a custom Bento color theme from a J
 
 Users can assign one of eight theme-aware colors to documents/projects and shared workspace tags. Assignments retain their identity across themes and light/dark modes. Automatic colors are stable, and users can reset overrides. Colors provide recognizable markers and tinted chips while labels remain readable; color is supplementary to text. Status and selection chips use the same palette.
 
+### Quick-open navigation and commands
+
+Cmd+P on macOS (Ctrl+P on Windows/Linux), or Quick open in the workspace menu, opens a searchable picker for pages and commands. Users can search page titles, paths, database names and tags; paths help distinguish pages with the same title. Prefix a query with `>` to show commands only. Arrow keys move selection, Enter opens/runs it, and Escape restores the previous editing position. Search covers metadata rather than document bodies.
+
+Commands include navigation, Settings, appearance and saving. Desktop workspaces also offer workspace actions and creation in each database; new meetings and todos inherit the current project context. Read-only workspaces omit creation commands. Existing autosave and navigation history apply when opening a page.
+
 ## Future ideas
 
 The [future-ideas backlog](design.md#11-future-ideas) tracks suggestions separately from committed product scope. Current ideas are:
@@ -272,6 +278,8 @@ The [future-ideas backlog](design.md#11-future-ideas) tracks suggestions separat
 - **Clickable directory path:** show where the current page lives, with every path segment navigable.
 - **Page references:** reference any other page from the document using `[[...]]` or a similar writing interaction.
 - **Cute logo:** give Bento a friendly, recognizable visual identity.
-- **Cmd+P command picker:** quickly find and run commands from the keyboard.
+- **External file references:** link pages to files outside Bento.
+- **Subpages:** create pages beneath a current page.
+- **Slash commands:** create or insert different content by typing `/`.
 
 These are captured ideas, not scheduled requirements. Their interaction details and open design questions live in the backlog.

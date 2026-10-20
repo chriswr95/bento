@@ -4,6 +4,7 @@ Open **Settings → Keyboard shortcuts**, or press **Cmd+K, then Cmd+S** on macO
 
 | Command | macOS | Windows/Linux |
 | --- | --- | --- |
+| Quick Open / Commands | Cmd+P | Ctrl+P |
 | Go Back | Cmd+[ | Ctrl+[ or Alt+Left |
 | Go Forward | Cmd+] | Ctrl+] or Alt+Right |
 | Open Settings | Cmd+, | Ctrl+, |
@@ -25,3 +26,5 @@ The context column in Settings distinguishes workspace commands from editor, lis
 Back/forward history tracks page locations and document caret/scroll positions separately from content. It never rolls back document edits. Reopening an already active page does not add a history entry. Visiting a different page after going back discards the forward branch. History is bounded to 100 locations and resets on reload, restart, or workspace activation. The last selected page is still restored by the existing desktop session mechanism.
 
 A two-step chord waits up to three seconds for its second key; Escape cancels it. Input-method composition is left alone. The canonical registry is `prototype/shortcuts.js`; the Settings reference and app shortcut dispatcher use it.
+
+Quick open searches pages and commands together. Type `>` for commands only, use ↑/↓ to select, and Enter to open/run. Escape or Cmd/Ctrl+P closes it and restores the editor caret. Search matches page titles, paths, database names and tags; document bodies are not searched. Cmd/Ctrl+P is reserved for this picker rather than printing.

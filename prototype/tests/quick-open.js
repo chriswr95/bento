@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+export async function checkQuickOpen(browser, url, screenshots) {
+  const page = await browser.newPage({ viewport: { width: 1024, height: 900 } }); page.setDefaultTimeout(10000);
+  await page.goto(url); await page.getByRole('button', { name: 'Meeting note', exact: true }).click();
+  const editor = page.getByRole('textbox', { name: 'Meeting Markdown', exact: true });
+  await editor.click(); await editor.press('ControlOrMeta+End'); await editor.press('Enter'); await editor.pressSequentially('Quick-open keeps my work');
+  const selection = () => page.evaluate(() => ({ text: getSelection().anchorNode.textContent, offset: getSelection().anchorOffset }));
+  const before = await selection();
+  await page.keyboard.press('ControlOrMeta+p');
+  const dialog = page.getByRole('dialog', { name: 'Quick open', exact: true }), search = dialog.getByRole('combobox', { name: 'Search pages and commands', exact: true });
+  await dialog.waitFor(); assert.equal(await search.evaluate(element => document.activeElement === element), true);
+  await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'hidden' });
+  assert.deepEqual(await selection(), before); assert.match(await editor.innerText(), /Quick-open keeps my work/);
+  await page.keyboard.press('ControlOrMeta+p'); await search.fill('>');
+  assert.equal(await dialog.locator('[data-quick-kind=page]').count(), 0);
+  await search.fill('> settings'); await search.press('Enter');
+  await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+  await page.keyboard.press('ControlOrMeta+['); await editor.waitFor(); assert.deepEqual(await selection(), before);
+  await page.keyboard.press('ControlOrMeta+p'); await search.fill('no such zzzzzzz');
+  await dialog.getByText('No matching pages or commands.', { exact: true }).waitFor();
+  assert.equal(await search.getAttribute('aria-activedescendant'), null);
+  await search.press('Enter'); assert.equal(await dialog.isVisible(), true);
+  await search.fill('drainage');
+  const options = dialog.getByRole('option'); assert.ok(await options.count() > 0);
+  const firstId = await search.getAttribute('aria-activedescendant');
+  await search.press('ArrowDown'); assert.notEqual(await search.getAttribute('aria-activedescendant'), firstId);
+  await search.press('ArrowUp'); assert.equal(await search.getAttribute('aria-activedescendant'), firstId);
+  await search.press('Enter'); await dialog.waitFor({ state: 'hidden' });
+  await page.getByRole('article', { name: 'Editable Markdown document' }).waitFor();
+  await page.keyboard.press('ControlOrMeta+['); await editor.waitFor(); assert.match(await editor.innerText(), /Quick-open keeps my work/);
+  await page.keyboard.press('ControlOrMeta+p'); await search.fill('>');
+  await page.locator('#bento-workflow').screenshot({ path: path.join(screenshots, 'quick-open-commands.png') });
+  for (const width of [320, 736, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Quick-open overflow ' + width);
+    assert.equal(await dialog.evaluate(element => { const rect = element.getBoundingClientRect(); return rect.left >= 0 && rect.right <= innerWidth; }), true);
+  }
+  await page.keyboard.press('ControlOrMeta+p'); assert.equal(await dialog.isVisible(), false);
+  await page.close();
+  console.log('Passed Cmd/Ctrl+P page/command search, command-only mode, keyboard selection, empty results, cancel/caret restoration, history, retained edits and responsive dialog.');
+}

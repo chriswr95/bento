@@ -294,6 +294,12 @@ Document colors use optional record metadata; shared tag overrides use `workspac
 
 `navigation-history.js` stores up to 100 page locations and optional presentation state, without workspace/content snapshots. Navigation commits valid pending property edits before leaving, drops forward history after a branch, ignores duplicate locations, and skips unavailable targets. Back/forward restores compatible editor selections and scroll positions. Workspace activation and browser snapshot replacement reset the stack. Existing desktop last-page persistence remains independent. The document footer no longer displays linked-todo counts; unresolved-reference errors remain visible.
 
+### Quick-open pages and commands
+
+Cmd/Ctrl+P opens one modal for pages and workspace commands; `>` restricts results to commands. Commands reuse the shortcut registry and existing handlers, with contextual creation and workspace actions added for the desktop. Unavailable history directions and read-only creation commands are omitted. Each invocation reads fresh workspace records; activation resolves the selected ID against current state.
+
+`quick-open-search.js` ranks normalized, accent-insensitive title matches ahead of database/path/tag matches and fuzzy title matches. It returns at most 40 results in stable order. This is an in-memory metadata search, not full-text indexing. Paths disambiguate duplicate titles. `quick-open.js` owns the accessible dialog, combobox/listbox, keyboard selection, empty state, and cancellation. Opening and cancelling preserve editor focus, caret and scroll without rerendering the document. Running an action closes the modal first so navigation history captures the restored editor position. The picker uses existing theme tokens and filesystem operations; no new preload capabilities are needed.
+
 ## 11. Future ideas
 
 This is the shared idea backlog for Bento. **Captured** means worth exploring, not approved scope, a delivery promise, or a priority order. Keep new ideas here; promote agreed product behavior into the spec and concrete implementation decisions into the relevant design sections. When an idea ships, update its status and link the implementation.
@@ -303,6 +309,9 @@ This is the shared idea backlog for Bento. **Captured** means worth exploring, n
 | IDEA-001 | Clickable directory path | Captured | Show the current workspace → database → subfolders → page path in the UI, with every segment clickable. Derive it from the actual repository path. Decide what clicking a workspace/database/folder segment opens or reveals, including documents outside a database. |
 | IDEA-002 | References between any pages | Captured | Let any page reference any other page while writing, using `[[...]]` or a similar command with page suggestions. Decide syntax, duplicate-title disambiguation, rename/move behavior, and portable Markdown representation. General page links must remain distinct from checkbox-to-todo references; consider backlinks as a follow-up. |
 | IDEA-003 | Cute Bento logo | Captured | Explore a friendly, food-inspired identity, potentially a bento box. Check readability at app-icon, sidebar, and favicon sizes, plus light/dark backgrounds. No visual direction is selected yet. |
-| IDEA-004 | Cmd+P quick-open commands | Captured | Provide a keyboard-first command picker through Cmd+P (Ctrl+P on Windows/Linux), with search and keyboard selection. The requested entry point is for commands; decide whether finding/opening documents shares this picker or uses another mode. Reuse the command/shortcut registry where practical. |
+| IDEA-004 | Cmd+P quick-open commands | Implemented | One picker searches pages and commands; `>` filters commands. Supports keyboard selection, contextual desktop creation, existing navigation history, and cancellation with editor caret restoration. See [quick-open design](#quick-open-pages-and-commands). |
+| IDEA-005 | References to external files | Captured | Link to files outside the workspace from a page. Decide portable versus machine-specific paths, missing-file behavior, and the explicit action used to open a referenced file. |
+| IDEA-006 | Subpages under pages | Captured | Create and navigate child pages from a parent page. Decide how page hierarchy relates to folders and database membership, while preserving the zero-or-one database rule. |
+| IDEA-007 | Slash commands | Captured | Type `/` while editing to create or insert different content, similar to Notion. Decide the initial command set, contextual filtering, and when a command inserts a block versus creates a new document. |
 
-These entries capture product ideas. They do not change the current shortcut bindings or claim that the features are implemented.
+Captured entries remain proposals. Implemented entries link the delivered behavior above.
