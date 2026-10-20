@@ -24,7 +24,7 @@ export async function checkOnboarding({ launch, stop, temporary, root }) {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Walkthrough overflow ' + width);
   }
   await guide().getByRole('button', { name: 'Try meeting notes', exact: true }).click();
-  const editor = page.getByRole('textbox', { name: 'Meeting Markdown', exact: true });
+  const editor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
   await editor.click(); await editor.press('ControlOrMeta+End'); await editor.press('Enter');
   await editor.pressSequentially('[] '); await editor.pressSequentially('My walkthrough action');
   await page.locator('#b-save-state').filter({ hasText: /^Saved$/ }).waitFor();
@@ -62,9 +62,9 @@ export async function checkOnboarding({ launch, stop, temporary, root }) {
   await page.locator('.b-workspace-menu>summary').click();
   assert.equal(await page.getByRole('button', { name: 'Replay walkthrough', exact: true }).isVisible(), false);
   assert.equal(await page.getByRole('button', { name: 'Try an example workspace', exact: true }).isVisible(), true);
-  assert.equal(Object.keys((await WorkspaceRepository.open(ownFolder)).workspace.records).length, 0);
-  assert.equal(Object.keys((await WorkspaceRepository.open(folder)).workspace.records).length, 9);
+  assert.equal(Object.keys((await WorkspaceRepository.open(ownFolder)).workspace.records).length, 1);
+  assert.equal(Object.keys((await WorkspaceRepository.open(folder)).workspace.records).length, 10);
   await stop(app);
   console.log('Passed example creation/cancel, guided project → meeting → review, checkbox capture/completion, relative dates, restart progress, finish/replay/skip and responsive layout.');
 }
-const editorFor = page => page.getByRole('textbox', { name: 'Meeting Markdown', exact: true });
+const editorFor = page => page.getByRole('textbox', { name: 'Page Markdown', exact: true });

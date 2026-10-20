@@ -36,7 +36,7 @@ test('example uses ordinary editable documents, relative local dates and connect
 });
 test('example creation refuses existing folders; empty workspaces remain empty', async t => {
   const root = await folder(t), repo = await create(root);
-  assert.equal(Object.keys(repo.workspace.records).length, 0);
+  assert.equal(Object.keys(repo.workspace.records).filter(id => id !== repo.workspace.home).length, 0);
   assert.equal(repo.view().walkthrough, null);
   const before = await fs.readFile(path.join(root, 'workspace.md'), 'utf8');
   await assert.rejects(create(root, 'Example', { example: true }), /empty folder/);

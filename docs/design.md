@@ -320,3 +320,13 @@ This is the shared idea backlog for Bento. **Captured** means worth exploring, n
 | IDEA-007 | Slash commands | Captured | Type `/` while editing to create or insert different content, similar to Notion. Decide the initial command set, contextual filtering, and when a command inserts a block versus creates a new document. |
 
 Captured entries remain proposals. Implemented entries link the delivered behavior above.
+
+### Workspace document and database availability
+
+The repository projects `workspace.md` into `records[home]` with its real path. It has no database membership and uses ordinary document navigation, history, properties, rich editing, and checkbox capture. Sidebar navigation exposes Workspace beside Daily overview; the directory tree omits the duplicate home entry. File search includes it.
+
+Manifest saves whitelist page presentation fields (`title`, `body`, `tags`, `color`, `references`) and combine them with shared tag colors in one transaction entry. Authored database registrations, unknown metadata, and comments are preserved. Structural snapshot changes are rejected, and external edits invalidate the complete transaction, including newly captured todo files.
+
+`files/database-definitions.js` validates registered schemas independently. Missing/invalid definitions protect their folders; unregistered definition folders receive the same protection. Invalid task/project mappings disable only that runtime role. Missing relation targets receive derived availability flags; their current values remain intact and their property controls are disabled. Runtime availability never repairs or rewrites authored schema files. Restoring definitions and reloading restores capabilities.
+
+Protected pages remain visible as read-only document projections. Both rich editing and property controls respect that status; repository checks reject modified protected snapshots independently of the renderer. A missing default task destination becomes null at runtime, retaining plain checkboxes with capture notices. Generic creation commands derive labels from current titles. Project creation actions use explicit relation targets rather than a special meeting database ID or a first-match meeting heuristic. Safe deletion and migrations are separate future operations.

@@ -294,3 +294,11 @@ The [future-ideas backlog](design.md#11-future-ideas) tracks suggestions separat
 - **Slash commands:** create or insert different content by typing `/`.
 
 These are captured ideas, not scheduled requirements. Their interaction details and open design questions live in the backlog.
+
+### Workspace page and customizable database availability
+
+Daily overview and Workspace are separate destinations. Workspace opens the Markdown page in `workspace.md`; its body, title, tags, and color are editable like other pages. Checkboxes follow the same todo-capture rules. Database registrations and structural settings remain protected from ordinary page edits.
+
+Creation commands use current database titles, including renamed or custom databases. Project pages offer creation actions for ordinary page databases with a relation to that project's database. Todo tracking and project review depend on explicit capability mappings, not starter database identities.
+
+Missing definitions or invalid capability mappings show explanatory notices. Affected capabilities are unavailable, existing values are retained, and pages belonging to an unavailable database are readable but protected from edits. Other valid pages remain usable. Safe database deletion, field/type migration, and moving retained pages out of a deleted database remain future work.

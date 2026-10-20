@@ -10,6 +10,7 @@ import * as transaction from './transaction.js';
 import model from '../prototype/workspace.js';
 import { exampleWorkspace } from './example-workspace.js';
 import schema from '../prototype/schema.js';
+import { loadDefinitions } from './database-definitions.js';
 
 async function snapshot(root) {
   const names = await paths.walk(root);
@@ -45,10 +46,10 @@ function manifest(files) {
 function membership(name, definitions) {
   return definitions.find(entry => name.startsWith(entry.path + '/'))?.id;
 }
-function contentRecord(name, parsed, database, definitions) {
+function contentRecord(name, parsed, database, definitions, protectedPage = false) {
   const meta = parsed.metadata;
   if (meta.kind) throw new Error(`Unregistered control document: ${name}.`);
-  if (meta.database !== undefined && meta.database !== database) throw new Error(`Legacy membership disagrees with the folder in ${name}; review the database transfer before editing.`);
+  if (!protectedPage && meta.database !== undefined && meta.database !== database) throw new Error(`Legacy membership disagrees with the folder in ${name}; review the database transfer before editing.`);
   const id = meta.id || 'note-' + createHash('sha256').update(name).digest('hex').slice(0, 24);
   if (!schema.identity(id)) throw new Error(`Invalid identity in ${name}.`);
   const record = { bento_version: 1, ...meta, id, title: meta.title ?? path.posix.basename(name, '.md'), tags: meta.tags ?? [], properties: meta.properties ?? {}, references: meta.references ?? {}, body: parsed.body };
@@ -58,6 +59,25 @@ function contentRecord(name, parsed, database, definitions) {
     record.schema_version ??= definitions[database].schema_version;
   }
   return record;
+}
+
+function workspacePage(files, info) {
+  const parsed = markdown.parse(files.get('workspace.md'));
+  return { bento_version: 1, id: info.id, title: info.title, tags: info.tags ?? [], color: info.color ?? null,
+    properties: {}, references: info.references ?? {}, body: parsed.body };
+}
+function workspaceEntry(repository, next) {
+  const original = repository.files.get('workspace.md'), parsed = markdown.parse(original);
+  const before = repository.workspace.records[repository.workspace.home], page = next.records[next.home];
+  const editable = ['title', 'body', 'tags', 'references', 'color'];
+  for (const key of new Set([...Object.keys(before), ...Object.keys(page)])) {
+    if (!editable.includes(key) && !isDeepStrictEqual(before[key], page[key])) throw new Error('Workspace configuration cannot be changed through the page editor.');
+  }
+  const metadata = { ...parsed.metadata, body: parsed.body };
+  for (const key of editable) if (!isDeepStrictEqual(before[key], page[key])) metadata[key] = page[key];
+  if (!isDeepStrictEqual(next.tagColors, repository.workspace.tagColors)) metadata.tag_colors = next.tagColors || {};
+  if (isDeepStrictEqual(page, before) && isDeepStrictEqual(next.tagColors, repository.workspace.tagColors)) return null;
+  return { path: 'workspace.md', before: original, after: markdown.serialize(metadata, original) };
 }
 
 class WorkspaceRepository {
@@ -73,22 +93,27 @@ class WorkspaceRepository {
     try { await transaction.recover(this.root); }
     catch (error) { recoveryIssue = error.message; }
     const files = await snapshot(this.root), info = manifest(files);
-    const workspace = { version: 4, defaultTaskDatabase: info.default_task_database ?? null, databases: {}, records: {}, issues: [], paths: {}, databasePaths: {} };
+    const workspace = { version: 4, home: info.id, defaultTaskDatabase: info.default_task_database ?? null, databases: {}, records: {}, issues: [], paths: {}, databasePaths: {} };
     if (info.tag_colors !== undefined) workspace.tagColors = info.tag_colors;
-    for (const entry of info.databases) {
-      const parsed = parseFile(files, `${entry.path}/database.md`, 'database-definition');
-      if (parsed.metadata.id !== entry.id) throw new Error(`Database identity mismatch in ${entry.path}.`);
-      workspace.databases[entry.id] = { ...parsed.metadata, capabilities: parsed.metadata.capabilities || {} };
-      workspace.databasePaths[entry.id] = entry.path;
+    const loaded = loadDefinitions(files, info);
+    workspace.databases = loaded.databases; workspace.databasePaths = loaded.databasePaths;
+    workspace.readOnlyRecords = [];
+    if (!workspace.databases[workspace.defaultTaskDatabase]?.capabilities.task) {
+      workspace.defaultTaskDatabase = null;
+      loaded.errors.push({ path: 'workspace.md', message: 'Checkbox capture is unavailable. Configure default_task_database with a compatible todo database; existing checkboxes and pages are preserved.' });
     }
+    workspace.records[info.id] = workspacePage(files, info); workspace.paths[info.id] = 'workspace.md';
     model.assertWorkspace(workspace);
-    const errors = recoveryIssue ? [{ path: '.bento-local/pending.json', message: recoveryIssue }] : [];
+    const errors = [...loaded.errors, ...(recoveryIssue ? [{ path: '.bento-local/pending.json', message: recoveryIssue }] : [])];
     const controls = new Set(['workspace.md', ...info.databases.map(entry => `${entry.path}/database.md`)]);
-    const identities = new Map();
+    const identities = new Map([[info.id, 'workspace.md']]);
     for (const [name] of files) {
       if (controls.has(name)) continue;
       try {
-        const record = contentRecord(name, parseFile(files, name), membership(name, info.databases), workspace.databases);
+        const protectedPage = loaded.unavailableFolders.some(folder => name.startsWith(folder + '/'));
+        const database = membership(name, info.databases);
+        const record = contentRecord(name, parseFile(files, name), protectedPage ? undefined : database, workspace.databases, protectedPage);
+        if (protectedPage) workspace.readOnlyRecords.push(record.id);
         if (identities.has(record.id)) throw new Error(`Duplicate document ID ${record.id} in ${identities.get(record.id)} and ${name}.`);
         identities.set(record.id, name);
         workspace.records[record.id] = record; workspace.paths[record.id] = name;
@@ -97,7 +122,7 @@ class WorkspaceRepository {
     // Duplicate identity makes all writes ambiguous; never choose a winning file.
     this.readOnly = !!recoveryIssue || errors.some(error => error.message.startsWith('Duplicate document ID'));
     for (const record of Object.values(workspace.records)) {
-      try { model.assertWorkspace({ ...workspace, records: { [record.id]: record } }); }
+      try { model.assertWorkspace({ ...workspace, records: { [workspace.home]: workspace.records[workspace.home], [record.id]: record } }); }
       catch (error) { errors.push({ path: workspace.paths[record.id], message: error.message }); delete workspace.records[record.id]; delete workspace.paths[record.id]; }
     }
     for (const record of Object.values(workspace.records)) {
@@ -126,12 +151,14 @@ class WorkspaceRepository {
     this.busy = true;
     try {
       model.assertWorkspace(workspace);
-      if (!isDeepStrictEqual(workspace.databases, this.workspace.databases) || workspace.defaultTaskDatabase !== this.workspace.defaultTaskDatabase) throw new Error('Schema changes must be made in their Markdown definitions and reloaded.');
+      if (!isDeepStrictEqual(workspace.databases, this.workspace.databases) || workspace.defaultTaskDatabase !== this.workspace.defaultTaskDatabase || workspace.home !== this.workspace.home || !isDeepStrictEqual(workspace.readOnlyRecords, this.workspace.readOnlyRecords)) throw new Error('Schema changes must be made in their Markdown definitions and reloaded.');
       const next = model.clone(workspace), entries = [];
+      for (const id of this.workspace.readOnlyRecords) if (!isDeepStrictEqual(next.records[id], this.workspace.records[id])) throw new Error('This page belongs to an unavailable database. Restore or migrate its definition before editing.');
       for (const id of Object.keys(this.workspace.records)) if (!next.records[id]) throw new Error('Deleting documents through a snapshot is not supported.');
       // Paths and folder membership come exclusively from the repository, never the renderer.
       next.paths = { ...this.workspace.paths }; next.databasePaths = { ...this.workspace.databasePaths };
       for (const record of Object.values(next.records)) {
+        if (record.id === next.home) continue;
         const before = this.workspace.records[record.id];
         if (before && record.database !== before.database) throw new Error('Move files between folders to transfer database membership.');
         if (!before) {
@@ -143,14 +170,12 @@ class WorkspaceRepository {
         const name = next.paths[record.id], original = this.files.get(name) ?? null;
         entries.push({ path: name, before: original, after: markdown.serialize(record, original) });
       }
-      if (!isDeepStrictEqual(next.tagColors, this.workspace.tagColors)) {
-        const original = this.files.get('workspace.md'), parsed = markdown.parse(original);
-        entries.push({ path: 'workspace.md', before: original, after: markdown.serialize({ ...parsed.metadata, tag_colors: next.tagColors || {}, body: parsed.body }, original) });
-      }
+      const manifest = workspaceEntry(this, next); if (manifest) entries.push(manifest);
       entries.sort((a, b) => Number(a.before !== null) - Number(b.before !== null));
       await transaction.commit(this.root, entries, () => this.verify(), this.options.beforeWrite);
       this.workspace = next;
       for (const entry of entries) this.files.set(entry.path, entry.after);
+      this.info = markdown.parse(this.files.get('workspace.md')).metadata;
       // Keep the baseline sorted exactly like the scanner, including new paths.
       this.files = new Map([...this.files].sort(([a], [b]) => a.localeCompare(b)));
       return this.view();

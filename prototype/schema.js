@@ -22,7 +22,7 @@ function definition(database, databases) {
         if (field.type === 'status' && !['not-started', 'in-progress', 'complete'].includes(option.group)) throw new Error('Invalid status group.');
       }
     }
-    if (field.type === 'relation' && (!Object.hasOwn(databases, field.target_database) || !['one', 'many'].includes(field.cardinality))) throw new Error('Invalid relation definition.');
+    if (field.type === 'relation' && ((!identity(field.target_database) || !Object.hasOwn(databases, field.target_database) && !field.unavailable) || !['one', 'many'].includes(field.cardinality))) throw new Error('Invalid relation definition.');
     if (field.type === 'number') {
       if (['min', 'max'].some(key => key in field && !Number.isFinite(field[key]))) throw new Error('Invalid number bound.');
       if (field.min > field.max) throw new Error('Invalid number range.');
@@ -30,6 +30,22 @@ function definition(database, databases) {
     if ('default' in field) value(field, field.default);
   }
   return fields;
+}
+function capabilities(database) {
+  const fields = Object.fromEntries(database.fields.map(field => [field.id, field]));
+  const task = database.capabilities.task;
+  if (task) {
+    const completion = fields[task.completion?.field];
+    const values = completion?.options?.map(option => option.id) || [];
+    if (!['select', 'status'].includes(completion?.type) || !values.includes(task.completion.checked) || !values.includes(task.completion.unchecked) || task.completion.checked === task.completion.unchecked) throw new Error('Invalid completion mapping.');
+    if (completion.type === 'status' && (completion.options.find(option => option.id === task.completion.checked).group !== 'complete' || completion.options.find(option => option.id === task.completion.unchecked).group === 'complete')) throw new Error('Invalid completion group mapping.');
+    if (fields[task.due?.field]?.type !== 'date' || fields[task.project?.field]?.type !== 'relation') throw new Error('Invalid task field mapping.');
+  }
+  const project = database.capabilities.project;
+  if (project) {
+    const active = project.active, field = fields[active?.field];
+    if (!['select', 'status'].includes(field?.type) || !Array.isArray(active?.values) || !active.values.length || !active.values.every(value => field.options.some(option => option.id === value))) throw new Error('Invalid active-project mapping.');
+  }
 }
 function value(field, input) {
   if (input == null) {
@@ -51,11 +67,11 @@ function value(field, input) {
 function properties(database, record, records) {
   for (const field of database.fields) {
     const input = record.properties[field.id]; value(field, input);
-    if (field.type !== 'relation' || input == null) continue;
+    if (field.type !== 'relation' || field.unavailable || input == null) continue;
     for (const target of Array.isArray(input) ? input : [input]) {
       if (Object.hasOwn(records, target) && records[target].database !== field.target_database) throw new Error(`Invalid target database for ${field.name}.`);
     }
   }
 }
 const defaults = database => Object.fromEntries(database.fields.filter(field => 'default' in field).map(field => [field.id, structuredClone(field.default)]));
-export default Object.freeze({ types, object, identity, date, definition, value, properties, defaults });
+export default Object.freeze({ types, object, identity, date, definition, capabilities, value, properties, defaults });

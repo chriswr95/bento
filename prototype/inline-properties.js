@@ -48,7 +48,7 @@ export default class InlineProperties {
     }).join(' ');
   }
   row(field) {
-    return `<div class="b-inline-property" data-property-row="${escape(field.id)}"><span class="b-property-label">${escape(field.name)}${field.required ? '<span aria-label="required"> *</span>' : ''}</span><div class="b-property-value"><button type="button" data-edit-property="${escape(field.id)}" aria-label="Edit ${escape(field.name)}" ${this.options.readOnly ? 'disabled' : ''}>${this.display(field)}</button><div data-property-panel hidden></div><p class="b-issues" data-inline-error role="alert" hidden></p></div></div>`;
+    return `<div class="b-inline-property" data-property-row="${escape(field.id)}"><span class="b-property-label">${escape(field.name)}${field.required ? '<span aria-label="required"> *</span>' : ''}</span><div class="b-property-value"><button type="button" data-edit-property="${escape(field.id)}" aria-label="Edit ${escape(field.name)}" ${this.options.readOnly || field.unavailable ? 'disabled' : ''}>${this.display(field)}</button>${field.unavailable ? '<span class="b-property-hint">Target database unavailable; values retained.</span>' : ''}<div data-property-panel hidden></div><p class="b-issues" data-inline-error role="alert" hidden></p></div></div>`;
   }
   render() {
     const focused = this.element.contains(document.activeElement) ? document.activeElement : null;
@@ -80,7 +80,7 @@ export default class InlineProperties {
   open(id) {
     if (this.options.readOnly || !this.commit()) return;
     const field = this.fields().find(field => field.id === id);
-    if (!field) return;
+    if (!field || field.unavailable) return;
     const row = [...this.element.querySelectorAll('[data-property-row]')].find(row => row.dataset.propertyRow === id);
     const panel = row.querySelector('[data-property-panel]');
     row.querySelector('[data-edit-property]').hidden = true;

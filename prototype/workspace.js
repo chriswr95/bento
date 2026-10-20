@@ -344,24 +344,12 @@ function serializeDocument(record) {
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 function assertWorkspace(workspace) {
   if (!workspace || workspace.version !== 4 || !isObject(workspace.records) || !isObject(workspace.databases) || !Array.isArray(workspace.issues)) throw new Error('Invalid workspace.');
+  if (workspace.home !== undefined && (!schema.identity(workspace.home) || !Object.hasOwn(workspace.records, workspace.home) || workspace.records[workspace.home].database !== undefined)) throw new Error('Invalid workspace page.');
   if (workspace.tagColors !== undefined && (!isObject(workspace.tagColors) || Object.entries(workspace.tagColors).some(([tag, color]) => !tag.trim() || tag !== tag.trim() || !validColor(color)))) throw new Error('Invalid workspace tag colors.');
   for (const [key, database] of Object.entries(workspace.databases)) {
     if (database.id !== key || !Array.isArray(database.fields) || !isObject(database.capabilities)) throw new Error('Invalid database definition.');
     schema.definition(database, workspace.databases);
-    const fields = Object.fromEntries(database.fields.map(field => [field.id, field]));
-    const task = database.capabilities.task;
-    if (task) {
-      const completion = fields[task.completion?.field];
-      const values = completion?.options?.map(option => option.id) || [];
-      if (!['select', 'status'].includes(completion?.type) || !values.includes(task.completion.checked) || !values.includes(task.completion.unchecked) || task.completion.checked === task.completion.unchecked) throw new Error('Invalid completion mapping.');
-      if (completion.type === 'status' && (completion.options.find(option => option.id === task.completion.checked).group !== 'complete' || completion.options.find(option => option.id === task.completion.unchecked).group === 'complete')) throw new Error('Invalid completion group mapping.');
-      if (fields[task.due?.field]?.type !== 'date' || fields[task.project?.field]?.type !== 'relation') throw new Error('Invalid task field mapping.');
-    }
-    const project = database.capabilities.project;
-    if (project) {
-      const active = project.active, field = fields[active?.field];
-      if (!['select', 'status'].includes(field?.type) || !Array.isArray(active?.values) || !active.values.length || !active.values.every(value => field.options.some(option => option.id === value))) throw new Error('Invalid active-project mapping.');
-    }
+    schema.capabilities(database);
   }
   for (const [key, record] of Object.entries(workspace.records)) {
     if (record.id !== key || !/^[\w-]+$/.test(key) || typeof record.title !== 'string' || typeof record.body !== 'string') throw new Error('Invalid document.');

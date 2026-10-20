@@ -79,7 +79,7 @@ class ListItemView {
     this.dom.className = task ? 'b-rich-task' : '';
     this.checkbox.hidden = !task; this.checkbox.checked = !!node.attrs.checked;
     const resolved = !!node.attrs.todoId && !!this.owner.options.validTask?.(node.attrs.todoId, node.attrs.href);
-    this.checkbox.disabled = !!node.attrs.href && !resolved;
+    this.checkbox.disabled = !!this.owner.options.readOnly || !!node.attrs.href && !resolved;
     this.checkbox.setAttribute('aria-label', `Complete ${node.firstChild.textContent}`);
     this.open.hidden = !task || !node.attrs.todoId || !resolved;
     this.open.setAttribute('aria-label', `Open ${node.firstChild.textContent}`);
@@ -101,7 +101,8 @@ export default class RichEditor {
     this.mount = document.createElement('div'); element.append(this.mount);
     this.view = new EditorView(this.mount, {
       state: EditorState.create({ schema, doc: this.bridge.doc, plugins: [history(), rules(), keymap({ 'Mod-End': documentEdge(true), 'Mod-Home': documentEdge(false), 'Mod-ArrowDown': documentEdge(true), 'Mod-ArrowUp': documentEdge(false), 'Mod-z': undo, 'Mod-y': redo, 'Mod-Shift-z': redo, 'Mod-b': toggleMark(schema.marks.strong), 'Mod-i': toggleMark(schema.marks.em), 'Mod-`': toggleMark(schema.marks.code), Enter: enterList, Tab: chainCommands(goToNextCell(1), sinkListItem(schema.nodes.list_item)), 'Shift-Tab': chainCommands(goToNextCell(-1), liftListItem(schema.nodes.list_item)), Backspace: undoInputRule, 'Mod-Enter': exitCode }), keymap(baseKeymap), tableEditing()] }),
-      attributes: { class: 'b-rich-document', role: 'textbox', 'aria-label': options.label, 'aria-multiline': 'true', spellcheck: 'true' },
+      editable: () => !options.readOnly,
+      attributes: { 'aria-readonly': String(!!options.readOnly), class: 'b-rich-document', role: 'textbox', 'aria-label': options.label, 'aria-multiline': 'true', spellcheck: 'true' },
       dispatchTransaction: tr => this.dispatch(tr),
       nodeViews: { list_item: (node, view, getPos) => new ListItemView(node, view, getPos, this) },
       clipboardTextParser: text => Slice.maxOpen(new MarkdownBridge(text).doc.content),
@@ -117,6 +118,7 @@ export default class RichEditor {
     this.syncTasks();
   }
   dispatch(tr) {
+    if (this.options.readOnly && tr.docChanged) return;
     const previous = this.view.state;
     if (tr.docChanged && !previous.selection.empty) tr = closeHistory(tr);
     this.view.updateState(previous.apply(tr));

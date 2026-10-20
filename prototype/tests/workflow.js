@@ -27,7 +27,7 @@ async function paste(editor, text, html = '') {
   const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('bento.prototype.workspace.v4')));
   const findTask = (value, title) => Object.values(value.workspace.records).find(record => record.database === 'db-todos' && record.title === title);
   await page.goto(url); await page.getByRole('button', { name: 'Meeting note', exact: true }).click();
-  const editor = page.getByRole('textbox', { name: 'Meeting Markdown', exact: true });
+  const editor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
   assert.equal(await editor.getAttribute('contenteditable'), 'true');
   assert.equal(await page.locator('#b-reading textarea').count(), 0);
   const before = (await stored())?.workspace.records.coordination.body;
@@ -147,7 +147,7 @@ async function paste(editor, text, html = '') {
  await profilePage.clock.runFor(60_000);
  await profilePage.getByRole('heading',{name:'A fresh start, Maki',exact:true}).waitFor();
  await profilePage.getByRole('button',{name:'Meeting note',exact:true}).click();
- const greetingEditor = profilePage.getByRole('textbox',{name:'Meeting Markdown',exact:true});
+ const greetingEditor = profilePage.getByRole('textbox',{name:'Page Markdown',exact:true});
  await greetingEditor.click(); await greetingEditor.press('ControlOrMeta+End');
  await greetingEditor.press('Enter'); await greetingEditor.pressSequentially('Keep my writing position');
  const beforeGreetingRefresh = await greetingEditor.evaluate(element => {

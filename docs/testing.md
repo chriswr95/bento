@@ -39,3 +39,7 @@ Add regression coverage at the layer owning each behavior. Use storage tests for
 4. Reopen a workspace after closing the app; edit files in another editor and review how Bento retains drafts when a save stops.
 5. Measure startup, typing and navigation with larger synthetic workspaces. No large-workspace performance target has been validated yet.
 6. Check packaged-app launch and native folder selection on both platforms. Signing, installers, automatic updates, real agent integration, and multi-device sync are outside current validation.
+
+### Workspace page and database customization regressions
+
+Repository unit tests cover workspace body/title edits, checkbox capture with root-relative links, combined manifest/tag-color saves, preserved metadata/comments, forged configuration rejection, external-change protection, missing definitions, broken capability mappings, unregistered folders, retained relation values, and recovery after definition restoration. Native tests cover Workspace navigation/editing/capture, persisted title, commands using renamed database titles, and read-only editor/properties after database removal. These tests use disposable workspaces and keep native windows hidden.

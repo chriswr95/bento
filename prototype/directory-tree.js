@@ -15,6 +15,7 @@ export function directoryTree(workspace) {
     node.database = workspace.databases[id];
   }
   for (const document of Object.values(workspace.records)) {
+    if (document.id === workspace.home) continue;
     const path = workspace.paths?.[document.id];
     if (!path) continue;
     const parts = path.split('/'); parts.pop();

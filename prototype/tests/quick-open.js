@@ -3,7 +3,7 @@ import path from 'node:path';
 export async function checkQuickOpen(browser, url, screenshots) {
   const page = await browser.newPage({ viewport: { width: 1024, height: 900 } }); page.setDefaultTimeout(10000);
   await page.goto(url); await page.getByRole('button', { name: 'Meeting note', exact: true }).click();
-  const editor = page.getByRole('textbox', { name: 'Meeting Markdown', exact: true });
+  const editor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
   await editor.click(); await editor.press('ControlOrMeta+End'); await editor.press('Enter'); await editor.pressSequentially('Quick-open keeps my work');
   const selection = () => page.evaluate(() => ({ text: getSelection().anchorNode.textContent, offset: getSelection().anchorOffset }));
   const before = await selection();

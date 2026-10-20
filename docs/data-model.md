@@ -24,7 +24,7 @@ This folder rule supersedes the earlier proposal that a record's `database` meta
 | Database definitions | Field names, types, options, defaults, relations and capability mappings |
 | Record documents | Identity, schema version, property values, tags and Markdown content |
 
-Workspace and database definition documents have Markdown bodies for descriptions and instructions. They are control documents, not records in their containing databases; their checkboxes do not create todos. They can be edited as files today. In-app database/schema controls remain future work.
+Workspace and database definition documents have Markdown bodies for descriptions and instructions. The Workspace page projects `workspace.md` into the document model with no database membership; its body is editable in-app and its checkboxes capture todos. Its structural frontmatter remains protected from page edits. Database definitions remain control files edited outside the app; their checkboxes do not capture todos. In-app database/schema controls remain future work.
 
 ## Workspace layout
 

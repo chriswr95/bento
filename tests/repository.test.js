@@ -156,7 +156,7 @@ test('new workspaces use folder definitions and creation refuses a populated fol
   assert.equal(repo.info.title, 'Test workspace');
   assert.equal(repo.workspace.defaultTaskDatabase, 'db-todos');
   assert.deepEqual(repo.errors, []);
-  assert.deepEqual(repo.workspace.records, {});
+  assert.deepEqual(Object.keys(repo.workspace.records), [repo.workspace.home]);
   await assert.rejects(create(root), /empty folder/);
 });
 
@@ -237,4 +237,106 @@ test('tag color saves refuse external workspace edits and preserve both represen
   await assert.rejects(repo.save(next), /changed on disk/);
   assert.match(await fs.readFile(filename, 'utf8'), /External workspace note/);
   assert.equal(next.tagColors['Follow up'], 'red');
+});
+
+
+test('workspace page edits and checkbox capture preserve manifest configuration and comments', async t => {
+  const root = await fixture(t), filename = path.join(root, 'workspace.md');
+  await fs.writeFile(filename, (await fs.readFile(filename, 'utf8')).replace('databases:', '# Keep these folders\ncustom_setting: retained\ndatabases:'));
+  const repo = await WorkspaceRepository.open(root), home = repo.workspace.home;
+  assert.equal(repo.workspace.paths[home], 'workspace.md');
+  let next = model.applyEdit(repo.workspace, home, '# My workspace\n\n- [ ] Prepare the weekly plan\n').workspace;
+  const task = model.allTasks(next).find(item => item.title === 'Prepare the weekly plan');
+  assert.ok(task);
+  assert.match(next.records[home].body, new RegExp(`todos/${task.id}.md`));
+  next = model.updateDocument(next, home, { title: 'Makena’s workspace', tags: ['personal'] });
+  next = model.updateTagColor(next, 'personal', 'blue');
+  await repo.save(next);
+  const raw = await fs.readFile(filename, 'utf8'), reopened = await WorkspaceRepository.open(root);
+  assert.match(raw, /# Keep these folders/);
+  assert.match(raw, /custom_setting: retained/);
+  assert.deepEqual(markdown.parse(raw).metadata.databases, markdown.parse(repo.files.get('workspace.md')).metadata.databases);
+  assert.equal(reopened.workspace.records[home].title, 'Makena’s workspace');
+  assert.equal(reopened.view().title, 'Makena’s workspace');
+  assert.equal(reopened.workspace.tagColors.personal, 'blue');
+  assert.equal(model.allTasks(reopened.workspace).filter(item => item.id === task.id).length, 1);
+});
+
+test('workspace page cannot change structural metadata or overwrite external changes', async t => {
+  const root = await fixture(t), repo = await WorkspaceRepository.open(root), home = repo.workspace.home;
+  const forged = model.clone(repo.workspace); forged.records[home].databases = [];
+  await assert.rejects(repo.save(forged), /configuration cannot/);
+  const next = model.applyEdit(repo.workspace, home, '- [ ] Local workspace action\n').workspace;
+  const filename = path.join(root, 'workspace.md'), external = (await fs.readFile(filename, 'utf8')) + '\nExternal edit\n';
+  await fs.writeFile(filename, external);
+  await assert.rejects(repo.save(next), /changed on disk/);
+  assert.equal(await fs.readFile(filename, 'utf8'), external);
+  assert.equal((await fs.readdir(path.join(root, 'todos'))).length, 2);
+});
+
+test('missing database definitions protect their pages while unrelated edits remain usable', async t => {
+  const root = await fixture(t), definition = path.join(root, 'todos/database.md');
+  const original = await fs.readFile(definition, 'utf8'); await fs.unlink(definition);
+  const repo = await WorkspaceRepository.open(root);
+  assert.equal(repo.readOnly, false);
+  assert.equal(repo.workspace.defaultTaskDatabase, null);
+  const todo = repo.workspace.records['todo-review-comments'];
+  assert.ok(todo); assert.ok(repo.workspace.readOnlyRecords.includes(todo.id));
+  assert.equal(todo.database, undefined);
+  assert.match(repo.errors.map(error => error.message).join(' '), /Checkbox capture is unavailable/);
+  const next = model.applyEdit(repo.workspace, repo.workspace.home, '# Still editable\n- [ ] Pending work\n').workspace;
+  assert.match(next.records[next.home].body, /- \[ \] Pending work/);
+  await repo.save(next);
+  await assert.rejects(fs.access(definition));
+  const forged = model.clone(repo.workspace); forged.records[todo.id].body += '\nForbidden edit';
+  await assert.rejects(repo.save(forged), /unavailable database/);
+  await fs.writeFile(definition, original);
+  await repo.reload(); assert.equal(repo.workspace.defaultTaskDatabase, 'db-todos');
+  assert.deepEqual(repo.workspace.readOnlyRecords, []);
+});
+
+test('broken capability bindings disable their role without rewriting schema or losing values', async t => {
+  const root = await fixture(t), filename = path.join(root, 'todos/database.md');
+  const raw = (await fs.readFile(filename, 'utf8')).replace('field: field-task-status', 'field: field-missing');
+  await fs.writeFile(filename, raw);
+  const repo = await WorkspaceRepository.open(root);
+  assert.equal(repo.workspace.databases['db-todos'].capabilities.task, undefined);
+  assert.equal(repo.workspace.defaultTaskDatabase, null);
+  assert.match(repo.errors.map(error => error.message).join(' '), /Todo tracking unavailable/);
+  const next = model.applyEdit(repo.workspace, 'todo-review-comments', '# Retained task notes\n').workspace;
+  await repo.save(next);
+  assert.equal(await fs.readFile(filename, 'utf8'), raw);
+  assert.equal(repo.workspace.records['todo-review-comments'].properties['field-task-status'], 'option-open');
+});
+
+test('unregistered database folders and missing relation targets preserve pages and values', async t => {
+  const root = await fixture(t), filename = path.join(root, 'workspace.md');
+  await fs.writeFile(filename, (await fs.readFile(filename, 'utf8')).replace('  - {id: db-projects, path: projects}\n', ''));
+  const repo = await WorkspaceRepository.open(root);
+  assert.equal(repo.readOnly, false);
+  assert.ok(repo.workspace.readOnlyRecords.includes('project-creekside'));
+  const field = repo.workspace.databases['db-todos'].fields.find(field => field.id === 'field-task-project');
+  assert.equal(field.unavailable, true);
+  assert.equal(repo.workspace.defaultTaskDatabase, 'db-todos');
+  const before = repo.workspace.records['todo-review-comments'].properties['field-task-project'];
+  await repo.save(model.applyEdit(repo.workspace, 'todo-review-comments', '# More context\n').workspace);
+  assert.equal(repo.workspace.records['todo-review-comments'].properties['field-task-project'], before);
+  assert.match(repo.errors.map(error => error.message).join(' '), /not registered/);
+});
+
+
+test('custom database identities and titles retain capability-driven checkbox capture', async t => {
+  const root = await fixture(t);
+  for (const name of ['workspace.md', 'projects/database.md', 'todos/database.md', 'meetings/database.md']) {
+    const filename = path.join(root, name);
+    await fs.writeFile(filename, (await fs.readFile(filename, 'utf8')).replaceAll('db-todos', 'custom-actions').replaceAll('db-projects', 'custom-jobs').replaceAll('db-meetings', 'custom-notes').replace('title: Todos', 'title: Action register').replace('title: Meeting Notes', 'title: Field journal'));
+  }
+  const repo = await WorkspaceRepository.open(root);
+  assert.deepEqual(repo.errors, []);
+  assert.equal(repo.workspace.defaultTaskDatabase, 'custom-actions');
+  const next = model.applyEdit(repo.workspace, 'meeting-coordination', '- [ ] Custom action\n').workspace;
+  const task = model.allTasks(next).find(item => item.title === 'Custom action');
+  assert.equal(next.records[task.id].database, 'custom-actions');
+  await repo.save(next);
+  assert.equal((await WorkspaceRepository.open(root)).workspace.records[task.id].database, 'custom-actions');
 });

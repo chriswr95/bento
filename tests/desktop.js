@@ -1,3 +1,4 @@
+import { checkWorkspaceCustomization } from './workspace-customization.js';
 import { checkOnboarding } from './onboarding.js';
 import { builtinThemes } from '../prototype/themes.js';
 import electronPath from 'electron';
@@ -111,9 +112,9 @@ async function addTag(page, value) {
   await page.getByRole('button', { name: 'Back to overview', exact: true }).click();
 
   assert.equal(await page.locator('aside').getByRole('button', { name: 'Creekside improvements', exact: true }).count(), 0);
-  await page.getByRole('button', { name: 'Create your first project', exact: true }).click();
+  await page.getByRole('button', { name: 'Start your first page', exact: true }).click();
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('My first project');
-  await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByRole('button', { name: 'Create page', exact: true }).click();
   await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'My first project', exact: true }).waitFor();
   assert.equal(await page.locator('#b-task-count').count(), 0);
   await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).click();
@@ -161,7 +162,7 @@ async function addTag(page, value) {
   const quickSearch = quickDialog.getByRole('combobox', { name: 'Search pages and commands', exact: true });
   assert.equal(await quickSearch.inputValue(), '');
   assert.equal(await quickDialog.locator('[data-quick-kind=command]').count(), 0);
-  await quickSearch.fill('>new meeting'); await quickSearch.press('Enter');
+  await quickSearch.fill('>new page in Meeting Notes'); await quickSearch.press('Enter');
   assert.equal(await page.getByRole('combobox', { name: 'Project', exact: true }).inputValue(), projectId);
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.keyboard.press('ControlOrMeta+Shift+p');
@@ -172,10 +173,10 @@ async function addTag(page, value) {
   await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
 
   assert.equal(await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).count(), 1);
-  await page.locator('aside').getByRole('button', { name: 'New project', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'New page in Projects', exact: true }).click();
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Canceled project');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.locator('aside').getByRole('button', { name: 'New project', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'New page in Projects', exact: true }).click();
   await page.keyboard.press('ControlOrMeta+,');
   await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
   await page.keyboard.press('ControlOrMeta+['); await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
@@ -205,7 +206,7 @@ async function addTag(page, value) {
   console.log('Passed nested directory navigation, keyboard disclosure, retained collapse, and active-path reveal.');
   assert.equal(await page.getByRole('button', { name: 'Download Markdown', exact: true }).count(), 0);
   await page.locator('summary[aria-label="Document actions"]').click();
-  await page.locator('main').getByRole('button', { name: 'New meeting note', exact: true }).click();
+  await page.locator('main').getByRole('button', { name: 'New page in Meeting Notes', exact: true }).click();
   assert.equal(await page.getByRole('combobox', { name: 'Project', exact: true }).inputValue(), projectId);
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Weekly coordination');
   await page.getByRole('button', { name: 'Create page', exact: true }).click();
@@ -224,7 +225,7 @@ async function addTag(page, value) {
   assert.match(meetingRaw, /2026-10-20/); assert.match(meetingRaw, /Follow up/);
   console.log('Created and opened project Markdown, canceled without a file, and linked a meeting note.');
 
-  const meetingEditor = page.getByRole('textbox', { name: 'Meeting Markdown', exact: true });
+  const meetingEditor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
   await meetingEditor.click(); await meetingEditor.press('ControlOrMeta+End'); await meetingEditor.press('Enter');
   await meetingEditor.pressSequentially('[] '); await meetingEditor.pressSequentially('Desktop action');
   await saved(page);
@@ -324,6 +325,7 @@ async function addTag(page, value) {
   console.log('Passed disconnected-workspace welcome fallback and recovery through another folder.');
   await stop(application); application = null;
   await checkOnboarding({ launch, stop, temporary, root });
+  await checkWorkspaceCustomization({ launch, stop, temporary, root });
 
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
   try {
