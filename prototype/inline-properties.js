@@ -31,7 +31,6 @@ export default class InlineProperties {
   fields() {
     const record = this.options.record();
     return [ ...(this.options.hideTitle ? [] : [{ id: '$title', name: 'Page title', type: 'text', required: true, value: record.title }]),
-      ...(record.id === this.options.workspace().home ? [] : [{ id: '$parent', name: 'Parent', type: 'relation', cardinality: 'one', pageParent: record.id, value: record.parent ?? null }]),
       { id: '$color', name: 'Color', type: 'color', value: record.color || 'automatic' },
       ...(this.options.workspace().databases[record.database]?.fields || []).map(field => ({ ...field, value: record.properties[field.id] })),
       { id: '$tags', name: 'Tags', type: 'tags', value: record.tags } ];
@@ -42,7 +41,7 @@ export default class InlineProperties {
     const values = Array.isArray(field.value) ? field.value : [field.value];
     const choices = ['relation', 'select', 'multi-select', 'status'].includes(field.type) ? propertyChoices(this.options.workspace(), field, field.value) : null;
     return values.map(value => {
-      const label = field.pageParent ? this.options.workspace().records[value]?.title || 'Unavailable' : choices ? choices.find(option => option.id === value)?.name || 'Unavailable' : typeof value === 'boolean' ? value ? 'Yes' : 'No' : value;
+      const label = choices ? choices.find(option => option.id === value)?.name || 'Unavailable' : typeof value === 'boolean' ? value ? 'Yes' : 'No' : value;
       const option = choices?.find(option => option.id === value);
       const color = field.type === 'tags' ? tagColor(this.options.workspace(), value) : field.type === 'relation' ? recordColor(this.options.workspace().records[value]) : option?.color || (field.type === 'status' ? ({ complete: 'green', 'in-progress': 'blue', 'not-started': 'orange' }[option?.group] || automaticColor(value)) : automaticColor(value));
       return `<span class="${['tags', 'select', 'status', 'multi-select', 'relation'].includes(field.type) ? 'b-property-chip' : ''}" ${['tags', 'select', 'status', 'multi-select', 'relation'].includes(field.type) ? `data-color="${color}"` : ''}>${escape(label)}</span>`;
@@ -178,7 +177,7 @@ export default class InlineProperties {
       const many = field.type === 'multi-select' || field.type === 'relation' && field.cardinality === 'many';
       const raw = field.type === 'relation' || many ? [...panel.querySelectorAll('input[name="property-choice"]:checked')].map(input => input.value) : panel.querySelector('input,select').value;
       const value = propertyValue(field, many ? raw : Array.isArray(raw) ? raw[0] || '' : raw);
-      const patch = field.id === '$parent' ? { parent: value } : field.id === '$title' ? { title: value } : { properties: { [field.id]: value } };
+      const patch = field.id === '$title' ? { title: value } : { properties: { [field.id]: value } };
       const unchanged = JSON.stringify(value) === JSON.stringify(field.value) || empty(value) && empty(field.value);
       if (!unchanged && !this.apply(patch)) return false;
       const id = field.id; this.close(); this.render();

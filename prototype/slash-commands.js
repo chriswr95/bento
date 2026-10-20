@@ -15,8 +15,7 @@ export const slashCommands = Object.freeze([
   { id: 'quote', title: 'Quote', detail: 'Block quotation' },
   { id: 'code', title: 'Code block', detail: 'Plain-text code' },
   { id: 'divider', title: 'Divider', detail: 'Horizontal rule' },
-  { id: 'table', title: 'Table', detail: 'Two-column table' },
-  { id: 'page', title: 'Page', detail: 'Create a linked subpage · subpage' }
+  { id: 'table', title: 'Table', detail: 'Two-column table' }
 ]);
 function table() {
   const { table, table_row: row, table_header: header, table_cell: cell, paragraph } = schema.nodes;
@@ -24,7 +23,7 @@ function table() {
   return table.create(null, [row.create(null, [heading('Column 1'), heading('Column 2')]), row.create(null, [cell.create(null, paragraph.create()), cell.create(null, paragraph.create())])]);
 }
 export function slashTransaction(state, id, range) {
-  if (!slashCommands.some(command => command.id === id) || id === 'page') return null;
+  if (!slashCommands.some(command => command.id === id)) return null;
   const transaction = state.tr.delete(range.from, range.to), cleared = state.apply(transaction);
   if (['divider', 'table'].includes(id)) {
     const { $from } = cleared.selection;

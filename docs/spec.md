@@ -290,7 +290,7 @@ The [future-ideas backlog](design.md#11-future-ideas) tracks suggestions separat
 - **Clickable directory path:** show where the current page lives, with every path segment navigable.
 - **Page references:** reference any other page from the document using `[[...]]` or a similar writing interaction.
 - **External file references:** link pages to files outside Bento.
-- **Subpages:** create pages beneath a current page.
+- **Subpages:** deferred; use filesystem folders and ordinary page links for now.
 - **Slash commands:** create or insert different content by typing `/`.
 
 These are captured ideas, not scheduled requirements. Their interaction details and open design questions live in the backlog.
@@ -303,21 +303,19 @@ Creation commands use current database titles, including renamed or custom datab
 
 Missing definitions or invalid capability mappings show explanatory notices. Affected capabilities are unavailable, existing values are retained, and pages belonging to an unavailable database are readable but protected from edits. Other valid pages remain usable. Safe database deletion, field/type migration, and moving retained pages out of a deleted database remain future work.
 
-### Subpages and page references
+### File organization and page references
 
-Any ordinary page may have one optional parent page, independently of its zero-or-one database membership. Users can create a standalone subpage from a document's actions, edit or clear Parent through properties, open ancestors, and navigate child pages. Parenting cannot form cycles. Reparenting preserves the document, its database values, and its file location. The Workspace page is a root and cannot be parented.
+Pages follow the existing filesystem layout. The sidebar has one collapsible file explorer, with actual folder names and readable page titles; relative file paths are available on hover. The Workspace page has its own shortcut above the tree. Standalone pages are created in the workspace root, and database pages are created inside their database folders. There is no separate subpage hierarchy or Parent property.
 
-The sidebar has one collapsible file explorer based on actual workspace folders. It shows folder names and readable page titles, with relative file paths on hover. The Workspace page has its own shortcut above the tree. New subpages open immediately; Parent metadata does not move files or nest them in the explorer. Parent breadcrumbs and links inside documents provide logical subpage navigation. Pages with missing parents remain accessible at their physical location.
+Typing `[[` in prose opens searchable page suggestions. Titles and file paths distinguish matching pages. Arrow keys and Enter select a target; Escape leaves the literal input intact. The selected reference is a regular Markdown link, with no duplicate reference identity. References open their target on click; Alt-click allows editing the link text. Linked from lists incoming links once per source document, excluding code examples. Raw pasted wiki syntax is retained literally; this release provides an insertion interaction rather than a second stored link syntax.
 
-Typing `[[` in prose opens searchable page suggestions. Titles, parent paths, and filenames distinguish matching pages. Arrow keys and Enter select a target; Escape leaves the literal input intact. The selected reference is a regular Markdown link, with no duplicate reference identity. References open their target on click; Alt-click allows editing the link text. Linked from lists incoming links once per source document, excluding code examples. Raw pasted wiki syntax is retained literally; this release provides an insertion interaction rather than a second stored link syntax.
+### Slash commands
 
-### Slash commands and embedded child pages
+At the beginning of a paragraph, `/` opens a keyboard-accessible menu for Text, Heading 1–3, Bulleted list, Numbered list, Todo, Quote, Code block, Divider, and Table. Typing filters choices; arrows and Enter select; Escape retains the typed text. Code, inline code, tracked todo labels, composition, and read-only documents do not activate the menu. Unknown commands remain literal text.
 
-At the beginning of a paragraph, `/` opens a keyboard-accessible menu for Text, Heading 1–3, Bulleted list, Numbered list, Todo, Quote, Code block, Divider, Table, and Page. Typing filters choices; arrows and Enter select; Escape retains the typed text. Code, inline code, tracked todo labels, composition, and read-only documents do not activate the menu. Unknown commands remain literal text.
+`/page` is not a supported command and remains literal Markdown. Users create ordinary pages from the sidebar or command palette and link them using `[[` or standard Markdown links. Links are freely editable and removable; Bento does not regenerate them.
 
-`/page` opens the subpage title form. Creating the page replaces the command at its original position with a normal Markdown link, assigns Parent, opens the new document, and reveals it in the sidebar tree. Cancel creates no document and retains the typed command. Creating a child from document actions also adds a Markdown link to the parent.
-
-Every child is rendered as a link inside its parent's Markdown document; there is no separate Subpages footer. Parenting or reparenting adds a missing link to the new parent, without moving files or changing database membership. References in a previous parent remain ordinary authored links. Removing a link alone does not clear Parent; use the Parent property to detach the page. Older files missing child links receive a reading projection without writes on open.
+Existing files and links are preserved. Legacy `parent` metadata is retained as inert, unsupported metadata rather than deleted or migrated on disk. It has no effect on page placement, validation, or editing.
 
 ### Sidebar navigation
 

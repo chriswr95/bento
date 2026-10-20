@@ -6,7 +6,7 @@ import { history, undo, redo, closeHistory } from 'prosemirror-history';
 import { inputRules, InputRule, textblockTypeInputRule, wrappingInputRule, undoInputRule } from 'prosemirror-inputrules';
 import { splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import { tableEditing, goToNextCell } from 'prosemirror-tables';
-import { Slice, Fragment } from 'prosemirror-model';
+import { Slice } from 'prosemirror-model';
 import { editorSchema as schema, MarkdownBridge, taskPositions } from './rich-markdown.js';
 import model from './workspace.js';
 import PageLinkPicker from './page-link-picker.js';
@@ -137,7 +137,7 @@ export default class RichEditor {
     try {
       const body = this.bridge.serialize(this.view.state.doc);
       if (body !== this.options.body()) this.options.change(body);
-      this.syncTasks(); this.syncChildren(); this.bridge.remember(this.view.state.doc, this.options.body());
+      this.syncTasks(); this.bridge.remember(this.view.state.doc, this.options.body());
     } catch (error) { if (previous) this.view.updateState(previous); this.options.error?.(error.message); }
   }
   syncTasks() {
@@ -156,25 +156,6 @@ export default class RichEditor {
       }
     }
     if (tr.docChanged) this.view.updateState(this.view.state.apply(tr.setMeta('addToHistory', false)));
-  }
-  syncChildren() {
-    const children = this.options.children?.() || [], linked = new Set();
-    if (!children.length) return;
-    this.view.state.doc.descendants(node => {
-      for (const mark of node.marks) if (mark.type === schema.marks.link) linked.add(this.options.pageTarget?.(mark.attrs.href));
-    });
-    const missing = children.filter(child => !linked.has(child.id)); if (!missing.length) return;
-    const paragraphs = missing.map(child => schema.nodes.paragraph.create(null, schema.text(child.title, [schema.marks.link.create({ href: this.options.pageHref(child.id) })])));
-    const transaction = this.view.state.tr.insert(this.view.state.doc.content.size, Fragment.fromArray(paragraphs)).setMeta('addToHistory', false);
-    this.view.updateState(this.view.state.apply(transaction));
-  }
-  pageInsertion(range) {
-    const state = this.view.state, bridge = this.bridge;
-    return (title, href) => {
-      const transaction = state.tr.insertText(title, range.from, range.to);
-      transaction.addMark(range.from, range.from + title.length, schema.marks.link.create({ href }));
-      return bridge.serialize(transaction.doc);
-    };
   }
   navigationState() { return { selection: this.view.state.selection.toJSON(), focused: this.view.hasFocus() }; }
   restoreNavigationState(value) {

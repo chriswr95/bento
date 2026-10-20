@@ -258,8 +258,7 @@ html {background:light-dark(#fffefa,#202127)}
   #bento-workflow .b-tree-chevron,#bento-workflow .b-task .b-task-title,#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:none}
 }
 
-#bento-workflow .b-page-ancestors {display:flex;gap:6px;flex-wrap:wrap;font-size:12px;margin:10px 0;color:var(--b-soft)}
-#bento-workflow .b-page-ancestors button,#bento-workflow .b-page-list button {border:0;padding:0;background:none;text-align:left;text-decoration:underline;text-underline-offset:3px}
+#bento-workflow .b-page-list button {border:0;padding:0;background:none;text-align:left;text-decoration:underline;text-underline-offset:3px}
 #bento-workflow .b-page-list {list-style:none;padding:0;display:grid;gap:8px}
 #bento-workflow .b-page-list li {display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 #bento-workflow .b-page-list .b-muted {font-size:12px}

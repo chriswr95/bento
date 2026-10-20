@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import model from '../prototype/workspace.js';
-import { ancestors, canParent, pageTree } from '../prototype/page-hierarchy.js';
 import { backlinks, resolvePageLink } from '../prototype/page-links.js';
 import { WorkspaceRepository } from '../files/repository.js';
 
@@ -12,9 +11,9 @@ function withPages() {
   let workspace = model.createWorkspace();
   workspace.paths = Object.fromEntries(Object.keys(workspace.records).map(id => [id, `${id}.md`]));
   workspace.databasePaths = { 'db-todos': 'todos', 'db-projects': 'projects', 'db-meetings': 'meetings' };
-  const first = model.createDocument(workspace, { database: null, title: 'Calculations', parent: 'creek' });
+  const first = model.createDocument(workspace, { database: null, title: 'Calculations' });
   workspace = first.workspace;
-  const second = model.createDocument(workspace, { database: null, title: 'Assumptions', parent: first.documentId });
+  const second = model.createDocument(workspace, { database: null, title: 'Assumptions' });
   return { workspace: second.workspace, first: first.documentId, second: second.documentId };
 }
 async function fixture(t) {
@@ -23,64 +22,45 @@ async function fixture(t) {
   await fs.cp(new URL('../examples/document-databases', import.meta.url), folder, { recursive: true });
   return folder;
 }
-test('subpages have one parent, independent membership and unchanged file locations', () => {
-  const { workspace, first, second } = withPages();
+test('standalone documents have no hierarchy and reject parenting operations atomically', () => {
+  const { workspace, first } = withPages(), before = structuredClone(workspace);
   assert.equal(workspace.records[first].database, undefined);
   assert.equal(workspace.records[first].schema_version, undefined);
+  assert.equal(workspace.records[first].parent, undefined);
   assert.equal(workspace.paths[first], `${first}.md`);
-  assert.deepEqual(ancestors(workspace, second).map(page => page.id), ['creek', first]);
-  const todo = model.allTasks(workspace)[0], original = structuredClone(workspace);
-  const moved = model.updateDocument(workspace, todo.id, { parent: first });
-  assert.equal(moved.records[todo.id].database, workspace.records[todo.id].database);
-  assert.equal(moved.paths[todo.id], workspace.paths[todo.id]);
-  assert.deepEqual(moved.records[todo.id].properties, workspace.records[todo.id].properties);
-  assert.deepEqual(workspace, original);
-  assert.equal(model.updateDocument(moved, todo.id, { parent: null }).records[todo.id].parent, null);
-});
-test('cycles, multiple parents, missing targets and parenting Workspace fail atomically', () => {
-  const { workspace, first, second } = withPages(), before = structuredClone(workspace);
-  for (const parent of [first, second, [first, second], 'missing']) assert.throws(() => model.updateDocument(workspace, first, { parent }));
-  assert.equal(canParent(workspace, first, second), false);
-  workspace.home = 'creek'; delete workspace.records.creek.database; delete workspace.records.creek.schema_version;
-  assert.throws(() => model.updateDocument(workspace, 'creek', { parent: first }), /Workspace page/);
-  delete workspace.home; workspace.records.creek = before.records.creek;
+  assert.throws(() => model.createDocument(workspace, { database: null, title: 'Nested', parent: first }), /Only database/);
+  assert.throws(() => model.updateDocument(workspace, first, { parent: 'creek' }), /Only document/);
   assert.deepEqual(workspace, before);
 });
-test('page tree includes each document once and retains missing-parent pages as roots', () => {
-  const { workspace, first } = withPages(); workspace.records[first].parent = 'missing';
-  const flat = nodes => nodes.flatMap(node => [node.page.id, ...flat(node.children)]);
-  const tree = pageTree(workspace), ids = flat(tree);
-  assert.ok(tree.some(node => node.page.id === first));
-  assert.equal(new Set(ids).size, Object.keys(workspace.records).length);
-  assert.equal(ids.length, Object.keys(workspace.records).length);
-});
-test('standalone creation and reparenting persist with no file moves or schema changes', async t => {
+test('standalone creation persists without changing existing files or database schemas', async t => {
   const folder = await fixture(t), repo = await WorkspaceRepository.open(folder);
-  const result = model.createDocument(repo.workspace, { database: null, title: 'Calculations', parent: 'project-creekside' });
+  const filename = path.join(folder, 'projects/project-creekside.md'), before = await fs.readFile(filename, 'utf8');
+  const result = model.createDocument(repo.workspace, { database: null, title: 'Calculations' });
   await repo.save(result.workspace);
-  const filename = path.join(folder, `${result.documentId}.md`), before = await fs.readFile(path.join(folder, 'projects/database.md'), 'utf8');
-  assert.match(await fs.readFile(filename, 'utf8'), /parent: project-creekside/);
-  await repo.save(model.updateDocument(repo.workspace, result.documentId, { parent: null }));
   const reopened = await WorkspaceRepository.open(folder);
-  assert.equal(reopened.workspace.records[result.documentId].parent, null);
   assert.equal(reopened.workspace.paths[result.documentId], `${result.documentId}.md`);
-  assert.equal(await fs.readFile(path.join(folder, 'projects/database.md'), 'utf8'), before);
+  assert.equal(reopened.workspace.records[result.documentId].parent, undefined);
+  assert.equal(await fs.readFile(filename, 'utf8'), before);
 });
-test('external hierarchy cycles protect files; missing parents stay readable and repairable', async t => {
-  const folder = await fixture(t), repo = await WorkspaceRepository.open(folder);
-  const result = model.createDocument(repo.workspace, { database: null, title: 'Orphan', parent: 'project-creekside' });
-  await repo.save(result.workspace);
-  await fs.unlink(path.join(folder, 'projects/project-creekside.md'));
-  let loaded = await WorkspaceRepository.open(folder);
-  assert.ok(loaded.workspace.records[result.documentId]); assert.equal(loaded.readOnly, false);
-  assert.match(loaded.errors.map(error => error.message).join(' '), /Parent page is unavailable/);
-  await loaded.save(model.updateDocument(loaded.workspace, result.documentId, { parent: null }));
-  await fs.writeFile(path.join(folder, 'one.md'), '---\nid: one\nparent: two\n---\nOne');
-  await fs.writeFile(path.join(folder, 'two.md'), '---\nid: two\nparent: one\n---\nTwo');
-  loaded = await WorkspaceRepository.open(folder);
-  assert.equal(loaded.readOnly, true);
-  assert.ok(loaded.workspace.records.one); assert.ok(loaded.workspace.records.two);
-  await assert.rejects(loaded.save(loaded.workspace), /repair/);
+test('legacy parent metadata is inert and preserved without projecting or restoring links', async t => {
+  const folder = await fixture(t);
+  await fs.writeFile(path.join(folder, 'one.md'), '---\nid: one\nparent: two # retained legacy metadata\n---\n[Two](two.md)\n');
+  await fs.writeFile(path.join(folder, 'two.md'), '---\nid: two\nparent: one\n---\nTwo\n');
+  await fs.writeFile(path.join(folder, 'orphan.md'), '---\nid: orphan\nparent: missing\n---\nOrphan\n');
+  const repo = await WorkspaceRepository.open(folder);
+  assert.equal(repo.readOnly, false);
+  assert.equal(repo.errors.some(error => /Parent|hierarchy|cycle/.test(error.message)), false);
+  assert.equal(repo.workspace.records.two.body, 'Two\n');
+  const next = model.applyEdit(repo.workspace, 'one', 'Replacement notes.\n').workspace;
+  assert.equal(next.records.one.body, 'Replacement notes.\n');
+  await repo.save(next);
+  const saved = await fs.readFile(path.join(folder, 'one.md'), 'utf8');
+  assert.match(saved, /parent: two # retained legacy metadata/);
+  assert.doesNotMatch(saved, /\[Two\]/);
+  const reopened = await WorkspaceRepository.open(folder);
+  assert.equal(reopened.workspace.paths.one, 'one.md');
+  assert.equal(reopened.workspace.records.one.parent, 'two');
+  assert.equal(reopened.workspace.records.one.body, 'Replacement notes.\n');
 });
 test('page links resolve real paths including Workspace; backlinks ignore code and deduplicate sources', () => {
   const { workspace, first, second } = withPages();
@@ -97,38 +77,4 @@ test('page links resolve real paths including Workspace; backlinks ignore code a
   const renamed = model.updateDocument(workspace, first, { title: 'Renamed' });
   assert.equal(resolvePageLink(renamed, second, href), first);
   for (const invalid of ['../../outside.md', '/workspace.md', 'https://host/workspace.md', '%ZZ.md', 'missing.md']) assert.equal(resolvePageLink(workspace, second, invalid), null);
-});
-
-test('child links are ordinary Markdown, restored after edits, and retained as references after reparenting', () => {
-  const { workspace, first, second } = withPages();
-  assert.ok(workspace.records.creek.body.includes(`](${first}.md)`));
-  assert.ok(workspace.records[first].body.includes(`](${second}.md)`));
-  let next = model.applyEdit(workspace, first, 'Replaced notes.\n').workspace;
-  assert.ok(next.records[first].body.includes(`](${second}.md)`));
-  next = model.updateDocument(next, second, { parent: 'elm' });
-  assert.ok(next.records.elm.body.includes(`](${second}.md)`));
-  assert.ok(next.records[first].body.includes(`](${second}.md)`), 'Old references remain authored content');
-  const body = next.records.elm.body;
-  next = model.applyEdit(next, 'elm', body).workspace;
-  assert.equal(next.records.elm.body, body, 'Existing child links are not duplicated');
-});
-test('legacy child links are projected without writes on open and child creation saves atomically', async t => {
-  const folder = await fixture(t), repo = await WorkspaceRepository.open(folder);
-  await fs.writeFile(path.join(folder, 'legacy.md'), '---\nid: legacy\nparent: project-creekside\n---\n# Legacy\n');
-  const loaded = await WorkspaceRepository.open(folder), parentFile = path.join(folder, 'projects/project-creekside.md');
-  const before = await fs.readFile(parentFile, 'utf8');
-  assert.equal(loaded.workspace.records['project-creekside'].body.includes('legacy.md'), false);
-  assert.ok(model.readingBody(loaded.workspace, 'project-creekside').includes('legacy.md'));
-  assert.equal(await fs.readFile(parentFile, 'utf8'), before);
-  const result = model.createDocument(repo.workspace, { database: null, parent: 'project-creekside', title: 'Atomic child' });
-  await assert.rejects(repo.save(result.workspace), /changed on disk/);
-  await assert.rejects(fs.access(path.join(folder, `${result.documentId}.md`)));
-});
-
-
-test('adding a child to a protected parent fails without changing either page', () => {
-  const { workspace } = withPages(); workspace.readOnlyRecords = ['elm'];
-  const before = structuredClone(workspace);
-  assert.throws(() => model.createDocument(workspace, { database: null, parent: 'elm', title: 'Blocked child' }), /parent page is read-only/);
-  assert.deepEqual(workspace, before);
 });

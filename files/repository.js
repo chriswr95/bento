@@ -128,7 +128,6 @@ class WorkspaceRepository {
     for (const record of Object.values(workspace.records)) {
       const known = new Set(workspace.databases[record.database]?.fields.map(field => field.id) || []);
       const unknown = Object.keys(record.properties).filter(id => !known.has(id));
-      if (record.parent && !workspace.records[record.parent]) errors.push({ path: workspace.paths[record.id], message: 'Parent page is unavailable. The page is retained at the top level until its parent is restored or changed.' });
       if (unknown.length) errors.push({ path: workspace.paths[record.id], message: `Unmapped property values retained: ${unknown.join(', ')}. Review schema or folder transfer.` });
       try { if (record.database) schema.properties(workspace.databases[record.database], record, workspace.records); }
       catch (error) { errors.push({ path: workspace.paths[record.id], message: error.message }); this.readOnly = true; }

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { EditorState } from 'prosemirror-state';
 import { history, undo } from 'prosemirror-history';
 import { MarkdownBridge } from '../prototype/rich-markdown.js';
-import RichEditor from '../prototype/rich-editor.js';
 import { slashTransaction } from '../prototype/slash-commands.js';
 
 function run(id, source = '/command') {
@@ -28,15 +27,4 @@ test('a slash conversion is one undoable edit and invalid choices preserve the s
   assert.ok(restored.doc.eq(state.doc));
   assert.equal(run('unknown').transaction, null);
   assert.equal(run('page').transaction, null);
-});
-
-
-test('/page prepares a link at the original query while preserving surrounding Markdown', () => {
-  const bridge = new MarkdownBridge('# Parent\n\n/page\n\nText after the command.\n');
-  const state = EditorState.create({ doc: bridge.doc }); let from;
-  state.doc.descendants((node, position) => { if (node.isText && node.text === '/page') from = position; });
-  const insert = RichEditor.prototype.pageInsertion.call({ view: { state }, bridge }, { from, to: from + 5 });
-  const body = insert('New child', 'note-new.md');
-  assert.match(body, /# Parent[\s\S]*\[New child\]\(note-new.md\)[\s\S]*Text after the command/);
-  assert.doesNotMatch(body, /\/page/);
 });
