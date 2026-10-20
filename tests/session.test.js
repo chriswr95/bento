@@ -38,3 +38,15 @@ test('malformed session metadata is retained and invalid updates are rejected', 
   await assert.rejects(session.remember('relative', { view: 'daily', document: null, project: null }));
   await assert.rejects(session.remember(root, { view: 'document', document: null, project: null }));
 });
+
+test('folder restoration retains existing folders and falls back to Files when missing', async t => {
+  const { root, session } = await fixture(t), location = { view: 'folder', folder: 'notes/Design', document: null, project: null };
+  await session.remember(root, location);
+  const repository = { workspace: { folders: ['notes', 'notes/Design'], records: {}, databases: {} } };
+  assert.deepEqual((await session.restore(async () => repository)).location, location);
+  repository.workspace.folders = ['notes'];
+  const restored = await session.restore(async () => repository);
+  assert.deepEqual(restored.location, { view: 'folder', folder: '', document: null, project: null });
+  assert.match(restored.warning, /last folder/);
+  for (const folder of ['../outside', 'databases', '/absolute', '.bento-local']) assert.equal(validLocation({ ...location, folder }), false);
+});

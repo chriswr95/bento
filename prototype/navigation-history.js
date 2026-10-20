@@ -1,6 +1,6 @@
 const copy = value => structuredClone(value);
 export function sameLocation(first, second) {
-  return first.view === second.view && first.project === second.project && (first.view !== 'document' || first.document === second.document);
+  return first.view === second.view && first.project === second.project && (first.view !== 'document' || first.document === second.document) && (first.view !== 'folder' || first.folder === second.folder);
 }
 export default class NavigationHistory {
   constructor(location, limit = 100) { this.limit = limit; this.reset(location); }

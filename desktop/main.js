@@ -61,6 +61,9 @@ async function start() {
     return choose(true, mode === 'example');
   });
   register('workspace:reload', () => requireRepository().reload());
+  register('workspace:upgrade', () => requireRepository().upgrade());
+  register('workspace:folder', (parent, name) => requireRepository().createFolder(parent, name));
+  register('workspace:move', (id, folder) => requireRepository().moveDocument(id, folder));
   register('workspace:save', workspace => requireRepository().save(workspace));
   if (!app.isPackaged && process.env.BENTO_TEST_MODE === '1' && process.env.BENTO_TEST_WORKSPACE) { repository = await WorkspaceRepository.open(process.env.BENTO_TEST_WORKSPACE); startupLocation = null; startupWarning = ''; }
   await window.loadFile(entry);

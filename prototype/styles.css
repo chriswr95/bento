@@ -322,3 +322,21 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-due-shortcuts button:hover {background:var(--b-wash)}
 #bento-workflow .b-due-picker .b-actions {justify-content:flex-end;margin-bottom:0}
 @media(max-width:1000px) {#bento-workflow .b-daily-columns {grid-template-columns:minmax(0,1fr);gap:12px} #bento-workflow .b-project-summaries {grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))}}
+
+#bento-workflow .b-tree-folder-name {background:none;border:0;padding:0;text-align:left;font:inherit;font-weight:600;color:inherit}
+#bento-workflow .b-sidebar-files {background:none;border:0;padding:0;font:inherit;color:inherit}
+#bento-workflow .b-folder-path {display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:12px 0 20px;color:var(--b-soft);font-size:12px;min-width:0}
+#bento-workflow .b-folder-path button {border:0;background:none;padding:0;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere;text-align:left}
+#bento-workflow .b-folder-list {list-style:none;padding:0;margin:24px 0}
+#bento-workflow .b-folder-list li {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--b-line)}
+#bento-workflow .b-folder-list button {border:0;background:none;padding:0;text-align:left;color:var(--b-ink);overflow-wrap:anywhere}
+#bento-workflow .b-folder-list small {color:var(--b-soft);text-align:right}
+#bento-workflow .b-folder-dialog {width:min(420px,calc(100vw - 32px));padding:22px;border:1px solid var(--b-line);border-radius:10px;background:var(--b-paper);color:var(--b-ink)}
+#bento-workflow .b-folder-dialog::backdrop {background:#0005}
+#bento-workflow .b-folder-dialog h2 {margin:0 0 16px}
+#bento-workflow .b-folder-dialog label {font-size:12px;color:var(--b-soft);margin-top:14px}
+#bento-workflow .b-folder-dialog input,#bento-workflow .b-folder-dialog select {display:block;width:100%;margin-top:5px;padding:8px;border:1px solid var(--b-line);border-radius:5px;background:var(--b-paper);color:var(--b-ink)}
+#bento-workflow .b-folder-dialog .b-actions {justify-content:flex-end;margin-bottom:0}
+#bento-workflow .b-organization-upgrade {display:flex;align-items:center;gap:16px;justify-content:space-between;padding:12px 20px;background:var(--b-side);border-bottom:1px solid var(--b-line);font-size:12px}
+#bento-workflow .b-organization-upgrade button {border:0;background:none;padding:0;color:var(--b-accent);white-space:nowrap;text-decoration:underline}
+@media(min-width:651px) {#bento-workflow[data-desktop] .b-organization-upgrade:not([hidden])~.b-shell aside {height:calc(100dvh - 140px)}}

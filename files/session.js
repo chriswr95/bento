@@ -2,9 +2,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import schema from '../prototype/schema.js';
+import { publicFolder } from './organization.js';
 
 export function validLocation(value) {
-  return schema.object(value) && ['daily', 'document', 'profile'].includes(value.view)
+  if (value?.view === 'folder') { try { publicFolder(value.folder); } catch { return false; } }
+  return schema.object(value) && ['daily', 'document', 'profile', 'folder'].includes(value.view)
     && [value.document, value.project].every(id => id === null || schema.identity(id))
     && (value.view !== 'document' || value.document !== null);
 }
@@ -38,6 +40,7 @@ export class SessionStore {
     try {
       const repository = await open(this.value.workspace);
       let location = this.value.location, message = '';
+      if (location.view === 'folder' && location.folder && !repository.workspace.folders.includes(location.folder)) { location = { view: 'folder', folder: '', document: null, project: null }; message = 'The last folder is unavailable. Opened workspace files.'; }
       if (location.document && !repository.workspace.records[location.document] || location.project && !repository.workspace.databases[repository.workspace.records[location.project]?.database]?.capabilities.project) {
         location = { view: 'daily', document: null, project: null };
         message = 'The last page is unavailable. Opened the workspace overview.';

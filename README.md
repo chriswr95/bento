@@ -2,7 +2,7 @@
 
 A Markdown workspace for notes, projects, and todos, inspired by Obsidian and Notion. Bento starts with Makena's civil-engineering meeting-to-follow-up workflow.
 
-Each record has its own Markdown file. A workspace contains `workspace.md`; database folders contain `database.md` definitions. Folder location determines a record's zero-or-one database membership. Projects and Todos are customizable defaults built from typed fields.
+Each record has its own Markdown file. A workspace contains `workspace.md` and managed `databases/<id>.md` schemas. Folders organize locations; each page's metadata names its zero-or-one database independently. Projects and Todos are customizable defaults built from typed fields.
 
 ## Run the desktop app
 
@@ -25,7 +25,7 @@ For a guided first visit, choose **Try an example workspace** and an empty folde
 5. Projects, meetings, and todos share compact inline properties. Empty optional fields live under More properties. Tags appear as chips: Enter adds a tag, Backspace on an empty tag input removes the last tag, and spaces and commas remain part of a tag. Relation pickers support search.
 6. Save files flushes changes immediately. The Workspace menu holds open/new/reload actions. Close and reopen the workspace to read documents and schemas from disk.
 
-The sidebar shows a collapsible workspace directory tree with database folders, nested subfolders, and Markdown pages. Folder expansion is remembered per workspace on this computer; opening a page reveals its ancestor folders. Todo folders start collapsed. Each database folder has a + creation action. Projects, Meeting Notes, and Todos are customizable starter definitions. Sample content remains available separately under `examples/document-databases`.
+The sidebar shows a collapsible workspace directory tree with database folders, nested subfolders, and Markdown pages. Folder expansion is remembered per workspace on this computer; opening a page reveals its ancestor folders. Todo folders start collapsed. Click a folder name to browse its contents; use the chevron to expand/collapse it. New folder creates nested empty folders. Each folder has a + page action; Database and Folder are independent choices. Ordinary pages default to notes. Document breadcrumbs traverse ancestors, and Move page in document actions preserves properties and repairs Markdown links. Existing workspaces show Review upgrade before enabling this organization model; content files keep their existing locations. Projects, Meeting Notes, and Todos are customizable starter definitions. Sample content remains available separately under `examples/document-databases`.
 
 External edits are checked before save. If files changed, Bento keeps its local draft and stops instead of overwriting them. Reload files reads external changes; Restore draft is available only against an unchanged baseline. Download draft preserves the draft for manual comparison when files diverge. Opening a workspace does not rewrite untouched files, except to recover an earlier interrupted save.
 

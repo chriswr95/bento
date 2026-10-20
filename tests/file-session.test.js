@@ -61,3 +61,27 @@ test('canceling a workspace chooser resumes autosave for the current draft', asy
   await f.session.save();
   assert.equal(f.session.dirty, false);
 });
+
+test('organization waits for in-flight edits to save and retains the navigation location', async t => {
+  let finish, activated;
+  const f = fixture(t, { save: requested => new Promise(resolve => { finish = () => resolve({ ok: true, value: { workspace: requested, folder: 'test', readOnly: false } }); }) });
+  f.session.callbacks.activate = view => { activated = view; };
+  f.session.callbacks.location = () => ({ view: 'folder', folder: 'notes' });
+  f.edit('First'); const saving = f.session.save(); f.edit('Second');
+  let called = false;
+  const mutation = f.session.mutate(async () => { called = true; return { ok: true, value: f.session.view }; });
+  assert.equal(called, false); finish(); await saving;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(called, false); finish(); await mutation;
+  assert.equal(called, true); assert.equal(activated.workspace.records.note.body, 'Second');
+  assert.deepEqual(activated.location, { view: 'folder', folder: 'notes' });
+  assert.equal(activated.mutation, true); assert.equal(f.session.operating, false);
+});
+test('organization never runs when a draft cannot be safely saved', async t => {
+  const f = fixture(t, { save: async () => ({ ok: false, error: 'Changed on disk' }) });
+  f.edit('Precious notes'); let calls = 0;
+  const result = await f.session.mutate(async () => { calls++; });
+  assert.equal(result, null); assert.equal(calls, 0); assert.equal(f.session.operating, false);
+  assert.match(f.session.lastError, /recover your draft/);
+  assert.match(f.stored.get(f.session.key()), /Precious notes/);
+});

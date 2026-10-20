@@ -2,7 +2,7 @@
 
 Status: draft for discussion
 
-Updated: 2026-10-19
+Updated: 2026-10-20
 
 This document describes who Bento serves, what it should do, and how we will judge the experience. Implementation proposals and technical tradeoffs live in the [design document](design.md).
 
@@ -35,8 +35,8 @@ Bento has three layers: the application, user-managed database definitions, and 
 - Every content record, including each project and todo, has its own openable, editable Markdown document with a free-form body and structured metadata.
 - A document **must belong to zero or one database**. Multiple database memberships are invalid. A document may appear in many views and have relationships to many other documents without gaining additional memberships.
 - Ordinary Markdown documents may remain outside a database and join one later.
-- A workspace is a folder with an editable workspace Markdown document. Each database occupies a registered folder with its own schema document; folder location determines membership, including ordinary subfolders.
-- Moving a document between database folders is a database transfer. Validate it against the destination and preserve values that need mapping or repair.
+- A workspace is a folder with an editable workspace Markdown document. Folders organize physical locations; database membership is explicit metadata, independent of folder location. A folder may hold ordinary pages and pages from several databases.
+- Moving a document between folders preserves its database, properties, identity, and Markdown links. Changing its database is a separate schema transfer that must validate and preserve existing values.
 - Database fields compose from Text, Number, Boolean, Date, Select, Multi-select, Status, and Relation. Status labels are customizable and distinguish Not started, In progress, and Complete; relations allow one or many target records.
 - Users can create, rename, update, and remove databases, and create, update, or remove their fields. Users should not need to edit code or raw schema files for these operations.
 - Projects and Todos are customizable, removable default databases, rather than mandatory application entity types. Meeting Notes is a candidate starter database in the worked example.
@@ -305,7 +305,7 @@ Missing definitions or invalid capability mappings show explanatory notices. Aff
 
 ### File organization and page references
 
-Pages follow the existing filesystem layout. The sidebar has one collapsible file explorer, with actual folder names and readable page titles; relative file paths are available on hover. The Workspace page has its own shortcut above the tree. Standalone pages are created in the workspace root, and database pages are created inside their database folders. There is no separate subpage hierarchy or Parent property.
+Pages follow the existing filesystem layout. The sidebar has one collapsible file explorer, with actual folder names and readable page titles; relative file paths are available on hover. The Workspace page has its own shortcut above the tree. Ordinary pages default to a notes folder. Users can create nested folders, browse their contents, and create ordinary or database pages in any ordinary folder. Clickable breadcrumbs traverse physical ancestors; Move page preserves membership and repairs Markdown links. There is no separate subpage hierarchy or Parent property.
 
 Typing `[[` in prose opens searchable page suggestions. Titles and file paths distinguish matching pages. Arrow keys and Enter select a target; Escape leaves the literal input intact. The selected reference is a regular Markdown link, with no duplicate reference identity. References open their target on click; Alt-click allows editing the link text. Linked from lists incoming links once per source document, excluding code examples. Raw pasted wiki syntax is retained literally; this release provides an insertion interaction rather than a second stored link syntax.
 
@@ -319,7 +319,7 @@ Existing files and links are preserved. Legacy `parent` metadata is retained as 
 
 ### Sidebar navigation
 
-The explorer remembers folder disclosure state per workspace, offers Collapse all folders, and reveals the current document’s physical ancestors when opened. Selected pages have a quiet accent highlight; decorative page dots are omitted. Database creation actions appear on folder hover or keyboard focus and remain visible on touch devices. Long lists scroll inside the sidebar, keeping Workspace, Daily overview, and Settings available.
+The explorer remembers folder disclosure state per workspace, offers Collapse all folders, and reveals the current document’s physical ancestors when opened. Selected pages have a quiet accent highlight; decorative page dots are omitted. Page creation actions appear on folder hover or keyboard focus and remain visible on touch devices. Folder names open their contents while chevrons expand/collapse the tree. Empty folders remain visible. Existing workspaces offer a reviewed upgrade that preserves content locations before enabling independent folder/database organization. Long lists scroll inside the sidebar, keeping Workspace, Daily overview, and Settings available.
 
 ### Daily review of personal work
 

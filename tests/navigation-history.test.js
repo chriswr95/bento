@@ -22,3 +22,12 @@ test('history skips unavailable pages and reset clears the previous workspace', 
   assert.equal(history.move(-1, location => location.document !== 'missing').location.document, 'a');
   history.reset(page('other-workspace')); assert.equal(history.move(-1), null); assert.equal(history.move(1), null);
 });
+
+test('folder history distinguishes nested locations and skips unavailable destinations', () => {
+  const folder = value => ({ view: 'folder', folder: value, document: null, project: null });
+  const history = new History(folder('notes'));
+  history.visit(folder('notes/Design')); history.visit(folder('projects'));
+  assert.equal(history.entries.length, 3);
+  assert.equal(history.move(-1, location => location.folder !== 'notes/Design').location.folder, 'notes');
+  assert.equal(history.move(1).location.folder, 'notes/Design');
+});

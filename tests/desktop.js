@@ -1,3 +1,4 @@
+import { checkOrganizationWorkflow } from './organization-workflow.js';
 import { checkInlineMenuWorkflow } from './inline-menu-workflow.js';
 import { checkDailyWorkflow } from './daily-workflow.js';
 import { checkPageWorkflow } from './page-workflow.js';
@@ -177,10 +178,10 @@ async function addTag(page, value) {
   await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
 
   assert.equal(await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).count(), 1);
-  await page.locator('aside').getByRole('button', { name: 'New page in Projects', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'New page in projects', exact: true }).click();
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Canceled project');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.locator('aside').getByRole('button', { name: 'New page in Projects', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'New page in projects', exact: true }).click();
   await page.keyboard.press('ControlOrMeta+,');
   await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
   await page.keyboard.press('ControlOrMeta+['); await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
@@ -201,7 +202,7 @@ async function addTag(page, value) {
   await page.waitForFunction(() => Math.abs(new DOMMatrix(getComputedStyle(document.querySelector('aside details[data-directory="projects/Design"]>summary>.b-tree-chevron')).transform).b - 1) < 0.01);
   await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).click();
   await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'My first project', exact: true }).waitFor();
-  await projectsFolder.locator(':scope>summary').click();
+  await projectsFolder.locator(':scope>summary').press('Enter');
   await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
   assert.equal(await projectsFolder.getAttribute('open'), null);
   await page.waitForFunction(() => Math.abs(new DOMMatrix(getComputedStyle(document.querySelector('aside details[data-directory="projects"]>summary>.b-tree-chevron')).transform).b) < 0.01);
@@ -255,9 +256,9 @@ async function addTag(page, value) {
   await saved(page);
   let raw = await fs.readFile(path.join(workspace, 'todos', filename), 'utf8');
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
-  assert.doesNotMatch(raw, /^database:/m);
+  assert.match(raw, /^database: db-todos$/m);
   assert.match(raw, new RegExp(projectId));
-  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'initial', 'open', 'reload', 'rememberLocation', 'save', 'settingsRead', 'settingsSave'] });
+  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'save', 'settingsRead', 'settingsSave', 'upgrade'] });
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);
@@ -303,7 +304,7 @@ async function addTag(page, value) {
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-meeting-properties.png') });
   assert.equal(await page.getByRole('group', { name: 'Related projects', exact: true }).getByRole('checkbox', { name: 'My first project', exact: true }).isChecked(), true);
 
-  await page.locator('aside details[data-directory="todos"]>summary').click();
+  await page.locator('aside details[data-directory="todos"]>summary').press('Enter');
   await page.getByRole('navigation', { name: 'Workspace files', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).click();
   assert.match(await page.locator('#b-reading').innerText(), /Keep this project detail/);
   assert.equal(await page.getByRole('button', { name: 'Edit Status', exact: true }).innerText(), 'In progress');
@@ -336,6 +337,7 @@ async function addTag(page, value) {
   assert.doesNotMatch(await page.locator('#b-status').innerText(), /last workspace is unavailable/);
   console.log('Passed disconnected-workspace welcome fallback and recovery through another folder.');
   await stop(application); application = null;
+  await checkOrganizationWorkflow({ launch, stop, temporary, root });
   await checkOnboarding({ launch, stop, temporary, root });
   await checkWorkspaceCustomization({ launch, stop, temporary, root });
   await checkPageWorkflow({ launch, stop, temporary, root });

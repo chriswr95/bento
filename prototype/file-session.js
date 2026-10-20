@@ -48,9 +48,13 @@ class FileSession {
     this.callbacks.status(this.saving ? 'Saving files…' : this.failed ? (this.draftAvailable ? 'Save stopped. Your draft is kept; review the error before reloading.' : 'Save stopped. Keep this window open; draft storage is unavailable.') : this.view.readOnly ? 'Workspace needs repair before saving.' : this.dirty ? (this.draftAvailable ? 'Unsaved changes · draft kept in this app' : 'Unsaved changes · draft storage unavailable') : 'Saved to workspace files');
     this.callbacks.controls?.(this);
   }
-  async save() {
+  save() {
     clearTimeout(this.timer);
-    if (!this.view || this.view.readOnly || this.saving || !this.dirty) return;
+    if (this.saving) return this.pendingSave;
+    if (!this.view || this.view.readOnly || !this.dirty) return Promise.resolve();
+    this.pendingSave = this.write(); return this.pendingSave;
+  }
+  async write() {
     this.saving = true; this.status();
     const requested = structuredClone(this.callbacks.workspace());
     try {
@@ -65,6 +69,22 @@ class FileSession {
       this.failed = true;
       this.callbacks.error(error.message);
     } finally { this.saving = false; this.status(); }
+  }
+  async mutate(operation) {
+    if (this.operating) return null;
+    this.lastError = null; this.operating = true; this.callbacks.busy?.(true);
+    try {
+      if (!this.view || this.view.readOnly) throw new Error('Repair the workspace before organizing files.');
+      await this.save();
+      if (this.dirty) await this.save();
+      if (this.dirty || this.failed) throw new Error('Save or recover your draft before organizing files.');
+      const location = this.callbacks.location?.();
+      this.callbacks.status('Organizing files…');
+      const view = await this.call(operation());
+      this.view = view; this.callbacks.activate({ ...view, location, mutation: true });
+      return view;
+    } catch (error) { this.lastError = error.message; this.callbacks.error(error.message); return null; }
+    finally { this.operating = false; this.callbacks.busy?.(false); this.status(); }
   }
   hasDraft() { try { return !!this.storage.getItem(this.key()); } catch { return false; } }
   restore() {
