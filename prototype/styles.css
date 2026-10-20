@@ -181,8 +181,11 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-layout-dialog ul {list-style:none;padding:5px;margin:0;min-height:44px;border:1px solid var(--b-line);border-radius:6px}
 #bento-workflow .b-layout-dialog li {display:flex;align-items:center;gap:10px;min-height:36px;padding:3px 5px;font-size:13px}
 #bento-workflow .b-layout-dialog li>span:last-of-type {flex:1;min-width:0;overflow-wrap:anywhere}
-#bento-workflow .b-layout-dialog li button {background:none;border:0;border-radius:4px;color:var(--b-soft);padding:4px 7px}
+#bento-workflow .b-layout-dialog li button {display:flex;align-items:center;gap:10px;width:100%;min-height:32px;text-align:left;background:none;border:0;border-radius:4px;color:var(--b-ink);padding:5px 6px}
 #bento-workflow .b-layout-dialog li button:hover {background:var(--b-wash);color:var(--b-ink)}
+#bento-workflow .b-layout-grip {flex:none;color:var(--b-soft)}
+#bento-workflow [data-layout-handle][aria-pressed="true"] {background:var(--b-wash)}
+#bento-workflow [data-layout-handle]:focus-visible {outline-offset:-2px}
 #bento-workflow [data-layout-handle] {cursor:grab}
 #bento-workflow [data-layout-group][data-drop-active] {background:var(--b-wash);border-color:var(--b-accent)}
 #bento-workflow .b-inline-property {display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;align-items:start;min-height:34px;padding:3px 0}

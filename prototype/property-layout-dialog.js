@@ -9,21 +9,38 @@ export default class PropertyLayoutDialog {
     this.dialog.addEventListener('click', event => {
       if (this.saving) return;
       if (event.target.closest('[data-cancel-layout]')) this.dialog.close();
-      const move = event.target.closest('[data-layout-move]');
-      if (move) this.move(move.dataset.layoutMove, move.dataset.group);
+      const row = event.target.closest('[data-layout-handle]');
+      if (row) { this.select(row.dataset.layoutHandle); row.focus(); }
+    });
+    this.dialog.addEventListener('focusin', event => {
+      const row = event.target.closest('[data-layout-handle]');
+      if (row) this.select(row.dataset.layoutHandle);
     });
     this.dialog.addEventListener('keydown', event => {
       const handle = event.target.closest('[data-layout-handle]');
-      if (!handle || !event.altKey || this.saving || !event.key.startsWith('Arrow')) return;
+      if (!handle || this.saving || event.isComposing || event.metaKey || event.ctrlKey || event.shiftKey || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      if (!event.altKey) {
+        if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const rows = [...this.dialog.querySelectorAll('[data-layout-handle]')];
+        const index = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : rows.indexOf(handle) + (event.key === 'ArrowUp' ? -1 : 1);
+        rows[Math.max(0, Math.min(index, rows.length - 1))]?.focus();
+        return;
+      }
+      if (!event.key.startsWith('Arrow')) return;
       event.preventDefault();
       const id = handle.dataset.layoutHandle, group = this.group(id), index = this.layout[group].indexOf(id);
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') this.move(id, event.key === 'ArrowLeft' ? 'important' : 'detail');
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        const target = event.key === 'ArrowLeft' ? 'important' : 'detail';
+        if (target !== group) this.move(id, target);
+      }
       else this.move(id, group, index + (event.key === 'ArrowUp' ? -1 : 1));
     });
     this.dialog.addEventListener('dragstart', event => {
       const handle = event.target.closest('[data-layout-handle]');
       if (!handle || this.saving) { event.preventDefault(); return; }
       this.dragging = handle.dataset.layoutHandle;
+      this.select(this.dragging);
       event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', this.dragging);
     });
     this.dialog.addEventListener('dragover', event => {
@@ -52,6 +69,10 @@ export default class PropertyLayoutDialog {
     this.dialog.addEventListener('submit', event => { event.preventDefault(); this.save(); });
   }
   group(id) { return this.layout.important.includes(id) ? 'important' : 'detail'; }
+  select(id) {
+    this.selected = id;
+    this.dialog.querySelectorAll('[data-layout-handle]').forEach(row => row.setAttribute('aria-pressed', String(row.dataset.layoutHandle === id)));
+  }
   clearDrop() { this.dialog.querySelectorAll('[data-drop-active]').forEach(group => group.removeAttribute('data-drop-active')); }
   move(id, group, index = this.layout[group].length) {
     if (!this.fields.has(id) || !['important', 'detail'].includes(group) || this.required.includes(id)) return;
@@ -63,13 +84,14 @@ export default class PropertyLayoutDialog {
   show(database) {
     const { required, important, detail } = propertyLayout(database);
     this.database = database.id; this.title = database.title; this.required = required;
+    this.selected = null;
     this.layout = { important, detail };
     this.fields = new Map([...database.fields.map(field => [field.id, field.name]), ['$color', 'Color'], ['$tags', 'Tags']]);
     this.render(); this.dialog.showModal();
   }
   render(message = '') {
-    const rows = (group, ids) => ids.map(id => `<li data-layout-field="${escape(id)}">${group === 'required' ? '<span class="b-muted" aria-label="Required property">*</span>' : `<button type="button" draggable="true" data-layout-handle="${escape(id)}" aria-label="Reorder ${escape(this.fields.get(id))}" title="Drag to arrange · Alt+arrow keys">⠿</button>`}<span>${escape(this.fields.get(id))}</span>${group === 'required' ? '' : `<button type="button" class="b-layout-move" data-layout-move="${escape(id)}" data-group="${group === 'important' ? 'detail' : 'important'}" aria-label="Move ${escape(this.fields.get(id))} to ${group === 'important' ? 'Details' : 'Important'}" title="Move to ${group === 'important' ? 'Details' : 'Important'}">${group === 'important' ? '↓' : '↑'}</button>`}</li>`).join('');
-    this.dialog.innerHTML = `<form><h2>Arrange properties</h2><p class="b-muted">For every page in ${escape(this.title)}. Drag to reorder or move between groups.</p>${this.required.length ? `<h3>Required</h3><p class="b-layout-hint">Always visible. Validation is unchanged.</p><ul class="b-layout-required">${rows('required', this.required)}</ul>` : ''}<h3>Important</h3><p class="b-layout-hint">Above the fold, including empty values.</p><ul data-layout-group="important" aria-label="Important properties">${rows('important', this.layout.important)}</ul><h3>Details</h3><p class="b-layout-hint">Under More, even when filled in.</p><ul data-layout-group="detail" aria-label="Detail properties">${rows('detail', this.layout.detail)}</ul><p class="b-layout-hint">Keyboard: Alt+↑/↓ reorders; Alt+←/→ changes group.</p><p class="b-visually-hidden" role="status">${escape(message)}</p><p role="alert" class="b-issues" hidden></p><div class="b-actions"><button type="button" class="b-button" data-cancel-layout>Cancel</button><button type="submit" class="b-button b-primary">Save layout</button></div></form>`;
+    const rows = (group, ids) => ids.map(id => `<li data-layout-field="${escape(id)}">${group === 'required' ? `<span class="b-muted" aria-label="Required property">*</span><span>${escape(this.fields.get(id))}</span>` : `<button type="button" draggable="true" data-layout-handle="${escape(id)}" aria-label="Reorder ${escape(this.fields.get(id))}" aria-pressed="${this.selected === id}" aria-describedby="b-layout-keyboard" title="Drag to arrange · Alt+arrow keys"><span class="b-layout-grip" aria-hidden="true">⠿</span><span>${escape(this.fields.get(id))}</span></button>`}</li>`).join('');
+    this.dialog.innerHTML = `<form><h2>Arrange properties</h2><p class="b-muted">For every page in ${escape(this.title)}. Drag to reorder or move between groups.</p>${this.required.length ? `<h3>Required</h3><p class="b-layout-hint">Always visible. Validation is unchanged.</p><ul class="b-layout-required">${rows('required', this.required)}</ul>` : ''}<h3>Important</h3><p class="b-layout-hint">Above the fold, including empty values.</p><ul data-layout-group="important" aria-label="Important properties">${rows('important', this.layout.important)}</ul><h3>Details</h3><p class="b-layout-hint">Under More, even when filled in.</p><ul data-layout-group="detail" aria-label="Detail properties">${rows('detail', this.layout.detail)}</ul><p id="b-layout-keyboard" class="b-layout-hint">Click or Tab to select · ↑/↓ selects · Alt+↑/↓ reorders · Alt+←/→ changes group.</p><p class="b-visually-hidden" role="status">${escape(message)}</p><p role="alert" class="b-issues" hidden></p><div class="b-actions"><button type="button" class="b-button" data-cancel-layout>Cancel</button><button type="submit" class="b-button b-primary">Save layout</button></div></form>`;
   }
   async save() {
     if (this.saving) return;
