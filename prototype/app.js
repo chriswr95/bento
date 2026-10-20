@@ -17,6 +17,7 @@ import InlineProperties from './inline-properties.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
 import { folderDatabase, foldersFor, folderAvailable } from './folders.js';
 import { propertyChoices } from './property-editor.js';
+import SidebarExplorer from './sidebar-explorer.js';
 import BentoWorkspace from './workspace.js';
 import BentoProfile from './profile.js';
 import RichEditor from './vendor/rich-editor.js';
@@ -126,7 +127,7 @@ import BentoFileSession from './file-session.js';
   const dueLabel = due => !due ? 'No date' : due === planDate ? 'Today'
     : new Date(due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  let liveEditor = null, propertyEditor = null, shortcutReference = null, creation = null;
+  let liveEditor = null, propertyEditor = null, shortcutReference = null, creation = null, sidebarExplorer = null;
   const location = () => ({ view: state.view, project: state.project, document: state.document, ...(state.view === 'folder' ? { folder: state.folder || '' } : {}) });
   const navigation = new NavigationHistory(location());
 
@@ -177,6 +178,7 @@ import BentoFileSession from './file-session.js';
     state.folder = folder;
     if (view === 'folder') { directoryState?.reveal((folder ? folder + '/' : '') + 'page.md'); }
     state.view = view; state.project = project; state.document = documentId;
+    if (sidebarExplorer && ['document', 'folder'].includes(view)) sidebarExplorer.selection = view === 'document' ? { kind: 'file', id: documentId } : { kind: 'folder', path: folder };
     if (view === 'document') directoryState?.reveal(workspace().paths?.[documentId]);
     if (isNote(workspace().records[documentId])) state.note = documentId;
     editingSnapshot = null; proposal = false;
@@ -228,6 +230,7 @@ import BentoFileSession from './file-session.js';
     if (desktop && files?.view) {
       if (!files.view.readOnly) for (const database of Object.values(workspace().databases)) commands.push({ id: 'create:' + database.id, title: creationLabel(database), detail: 'Create a Markdown page · ' + database.title, kind: 'command', run: () => showCreate(database.id, state.project || (record() && (model.capability(workspace(), record(), 'project') ? record().id : model.projectOf(workspace(), record()))) || null) });
       for (const [id, title] of [['open', 'Open Workspace…'], ['create', 'New Workspace…'], ['reload', 'Reload Workspace Files']]) commands.push({ id: 'workspace:' + id, title, detail: 'Command · Workspace', kind: 'command', run: () => files.open(() => desktop[id]()) });
+      if (files.view.lastDeletion && !files.view.readOnly) commands.push({ id: 'restore-deleted', title: 'Restore last deleted file', detail: 'Command · Workspace trash', kind: 'command', run: restoreDeletedFile });
     }
     if ((!desktop || files?.view) && !files?.view?.readOnly) commands.push({ id: 'create-page', title: 'New page', detail: 'Create a standalone Markdown page', kind: 'command', run: () => showCreate(null) });
     return commands;
@@ -251,7 +254,7 @@ import BentoFileSession from './file-session.js';
       else return paletteCommands().find(command => command.id === entry.id)?.run();
     }, error: notify
   });
-  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => (!desktop || !!files?.view) && !duePicker.dialog.open && !folderDialog.dialog.open && !files?.operating });
+  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => (!desktop || !!files?.view) && !duePicker.dialog.open && !folderDialog.dialog.open && !sidebarExplorer?.open && !files?.operating });
   document.addEventListener('keydown', event => shortcutController.handle(event), true);
   window.addEventListener('blur', () => shortcutController.clear());
   function openRecord(documentId) {
@@ -276,6 +279,30 @@ import BentoFileSession from './file-session.js';
     },
     done(folder) { navigate('folder', null, null, folder); notify('Workspace folders updated.'); }
   });
+  async function deleteSidebarFile(id) {
+    if (propertyEditor && !propertyEditor.commit()) return false;
+    const doc = workspace().records[id];
+    if (!doc || id === workspace().home || readOnly(doc)) return false;
+    const active = state.view === 'document' && state.document === id;
+    const folder = (workspace().paths[id] || '').split('/').slice(0, -1).join('/');
+    const result = await files.mutate(() => desktop.deleteDocument(id));
+    if (!result) return false;
+    if (active) navigate('folder', null, null, folder);
+    const notice = root.querySelector('.b-deletion-notice');
+    notice.querySelector('[data-deletion-title]').textContent = `Deleted ${doc.title}.`;
+    notice.hidden = false;
+    notify('File moved to Bento’s local trash. Existing links and relations are retained.');
+    return true;
+  }
+  async function restoreDeletedFile() {
+    if (files?.operating || !files?.view?.lastDeletion || propertyEditor && !propertyEditor.commit()) return;
+    const result = await files.mutate(() => desktop.restoreDocument(files.view.lastDeletion.token));
+    if (!result) return;
+    root.querySelector('.b-deletion-notice').hidden = true;
+    openRecord(result.restored.document);
+    sidebarExplorer?.focusFile(result.restored.document);
+    notify('Deleted file restored to its original folder.');
+  }
   function currentFolder() {
     if (state.view === 'folder') return state.folder || '';
     if (state.view === 'document' && record()?.id !== workspace().home) return (workspace().paths?.[record()?.id] || '').split('/').slice(0, -1).join('/') || workspace().defaultPageFolder || 'notes';
@@ -354,6 +381,7 @@ import BentoFileSession from './file-session.js';
       <nav class="b-directory-tree" aria-label="Workspace files"><ul class="b-tree-children">${directoryFolder(directoryTree(workspace()))}</ul></nav>
       <nav class="b-nav b-sidebar-settings" aria-label="Settings"><button type="button" data-view="profile" ${state.view === 'profile' ? 'aria-current="page"' : ''}>Settings</button></nav>`;
     const tree = sidebar.querySelector('.b-directory-tree'); tree.scrollTop = scroll;
+    sidebarExplorer?.refresh();
     const selected = tree.querySelector('[aria-current="page"]');
     if (selected?.getClientRects().length) {
       const item = selected.getBoundingClientRect(), viewport = tree.getBoundingClientRect();
@@ -597,6 +625,8 @@ import BentoFileSession from './file-session.js';
     const button = event.target.closest('button'); if (!button) return;
     try {
       if (button.hasAttribute('data-open-folder')) { event.preventDefault(); navigate('folder', null, null, button.dataset.openFolder); }
+      else if (button.hasAttribute('data-restore-deleted')) { root.querySelector('.b-workspace-menu').open = false; restoreDeletedFile(); }
+      else if (button.hasAttribute('data-dismiss-deletion')) root.querySelector('.b-deletion-notice').hidden = true;
       else if (button.hasAttribute('data-new-folder')) {
         if (!files.view.readOnly && (!propertyEditor || propertyEditor.commit())) folderDialog.show('create', button.hasAttribute('data-folder-parent') ? button.dataset.folderParent : state.view === 'folder' ? state.folder : '');
       }
@@ -715,14 +745,18 @@ import BentoFileSession from './file-session.js';
     root.querySelector('.b-demo').textContent = 'Markdown workspace';
     root.querySelector('.b-demo').hidden = true;
     root.querySelector('.b-theme-toggle').insertAdjacentHTML('beforebegin', `<div class="b-file-controls"><details class="b-workspace-menu"><summary aria-label="Workspace actions"><span data-workspace-name>Workspace</span><span aria-hidden="true">⌄</span></summary><div><button type="button" data-quick-open>Quick open…</button><button type="button" data-walkthrough="replay" hidden>Replay walkthrough</button><button type="button" data-files="open">Open workspace</button><button type="button" data-files="create">New workspace</button><button type="button" data-files="example">Try an example workspace</button><button type="button" data-files="reload" disabled>Reload files</button><button type="button" data-files="save" disabled>Save files</button><button type="button" data-files="restore" hidden>Restore draft</button><button type="button" data-files="draft" hidden>Download draft</button></div></details><button type="button" class="b-draft-notice" data-draft-notice hidden>Draft available</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
-    root.querySelector('.b-shell').insertAdjacentHTML('beforebegin', '<p id="b-file-errors" class="b-issues" role="alert" hidden></p>');
+    root.querySelector('.b-shell').insertAdjacentHTML('beforebegin', '<p id="b-file-errors" class="b-issues" role="alert" hidden></p><section class="b-deletion-notice" role="status" hidden><span data-deletion-title></span><button type="button" data-restore-deleted>Undo</button><button type="button" data-dismiss-deletion aria-label="Dismiss deletion notice">×</button></section>');
+    root.querySelector('[data-files="reload"]').insertAdjacentHTML('afterend', '<button type="button" data-restore-deleted hidden>Restore last deleted file</button>');
 
     const errors = root.querySelector('#b-file-errors');
     files = new BentoFileSession(desktop, {
       workspace,
       location,
-      busy(value) { root.querySelector('.b-shell').inert = value; root.querySelector('.b-chrome').inert = value; },
+      busy(value) { sidebarExplorer?.close(false); root.querySelector('.b-shell').inert = value; root.querySelector('.b-chrome').inert = value; root.querySelector('.b-deletion-notice button[data-restore-deleted]').disabled = value; },
       activate(view) {
+        const pendingCreation = view.mutation && state.view === 'create' && creation ? { ...creation,
+          title: main.querySelector('[name=title]')?.value || '', folder: main.querySelector('[name=folder]')?.value ?? creation.folder,
+          project: main.querySelector('[name=project]')?.value || null } : null;
         walkthrough = new Walkthrough(view);
         root.querySelector('[data-walkthrough="replay"]').hidden = !walkthrough.valid;
         root.querySelector('[data-workspace-name]').textContent = view.title;
@@ -732,6 +766,11 @@ import BentoFileSession from './file-session.js';
         state.workspace = view.workspace;
         state.folder = view.location?.folder || '';
         state.view = view.location?.view || 'daily'; state.project = view.location?.project || null; creation = null;
+        if (pendingCreation) {
+          creation = pendingCreation;
+          if (creation.previous.document && !workspace().records[creation.previous.document]) creation.previous = { view: 'daily', project: null, document: null };
+        }
+        if (state.project && !getProject(state.project)) state.project = null;
         if (view.location?.document) state.document = view.location.document;
         if (state.view === 'document') directoryState.reveal(workspace().paths?.[state.document]);
         if ('resumeWarning' in view) { storageWarning = view.resumeWarning || ''; notify('Workspace ready.'); }
@@ -739,6 +778,7 @@ import BentoFileSession from './file-session.js';
         state.note = Object.values(workspace().records).find(isNote)?.id;
         previous = null; editingSnapshot = null; proposal = false;
         quickOpen.close(); if (!view.mutation) navigation.reset(location()); shortcutController.clear();
+        if (!view.mutation) { root.querySelector('.b-deletion-notice').hidden = true; sidebarExplorer?.close(false); if (sidebarExplorer) sidebarExplorer.selection = null; }
         errors.hidden = !view.errors.length; errors.textContent = view.errors.map(error => `${error.path}: ${error.message}`).join(' ');
         render();
       },
@@ -757,7 +797,20 @@ import BentoFileSession from './file-session.js';
         const notice = root.querySelector('[data-draft-notice]');
         notice.hidden = !draft || (session.dirty && !session.failed);
         notice.textContent = session.failed ? 'Draft kept' : 'Draft available';
+        const restore = root.querySelector('.b-workspace-menu [data-restore-deleted]');
+        restore.hidden = !session.view.lastDeletion; restore.disabled = session.view.readOnly || session.saving || session.operating;
       }
+    });
+    sidebarExplorer = new SidebarExplorer(root.querySelector('aside'), root, {
+      available: () => !!files.view && !files.operating && !folderDialog.dialog.open && !duePicker.dialog.open && !root.querySelector('dialog[open]'),
+      canCreate: folder => !files.view.readOnly && folderAvailable(workspace(), folder) && (!folderDatabase(workspace(), folder) || !!workspace().databases[folderDatabase(workspace(), folder)]),
+      canDelete: id => !!workspace().records[id] && id !== workspace().home && !readOnly(workspace().records[id]),
+      canRestore: () => !!files.view.lastDeletion && !files.view.readOnly, restoreFile: restoreDeletedFile,
+      openFile: openRecord, openFolder: folder => navigate('folder', null, null, folder),
+      createFile: folder => showCreate(folderDatabase(workspace(), folder) || null, null, folder),
+      createFolder: folder => { if (!propertyEditor || propertyEditor.commit()) folderDialog.show('create', folder); },
+      moveFile: id => { if (!propertyEditor || propertyEditor.commit()) folderDialog.show('move', (workspace().paths[id] || '').split('/').slice(0, -1).join('/'), id); },
+      removeFile: deleteSidebarFile, error: notify
     });
     root.addEventListener('click', event => {
       if (event.target.closest('[data-draft-notice]')) {

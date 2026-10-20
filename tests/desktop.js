@@ -1,4 +1,5 @@
 import { checkOrganizationWorkflow } from './organization-workflow.js';
+import { checkSidebarManagement } from './sidebar-management-workflow.js';
 import { checkInlineMenuWorkflow } from './inline-menu-workflow.js';
 import { checkDailyWorkflow } from './daily-workflow.js';
 import { checkPageWorkflow } from './page-workflow.js';
@@ -76,6 +77,7 @@ async function addTag(page, value) {
 }
 (async () => {
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-desktop-'));
+  if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); return; }
   const workspace = path.join(temporary, 'Workspace'), userData = path.join(temporary, 'UserData');
   await fs.mkdir(workspace);
   let launched = await launch(null, userData); application = launched.app; let page = launched.page;
@@ -258,7 +260,7 @@ async function addTag(page, value) {
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
   assert.doesNotMatch(raw, /^database:/m);
   assert.match(raw, new RegExp(projectId));
-  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'save', 'settingsRead', 'settingsSave'] });
+  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'deleteDocument', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'restoreDocument', 'save', 'settingsRead', 'settingsSave'] });
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);

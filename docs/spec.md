@@ -330,3 +330,13 @@ Every active project has a summary, including projects with no open work. Summar
 Select a task's date to choose Today, Tomorrow, a calendar date, or No date. Cancel/Escape leaves the todo unchanged; successful changes regroup work and update summaries immediately, retain keyboard focus, support Undo, and use the existing autosave/conflict protection. Protected workspaces and unavailable records remain read-only. Required due-date fields cannot be cleared.
 
 Recent notes use a note database's single date field (Meeting date in the starter workspace), showing the two latest dates up to today. Multiple date fields are ambiguous and are not guessed. Where no dated notes qualify, summaries show ordinary related-note links. This is recorded note chronology, not an inferred edit history.
+
+### Sidebar file management
+
+Right-click a folder, including the enclosing workspace, to open it or create a new Markdown file or subfolder there. File creation opens the existing title/type form with that exact parent selected; database folders select their database automatically. Right-click a file to open it, move it to a compatible folder, or delete it. The Workspace home document and schema definitions are protected.
+
+Sidebar selection has a visible highlight and supports Up/Down, Home/End, and Left/Right disclosure/parent navigation. Shift+F10 or the context-menu key opens the focused row’s actions. Escape dismisses the menu and returns focus. Unmodified Delete or Backspace deletes a focused sidebar file; these keys retain their ordinary editing behavior elsewhere. Folder deletion, bulk selection, renaming and drag-and-drop are deferred.
+
+Delete moves a document into Bento’s local trash and offers Undo. Cmd/Ctrl+Z restores the last deleted file while the sidebar has focus; editor Undo remains unchanged. Pending edits are saved first; a failed save prevents deletion and retains the draft. Deleted files can also be restored after restart through Restore last deleted file in the workspace menu or command palette. Restoration returns the original Markdown file and identity to its original folder, and refuses to overwrite newer content or bypass incompatible schema changes.
+
+Deleting a page preserves authored links, source checkboxes and relation IDs elsewhere. Missing targets remain visible for repair; a linked checkbox does not create a replacement todo. Deleting a meeting note does not delete its separate todos. The trash is recoverable storage, not permanent erasure.

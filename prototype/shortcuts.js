@@ -7,6 +7,11 @@ export const shortcuts = Object.freeze([
   { id: 'settings', command: 'Open Settings', bindings: [['Mod+,']], context: 'Workspace', app: true },
   { id: 'shortcuts', command: 'Keyboard Shortcuts', bindings: [['Mod+k', 'Mod+s']], context: 'Workspace', app: true },
   { id: 'save', command: 'Save', bindings: [['Mod+s']], context: 'Workspace', app: true },
+  { id: 'sidebar-delete', command: 'Delete Selected File', bindings: [['Delete'], ['Backspace']], context: 'Focused sidebar file' },
+  { id: 'sidebar-restore', command: 'Restore Last Deleted File', bindings: [['Mod+z']], context: 'Focused sidebar file or folder' },
+  { id: 'sidebar-menu', command: 'Open File / Folder Actions', bindings: [['Shift+F10'], ['ContextMenu']], context: 'Focused sidebar file or folder' },
+  { id: 'sidebar-select', command: 'Move Sidebar Selection', bindings: [['ArrowUp'], ['ArrowDown'], ['Home'], ['End']], context: 'Focused sidebar file or folder' },
+  { id: 'sidebar-disclosure', command: 'Expand / Collapse Folder', bindings: [['ArrowRight'], ['ArrowLeft']], context: 'Focused sidebar file or folder' },
   { id: 'bold', command: 'Toggle Bold', bindings: [['Mod+b']], context: 'Markdown editor' },
   { id: 'italic', command: 'Toggle Italic', bindings: [['Mod+i']], context: 'Markdown editor' },
   { id: 'code', command: 'Toggle Inline Code', bindings: [['Mod+`']], context: 'Markdown editor' },
@@ -19,7 +24,7 @@ export const shortcuts = Object.freeze([
   { id: 'cancel', command: 'Cancel Property Edit / Close Menu', bindings: [['Escape']], context: 'Property editor or menu' }
 ]);
 export const bindingsFor = (shortcut, mac) => [...shortcut.bindings, ...(mac ? [] : shortcut.windows || [])];
-export const keyLabel = (binding, mac) => binding.map(key => key.replace('Mod', mac ? 'Cmd' : 'Ctrl').replace('ArrowLeft', 'Left').replace('ArrowRight', 'Right').split('+').join(' + ')).join(', ');
+export const keyLabel = (binding, mac) => binding.map(key => key.replace('Mod', mac ? 'Cmd' : 'Ctrl').replace('ArrowLeft', 'Left').replace('ArrowRight', 'Right').replace('ArrowUp', 'Up').replace('ArrowDown', 'Down').split('+').join(' + ')).join(', ');
 export function matchesKey(event, binding, mac) {
   const pieces = binding.split('+'), key = pieces.pop();
   const primary = pieces.includes('Mod');

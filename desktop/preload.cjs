@@ -9,5 +9,7 @@ contextBridge.exposeInMainWorld('bentoDesktop', Object.freeze({
   reload: () => ipcRenderer.invoke('workspace:reload'),
   createFolder: (parent, name) => ipcRenderer.invoke('workspace:folder', parent, name),
   moveDocument: (id, folder) => ipcRenderer.invoke('workspace:move', id, folder),
+  deleteDocument: id => ipcRenderer.invoke('workspace:delete', id),
+  restoreDocument: token => ipcRenderer.invoke('workspace:restore-deleted', token),
   save: workspace => ipcRenderer.invoke('workspace:save', workspace)
 }));

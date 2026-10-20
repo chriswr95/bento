@@ -63,6 +63,8 @@ async function start() {
   register('workspace:reload', () => requireRepository().reload());
   register('workspace:folder', (parent, name) => requireRepository().createFolder(parent, name));
   register('workspace:move', (id, folder) => requireRepository().moveDocument(id, folder));
+  register('workspace:delete', id => requireRepository().deleteDocument(id));
+  register('workspace:restore-deleted', token => requireRepository().restoreDocument(token));
   register('workspace:save', workspace => requireRepository().save(workspace));
   if (!app.isPackaged && process.env.BENTO_TEST_MODE === '1' && process.env.BENTO_TEST_WORKSPACE) { repository = await WorkspaceRepository.open(process.env.BENTO_TEST_WORKSPACE); startupLocation = null; startupWarning = ''; }
   await window.loadFile(entry);
