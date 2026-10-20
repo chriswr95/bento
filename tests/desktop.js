@@ -180,10 +180,12 @@ async function addTag(page, value) {
   await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
 
   assert.equal(await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).count(), 1);
-  await page.locator('aside').getByRole('button', { name: 'New page in Projects', exact: true }).click();
+  await page.locator('aside [data-open-folder="projects"]').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'New file…', exact: true }).click();
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Canceled project');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.locator('aside').getByRole('button', { name: 'New page in Projects', exact: true }).click();
+  await page.locator('aside [data-open-folder="projects"]').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'New file…', exact: true }).click();
   await page.keyboard.press('ControlOrMeta+,');
   await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
   await page.keyboard.press('ControlOrMeta+['); await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();

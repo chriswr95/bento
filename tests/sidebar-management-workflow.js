@@ -28,7 +28,8 @@ export async function checkSidebarManagement({ launch, stop, temporary, root }) 
     assert.equal(await page.getByRole('combobox', { name: 'Folder', exact: true }).inputValue(), '');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     // An unrelated file action must preserve an unfinished New file form.
-    await tree().getByRole('button', { name: 'New page', exact: true }).click();
+    await folderRow('notes').click({ button: 'right' });
+    await menu('Folder actions').getByRole('menuitem', { name: 'New file…', exact: true }).click();
     await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Keep this unfinished title');
     await row('note-scratch').focus(); await row('note-scratch').press('Delete');
     await page.locator('.b-deletion-notice').filter({ hasText: 'Deleted Scratch notes.' }).waitFor();

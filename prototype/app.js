@@ -366,8 +366,7 @@ import BentoFileSession from './file-session.js';
     const fallback = !node.path.includes('/');
     return `<li class="b-tree-folder"><details data-directory="${escape(node.path)}" ${directoryState.expanded(node.path, fallback) ? 'open' : ''}>
       <summary title="${escape(node.path || files.view.folder)}"><span class="b-tree-chevron" aria-hidden="true"></span>${folderIcon(!!node.database)}<button type="button" class="b-tree-folder-name" data-open-folder="${escape(node.path)}" ${node.database ? `aria-description="${node.unavailable ? 'Unavailable database' : 'Database'}"` : ''} ${state.view === 'folder' && state.folder === node.path ? 'aria-current="page"' : ''}>${escape(label)}</button></summary>
-      ${directoryContents(node)}</details>
-      ${node.path === '' ? '<button type="button" class="b-tree-new-folder" data-new-folder data-folder-parent="" aria-label="New folder" title="New folder">'+folderIcon(false)+'</button>' : ''}<button type="button" class="b-tree-create" data-page-folder="${escape(node.path || workspace().defaultPageFolder)}" aria-label="${node.path ? `New page in ${escape(node.name)}` : 'New page'}" title="New page" ${files.view.readOnly || node.unavailable ? 'disabled' : ''}>+</button></li>`;
+      ${directoryContents(node)}</details></li>`;
   }
   function folderIcon(database) {
     return `<svg class="b-folder-icon${database ? ' b-database-icon' : ''}" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">${database ? '<rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 6v8"/>' : '<path d="M1.5 5V3h5l2 2h6v8h-13V5Z"/>'}</svg>`;
@@ -628,10 +627,9 @@ import BentoFileSession from './file-session.js';
       else if (button.hasAttribute('data-restore-deleted')) { root.querySelector('.b-workspace-menu').open = false; restoreDeletedFile(); }
       else if (button.hasAttribute('data-dismiss-deletion')) root.querySelector('.b-deletion-notice').hidden = true;
       else if (button.hasAttribute('data-new-folder')) {
-        if (!files.view.readOnly && (!propertyEditor || propertyEditor.commit())) folderDialog.show('create', button.hasAttribute('data-folder-parent') ? button.dataset.folderParent : state.view === 'folder' ? state.folder : '');
+        if (!files.view.readOnly && (!propertyEditor || propertyEditor.commit())) folderDialog.show('create', state.view === 'folder' ? state.folder : '');
       }
       else if (button.hasAttribute('data-move-page')) { if (!propertyEditor || propertyEditor.commit()) folderDialog.show('move', (workspace().paths[record().id] || '').split('/').slice(0, -1).join('/'), record().id); }
-      else if (button.hasAttribute('data-page-folder')) showCreate(folderDatabase(workspace(), button.dataset.pageFolder) || null, null, button.dataset.pageFolder);
       else if (button.hasAttribute('data-new-page')) showCreate(folderDatabase(workspace(), currentFolder()) || null, null, currentFolder());
       else if (button.hasAttribute('data-reload-settings')) loadPersonal().then(() => { render(); notify(personalSettings?.warning || 'Personal settings reloaded.'); });
       else if (button.hasAttribute('data-theme-toggle')) changeAppearance(nextTheme(appearance.theme, systemAppearance.matches)).then(() => themePicker?.render());

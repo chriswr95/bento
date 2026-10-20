@@ -9,7 +9,8 @@ export async function checkPageWorkflow({ launch, stop, temporary, root }) {
   let launched = await launch(folder, userData), app = launched.app, page = launched.page;
   const saved = () => page.locator('#b-save-state').filter({ hasText: /^Saved$/ }).waitFor();
   const createPage = async title => {
-    await page.getByRole('button', { name: 'New page', exact: true }).click();
+    await page.locator('aside [data-open-folder="notes"]').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'New file…', exact: true }).click();
     await page.getByRole('textbox', { name: 'Document title', exact: true }).fill(title);
     await page.getByRole('button', { name: 'Create page', exact: true }).click(); await saved();
   };
