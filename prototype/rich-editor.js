@@ -11,6 +11,8 @@ import { editorSchema as schema, MarkdownBridge, taskPositions } from './rich-ma
 import model from './workspace.js';
 import PageLinkPicker from './page-link-picker.js';
 import SlashPicker from './slash-picker.js';
+import MicroPropertyPicker from './micro-property-picker.js';
+import { propertyQuery, entryFields, fieldValue } from './micro-syntax.js';
 
 function taskRule(state, match, start, end) {
   const $from = state.doc.resolve(start); if ($from.parent.type !== schema.nodes.paragraph) return null;
@@ -104,7 +106,7 @@ export default class RichEditor {
       dispatchTransaction: tr => this.dispatch(tr),
       decorations: state => DecorationSet.create(state.doc, taskPositions(state.doc).filter(({ node }) => node.attrs.todoId && options.validTask?.(node.attrs.todoId, node.attrs.href)).map(({ node, position }) => Decoration.node(position + 1, position + 1 + node.firstChild.nodeSize, { role: 'link', tabindex: '0', 'data-todo-link': node.attrs.todoId, 'aria-label': node.firstChild.textContent, title: 'Open todo · Alt-click to edit text' }))),
       handleKeyDown: (_view, event) => {
-        if (this.slashPicker?.keydown(event) || this.pagePicker?.keydown(event)) return true;
+        if (this.microPicker?.keydown(event) || this.slashPicker?.keydown(event) || this.pagePicker?.keydown(event)) return true;
         const link = event.target.closest('[data-todo-link]');
         if (link && event.target === link && event.key === 'Enter') { event.preventDefault(); options.openRecord?.(link.dataset.todoLink); return true; }
         return false;
@@ -112,7 +114,7 @@ export default class RichEditor {
       nodeViews: { list_item: (node, view, getPos) => new ListItemView(node, view, getPos, this) },
       clipboardTextParser: text => Slice.maxOpen(new MarkdownBridge(text).doc.content),
       transformPastedHTML: safePaste,
-      handleDOMEvents: { compositionend: () => { setTimeout(() => { if (!this.destroyed) { this.publish(); this.pagePicker?.update(); this.slashPicker?.update(); } }, 0); return false; } },
+      handleDOMEvents: { compositionend: () => { setTimeout(() => { if (!this.destroyed) { this.publish(); this.pagePicker?.update(); this.slashPicker?.update(); this.microPicker?.update(); } }, 0); return false; } },
       handleClick: (_view, _pos, event) => {
         const todo = event.target.closest('[data-todo-link]');
         if (todo && !event.altKey && event.detail < 2 && this.view.state.selection.empty) { event.preventDefault(); options.openRecord?.(todo.dataset.todoLink); return true; }
@@ -124,6 +126,13 @@ export default class RichEditor {
       }
     });
     this.syncTasks(); this.pagePicker = new PageLinkPicker(this, options); this.slashPicker = new SlashPicker(this, options);
+    if (options.microContext && !options.readOnly) this.microPicker = new MicroPropertyPicker(element, {
+      host: this.view.dom, workspace: options.workspace, today: options.today,
+      query: () => this.microQuery(), rect: context => this.view.coordsAtPos(context.to),
+      fields: context => entryFields(options.workspace(), context.database),
+      value: (context, field) => fieldValue(options.workspace().records[context.target], field),
+      apply: (context, _field, patch) => this.applyMicro(context, patch), focus: () => this.view.focus()
+    });
   }
   dispatch(tr) {
     if (this.options.readOnly && tr.docChanged) return;
@@ -131,7 +140,35 @@ export default class RichEditor {
     if (tr.docChanged && !previous.selection.empty) tr = closeHistory(tr);
     this.view.updateState(previous.apply(tr));
     if (tr.docChanged && !this.view.composing) this.publish(previous);
-    this.pagePicker?.update(); this.slashPicker?.update();
+    this.pagePicker?.update(); this.slashPicker?.update(); this.microPicker?.update();
+  }
+  microQuery() {
+    const { selection } = this.view.state, { $from } = selection;
+    if (!selection.empty || this.view.composing || !$from.parent.isTextblock || $from.parent.type.spec.code || $from.marks().some(mark => mark.type.name === 'code')) return null;
+    const text = $from.parent.textBetween(0, $from.parentOffset, '\n', '\ufffc'), query = propertyQuery(text);
+    if (!query || /\[\[[^\]\n]*$/.test(text) || text.trimStart().startsWith('/')) return null;
+    let todo;
+    for (let depth = $from.depth; depth > 0; depth--) if ($from.node(depth).type.name === 'list_item' && $from.node(depth).attrs.checked !== null && $from.index(depth) === 0) {
+      todo = $from.node(depth).attrs.todoId;
+      if (!todo || !this.options.validTask?.(todo, $from.node(depth).attrs.href)) return null;
+      break;
+    }
+    const context = this.options.microContext(todo);
+    return context && { ...context, todo: !!todo, paragraph: $from.start() - 1, from: $from.pos - text.length + query.from, to: $from.pos, text: query.text, token: text.slice(query.from) };
+  }
+  applyMicro(context, patch) {
+    if (this.view.state.doc.textBetween(context.from, context.to) !== context.token) throw new Error('The text changed. Select the property again.');
+    let from = context.from;
+    const paragraph = this.view.state.doc.nodeAt(context.paragraph);
+    if (context.todo && context.to === context.paragraph + 1 + paragraph.content.size) {
+      while (from > context.paragraph + 1 && /\s/.test(this.view.state.doc.textBetween(from - 1, from))) from--;
+    }
+    const transaction = closeHistory(this.view.state.tr.delete(from, context.to));
+    if (context.todo && !transaction.doc.nodeAt(context.paragraph)?.textContent.trim()) throw new Error('Add a todo title before setting properties.');
+    const body = this.bridge.serialize(transaction.doc);
+    this.options.applyMicro(body, context.target, patch);
+    this.view.updateState(this.view.state.apply(transaction));
+    this.syncTasks(); this.bridge.remember(this.view.state.doc, this.options.body());
   }
   publish(previous) {
     try {
@@ -163,5 +200,5 @@ export default class RichEditor {
     if (value.focused) this.view.focus();
   }
   focus() { this.view.focus(); }
-  destroy() { this.destroyed = true; this.pagePicker?.destroy(); this.slashPicker?.destroy(); this.view.destroy(); }
+  destroy() { this.destroyed = true; this.pagePicker?.destroy(); this.slashPicker?.destroy(); this.microPicker?.destroy(); this.view.destroy(); }
 }

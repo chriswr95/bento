@@ -295,6 +295,16 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-page-link-picker [role=option] {padding:7px 9px;border-radius:4px;cursor:pointer;display:grid;gap:2px}
 #bento-workflow .b-page-link-picker [aria-selected=true] {background:var(--b-wash)}
 #bento-workflow .b-page-link-picker small {color:var(--b-soft);font-size:11px}
+#bento-workflow .b-micro-picker {position:fixed;z-index:1100;width:min(340px,calc(100vw - 16px));max-height:min(360px,calc(100dvh - 16px));overflow:auto;padding:8px;border:1px solid var(--b-line);border-radius:7px;background:var(--b-paper);color:var(--b-ink);box-shadow:0 8px 24px #0002;font-size:13px}
+#bento-workflow .b-micro-picker [role=option] {display:flex;justify-content:space-between;gap:12px;padding:8px;border-radius:4px;cursor:pointer}
+#bento-workflow .b-micro-picker [aria-selected=true] {background:var(--b-wash)}
+#bento-workflow .b-micro-picker small {font-size:11px;color:var(--b-soft)}
+#bento-workflow .b-micro-picker input,#bento-workflow .b-micro-picker select,#bento-workflow .b-micro-picker textarea {display:block;width:100%;margin:8px 0;border:1px solid var(--b-line);border-radius:4px;padding:7px;background:var(--b-paper);color:var(--b-ink);font:inherit}
+#bento-workflow .b-micro-picker button {border:0;background:var(--b-side);color:var(--b-ink);border-radius:4px;padding:5px 9px}
+#bento-workflow .b-micro-picker button:hover {background:var(--b-wash)}
+#bento-workflow .b-micro-actions {display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+#bento-workflow .b-micro-dates {display:flex;gap:8px}
+#bento-workflow .b-entry-properties {display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
 
 #bento-workflow .b-sidebar-section {display:flex;align-items:center;justify-content:space-between;margin:20px 4px 6px;font-size:12px;font-weight:600;color:var(--b-soft);flex:none}
 #bento-workflow .b-sidebar-tools {display:flex;gap:2px}

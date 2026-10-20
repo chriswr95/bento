@@ -1,5 +1,6 @@
 import { checkOrganizationWorkflow } from './organization-workflow.js';
 import { checkPropertyLayout } from './property-layout-workflow.js';
+import { checkMicroSyntax } from './micro-syntax-workflow.js';
 import { checkSidebarManagement } from './sidebar-management-workflow.js';
 import { checkInlineMenuWorkflow } from './inline-menu-workflow.js';
 import { checkDailyWorkflow } from './daily-workflow.js';
@@ -80,6 +81,7 @@ async function addTag(page, value) {
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-desktop-'));
   if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--properties')) { await checkPropertyLayout({ launch, stop, temporary, root }); return; }
+  if (process.argv.includes('--micro')) { await checkMicroSyntax({ launch, stop, temporary, root }); return; }
   const workspace = path.join(temporary, 'Workspace'), userData = path.join(temporary, 'UserData');
   await fs.mkdir(workspace);
   let launched = await launch(null, userData); application = launched.app; let page = launched.page;

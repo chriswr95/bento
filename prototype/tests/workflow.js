@@ -8,6 +8,7 @@ import { checkShortcuts } from './shortcuts.js';
 import { checkColors } from './colors.js';
 import { checkThemes } from './themes.js';
 import { checkProperties } from './properties.js';
+import { checkMicroSyntax } from './micro-syntax.js';
 import { serve } from '../../scripts/serve.js';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -239,6 +240,7 @@ async function paste(editor, text, html = '') {
  console.log('Passed saved-workspace migration with original backup, stable todo identity, and retained notes.');
  await context.close();
  await checkProperties(browser, url);
+  await checkMicroSyntax(browser, url);
  await checkThemes(browser, url, screenshots);
  await checkColors(browser, url, screenshots);
  await checkShortcuts(browser, url, screenshots);

@@ -53,7 +53,13 @@ Unit tests cover standalone creation without hierarchy, rejected Parent creation
 
 ### Slash-command coverage
 
-Unit tests validate block structures, one-step undo, and invalid commands. Browser checks exercise slash headings, tracked todos, literal `/page`, and unknown/cancelled commands. Page creation remains available through the sidebar and command palette.
+Unit tests validate block structures, one-step undo, and invalid commands. Browser checks exercise slash headings, tracked todos, database creation choices, absent subpages, and unknown/cancelled commands. Page creation is available through the sidebar, database slash actions and command palette.
+
+### Micro-syntax entry coverage
+
+`pnpm test:desktop:micro` runs a hidden Electron workflow for checkbox `@` date/project/status assignment and slash/palette creation in a custom Permits database. It checks required text/date values, numeric zero, boolean false, multiple choices, tags with commas, color, invalid input, cancellation, clean titles, stable task identity, no files before submission and persistence after restart. It is included in `pnpm test:desktop` and can target `BENTO_PACKAGED_EXECUTABLE` for packaged smoke checks.
+
+Browser tests exercise the same three entry paths, keyboard and mouse choices, cancelled values preserving text and metadata, email/code exclusions and simulated composition events. Real IME evaluation remains part of manual editing QA. Unit tests cover bounded literal query parsing, case/diacritic matching, typed validation, schema-driven fields and canonical relation IDs. File-session tests cover no-op status/draft cleanup and returning to the baseline while a write remains in flight.
 
 ### Daily review and next-morning workflow
 

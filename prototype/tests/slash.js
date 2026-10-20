@@ -13,7 +13,8 @@ export async function checkSlash(browser, url) {
     await editor.press('Enter'); await editor.pressSequentially('/todo'); await editor.press('Enter'); await editor.pressSequentially('Slash action');
     await editor.getByRole('checkbox', { name: 'Complete Slash action', exact: true }).waitFor();
     await editor.press('Enter'); await editor.press('Enter'); await editor.pressSequentially('/page');
-    await menu.getByText('No matching commands', { exact: true }).waitFor();
+    await menu.getByRole('option', { name: /^New page in / }).first().waitFor();
+    assert.equal(await menu.getByRole('option', { name: /^New subpage/ }).count(), 0);
     await editor.press('Escape'); assert.match(await editor.innerText(), /\/page/);
     assert.equal(await page.getByRole('textbox', { name: 'Document title', exact: true }).count(), 0);
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('bento.prototype.workspace.v4')));
@@ -21,6 +22,6 @@ export async function checkSlash(browser, url) {
     await editor.press('ControlOrMeta+End'); await editor.press('Enter'); await editor.pressSequentially('/not-a-command');
     await menu.getByText('No matching commands', { exact: true }).waitFor(); await editor.press('Escape');
     assert.equal(await menu.isVisible(), false); assert.match(await editor.innerText(), /\/not-a-command/);
-    console.log('Passed slash headings/todos, removed /page command, and literal unknown/cancelled commands.');
+    console.log('Passed slash headings/todos, database creation choices, absent subpages, and literal unknown/cancelled commands.');
   } finally { await page.close(); }
 }

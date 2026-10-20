@@ -14,6 +14,8 @@ import FolderDialog from './folder-dialog.js';
 import { legacyPreferences } from './personal-settings.js';
 import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
 import InlineProperties from './inline-properties.js';
+import MicroInput from './micro-input.js';
+import { entryFields, fieldValue, valueChoices } from './micro-syntax.js';
 import PropertyLayoutDialog from './property-layout-dialog.js';
 import { withPropertyLayout } from './property-layout.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
@@ -129,7 +131,7 @@ import BentoFileSession from './file-session.js';
   const dueLabel = due => !due ? 'No date' : due === planDate ? 'Today'
     : new Date(due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  let liveEditor = null, propertyEditor = null, shortcutReference = null, creation = null, sidebarExplorer = null;
+  let liveEditor = null, propertyEditor = null, shortcutReference = null, creation = null, sidebarExplorer = null, creationComposer = null;
   const location = () => ({ view: state.view, project: state.project, document: state.document, ...(state.view === 'folder' ? { folder: state.folder || '' } : {}) });
   const navigation = new NavigationHistory(location());
 
@@ -229,8 +231,8 @@ import BentoFileSession from './file-session.js';
     commands.push({ id: 'overview', title: 'Daily Overview', detail: 'Command', kind: 'command', run: commandHandlers.overview },
       { id: 'appearance', title: 'Choose Color Theme', detail: 'Command · Appearance settings', kind: 'command', run: commandHandlers.appearance },
       { id: 'toggle-mode', title: 'Toggle Light / Dark Mode', detail: 'Command · Appearance', kind: 'command', run: commandHandlers['toggle-mode'] });
+    if ((!desktop || files?.view) && !files?.view?.readOnly) for (const database of Object.values(workspace().databases)) commands.push({ id: 'create:' + database.id, title: creationLabel(database), detail: 'Create a Markdown page · ' + database.title, keywords: ['new ' + database.title], kind: 'command', run: () => showCreate(database.id, state.project || (record() && (model.capability(workspace(), record(), 'project') ? record().id : model.projectOf(workspace(), record()))) || null) });
     if (desktop && files?.view) {
-      if (!files.view.readOnly) for (const database of Object.values(workspace().databases)) commands.push({ id: 'create:' + database.id, title: creationLabel(database), detail: 'Create a Markdown page · ' + database.title, kind: 'command', run: () => showCreate(database.id, state.project || (record() && (model.capability(workspace(), record(), 'project') ? record().id : model.projectOf(workspace(), record()))) || null) });
       for (const [id, title] of [['open', 'Open Workspace…'], ['create', 'New Workspace…'], ['reload', 'Reload Workspace Files']]) commands.push({ id: 'workspace:' + id, title, detail: 'Command · Workspace', kind: 'command', run: () => files.open(() => desktop[id]()) });
       if (files.view.lastDeletion && !files.view.readOnly) commands.push({ id: 'restore-deleted', title: 'Restore last deleted file', detail: 'Command · Workspace trash', kind: 'command', run: restoreDeletedFile });
     }
@@ -256,7 +258,7 @@ import BentoFileSession from './file-session.js';
       else return paletteCommands().find(command => command.id === entry.id)?.run();
     }, error: notify
   });
-  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => (!desktop || !!files?.view) && !root.querySelector('dialog[open]:not(.b-quick-open)') && !sidebarExplorer?.open && !files?.operating });
+  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => (!desktop || !!files?.view) && !root.querySelector('dialog[open]:not(.b-quick-open),.b-micro-picker[role=dialog]:not([hidden])') && !sidebarExplorer?.open && !files?.operating });
   document.addEventListener('keydown', event => shortcutController.handle(event), true);
   window.addEventListener('blur', () => shortcutController.clear());
   function openRecord(documentId) {
@@ -360,20 +362,44 @@ import BentoFileSession from './file-session.js';
     if (databaseId !== null && !workspace().databases[databaseId]) return notify('This database is unavailable. Reload or restore its definition.');
     const eligible = foldersFor(workspace(), databaseId);
     const desired = folder ?? currentFolder();
-    creation = { database: databaseId, project, folder: eligible.includes(desired) ? desired : databaseId ? workspace().databasePaths[databaseId] : workspace().defaultPageFolder, previous: location() };
+    creation = { database: databaseId, project, properties: {}, folder: eligible.includes(desired) ? desired : databaseId ? workspace().databasePaths?.[databaseId] || '' : workspace().defaultPageFolder || '', previous: location() };
     state.view = 'create'; render();
     main.querySelector('[name="title"]').focus();
   }
   function renderCreation() {
+    creationComposer?.destroy(); creationComposer = null;
     const database = workspace().databases[creation.database], relation = projectField(database, getProject(creation.project));
     const projects = Object.values(workspace().records).filter(doc => doc.database === relation?.target_database && model.capability(workspace(), doc, 'project') && (model.activeProjects(workspace()).some(active => active.id === doc.id) || doc.id === creation.project));
     main.innerHTML = `<p class="b-eyebrow">${escape(database?.title || 'Workspace')}</p><h1>${escape(database ? creationLabel(database) : 'New page')}</h1>
-      <p class="b-muted">A Markdown document for your notes and details.</p>
+      <p class="b-muted">A Markdown document for your notes and details. Type @ in the title to set properties.</p>
       <form id="b-create-document"><label class="b-field">Title<input name="title" aria-label="Document title" required maxlength="200" value="${escape(creation.title || '')}" placeholder="${database?.capabilities.project ? 'e.g. Creekside improvements' : 'Give this page a title'}"></label>
       ${desktop ? `<label class="b-field">Database<select data-create-database name="database" aria-label="Database"><option value="">None · ordinary page</option>${Object.values(workspace().databases).map(db => `<option value="${escape(db.id)}" ${db.id === creation.database ? 'selected' : ''}>${escape(db.title)}</option>`).join('')}</select></label><label class="b-field">Folder<select name="folder" aria-label="Folder">${foldersFor(workspace(), creation.database).map(path => `<option value="${escape(path)}" ${path === creation.folder ? 'selected' : ''}>${escape(path || 'Workspace root')}</option>`).join('')}</select></label>` : ''}
       ${relation ? `<label class="b-field">Project<select name="project" aria-label="Project"><option value="">Unassigned</option>${projects.map(project => `<option value="${project.id}" ${creation.project === project.id ? 'selected' : ''}>${escape(project.title)}</option>`).join('')}</select></label>` : ''}
+      <div data-entry-properties class="b-entry-properties" aria-label="Entry properties"></div>
       <p id="b-create-error" class="b-issues" role="alert" hidden></p>
       <div class="b-actions"><button type="submit" class="b-button b-primary">Create page</button><button type="button" class="b-button" data-cancel-create>Cancel</button></div></form>`;
+    const input = main.querySelector('[name=title]');
+    creationComposer = new MicroInput(input, {
+      root: main, workspace, database: () => creation.database, today: () => planDate,
+      record: () => ({ properties: { ...Object.fromEntries((database?.fields || []).filter(field => 'default' in field).map(field => [field.id, field.default])), ...(relation && creation.project ? { [relation.id]: relation.cardinality === 'many' ? [creation.project] : creation.project } : {}), ...creation.properties }, tags: creation.tags || [], color: creation.color || '' }),
+      apply(field, patch) {
+        creation.properties = { ...creation.properties, ...patch.properties };
+        if ('tags' in patch) creation.tags = patch.tags;
+        if ('color' in patch) creation.color = patch.color;
+        if (relation?.id === field.id) { creation.project = Array.isArray(patch.properties[field.id]) ? patch.properties[field.id][0] || '' : patch.properties[field.id] || ''; const select = main.querySelector('[name=project]'); if (select) select.value = creation.project; }
+        renderEntryProperties();
+      }
+    });
+    renderEntryProperties();
+  }
+  function renderEntryProperties() {
+    const panel = main.querySelector('[data-entry-properties]'); if (!panel) return;
+    const data = { properties: creation.properties || {}, tags: creation.tags, color: creation.color };
+    panel.innerHTML = entryFields(workspace(), creation.database).filter(field => field.id === '$tags' ? creation.tags !== undefined : field.id === '$color' ? creation.color !== undefined : Object.hasOwn(data.properties, field.id)).map(field => {
+      const value = fieldValue(data, field), choices = valueChoices(workspace(), field, value);
+      const display = item => choices.find(choice => choice.id === String(item))?.name || (item == null || item === '' ? field.type === 'color' ? 'Automatic' : 'Not set' : String(item));
+      return `<span class="b-property-chip">${escape(field.name)} · ${escape((Array.isArray(value) ? value : [value]).map(display).join(', '))}</span>`;
+    }).join('');
   }
   function directoryContents(node) {
     const folders = node.folders.map(directoryFolder).join('');
@@ -527,6 +553,23 @@ import BentoFileSession from './file-session.js';
     });
     liveEditor = new RichEditor(main.querySelector('#b-reading'), {
       body: () => record().body, label, readOnly: readOnly(doc),
+      workspace, today: () => planDate,
+      microContext: target => {
+        const page = workspace().records[target || doc.id];
+        return page && !readOnly(page) ? { target: page.id, database: page.database || null } : null;
+      },
+      applyMicro(body, target, patch) {
+        if (propertyEditor && !propertyEditor.commit()) throw new Error('Finish or cancel the active property edit first.');
+        const edited = model.applyEdit(workspace(), doc.id, body).workspace;
+        const next = model.updateDocument(edited, target, patch);
+        previous = clone(state); editingSnapshot = null; state.workspace = next;
+        propertyEditor.render(); refreshDocument();
+        const dot = main.querySelector('[data-document-color]'); if (dot) dot.dataset.color = recordColor(record());
+        if (desktop) renderSidebar();
+        persist(); notify('Property saved.');
+      },
+      databases: () => !files?.view?.readOnly ? Object.values(workspace().databases) : [],
+      createDatabase: database => showCreate(database, state.project || model.projectOf(workspace(), record()) || null),
       change: body => editDocument(body), error: notify, openRecord,
       validTask: (id, href) => !!record().references[id] && !!model.taskInfo(workspace(), workspace().records[id]) && model.linkMatches(workspace(), record().id, href, id),
       pages: () => Object.values(workspace().records).filter(page => page.id !== record().id).sort((a, b) => a.title.localeCompare(b.title)).map(page => ({ id: page.id, title: page.title, detail: (workspace().paths?.[page.id] || page.id + '.md') + (workspace().databases[page.database] ? ' · ' + workspace().databases[page.database].title : '') })),
@@ -580,6 +623,7 @@ import BentoFileSession from './file-session.js';
     motion.cancel();
     themePicker = null; shortcutReference = null;
     propertyEditor?.destroy(); propertyEditor = null;
+    creationComposer?.destroy(); creationComposer = null;
     liveEditor?.destroy(); liveEditor = null;
     if (desktop && !files?.view) {
       root.querySelector('aside').hidden = true;
@@ -709,7 +753,14 @@ import BentoFileSession from './file-session.js';
         const database = event.target.value || null;
         if (database !== creation.database) creation.folder = database ? workspace().databasePaths[database] : workspace().defaultPageFolder;
         creation.database = database;
+        creation.properties = {}; delete creation.tags; delete creation.color;
         renderCreation(); main.querySelector('[data-create-database]').focus();
+      }
+      else if (state.view === 'create' && event.target.matches('[name=project]')) {
+        creation.project = event.target.value;
+        const relation = projectField(workspace().databases[creation.database], getProject(creation.project));
+        if (relation) delete creation.properties[relation.id];
+        renderEntryProperties();
       }
       else if (event.target.dataset.task) completeTask(event.target);
 
@@ -724,10 +775,10 @@ import BentoFileSession from './file-session.js';
     if (form.id === 'b-create-document') {
       try {
         const database = workspace().databases[creation.database], relation = projectField(database, getProject(creation.project)), project = String(values.get('project') || '');
-        const properties = relation && project ? { [relation.id]: relation.cardinality === 'many' ? [project] : project } : {};
+        const properties = { ...(relation && project ? { [relation.id]: relation.cardinality === 'many' ? [project] : project } : {}), ...creation.properties };
         const result = model.createDocument(workspace(), { database: database?.id || null, title: String(values.get('title')), properties, ...(desktop ? { folder: String(values.get('folder')) } : {}) });
         previous = null;
-        state.workspace = result.workspace;
+        state.workspace = model.updateDocument(result.workspace, result.documentId, { ...(creation.tags !== undefined ? { tags: creation.tags } : {}), ...(creation.color !== undefined ? { color: creation.color } : {}) });
         creation = null;
         navigate('document', null, result.documentId);
         notify('Created a Markdown document.');
