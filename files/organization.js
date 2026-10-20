@@ -4,11 +4,12 @@ import * as paths from './paths.js';
 import * as markdown from './markdown.js';
 import { definitionPath } from './database-definitions.js';
 import { moveLinks } from './move-links.js';
+import { folderDatabase, folderAvailable } from '../prototype/folders.js';
 
 export function publicFolder(folder) {
   if (folder === '') return folder;
   paths.relative(folder);
-  if (folder.split('/').some(part => part.startsWith('.') || part === 'node_modules') || folder === 'databases' || folder.startsWith('databases/')) throw new Error('Choose an ordinary workspace folder.');
+  if (folder.split('/').some(part => part.startsWith('.') || part === 'node_modules')) throw new Error('Choose a visible workspace folder.');
   return folder;
 }
 export function complete(repository) {
@@ -27,6 +28,7 @@ export async function folderPlan(repository, parent, name) {
   if (name.includes('/')) throw new Error('Enter one folder name.');
   const folder = publicFolder(parent ? parent + '/' + name : name);
   if (parent && !repository.folders.includes(parent)) throw new Error('Parent folder is unavailable.');
+  if (!folderAvailable(repository.workspace, parent) || folderDatabase(repository.workspace, parent) && !repository.workspace.databases[folderDatabase(repository.workspace, parent)]) throw new Error('Restore this database before creating folders inside it.');
   await vacant(repository, folder);
   return { entries: [], directories: [folder] };
 }
@@ -35,6 +37,8 @@ export async function movePlan(repository, id, folder) {
   if (folder && !repository.folders.includes(folder)) throw new Error('Destination folder is unavailable.');
   if (!Object.hasOwn(repository.workspace.records, id) || id === repository.workspace.home) throw new Error('Choose an ordinary page to move.');
   const beforePath = repository.workspace.paths[id], afterPath = (folder ? folder + '/' : '') + path.posix.basename(beforePath);
+  const database = repository.workspace.records[id].database || null;
+  if ((folderDatabase(repository.workspace, folder) || null) !== database) throw new Error('Moving between a database and another location requires Change database. Move page keeps the current database.');
   if (beforePath === afterPath) return { entries: [], directories: [] };
   await vacant(repository, afterPath);
   const moved = new Map([[beforePath, afterPath]]), entries = [];

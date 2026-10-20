@@ -10,9 +10,9 @@ fields:
     type: status
     default: option-open
     options:
-      - {id: option-open, name: Todo, group: not-started}
-      - {id: option-started, name: In progress, group: in-progress}
-      - {id: option-done, name: Done, group: complete}
+      - { id: option-open, name: Todo, group: not-started }
+      - { id: option-started, name: In progress, group: in-progress }
+      - { id: option-done, name: Done, group: complete }
   - id: field-task-due
     name: Due date
     type: date
@@ -25,9 +25,9 @@ fields:
     name: Priority
     type: select
     options:
-      - {id: priority-low, name: Low}
-      - {id: priority-medium, name: Medium}
-      - {id: priority-high, name: High}
+      - { id: priority-low, name: Low }
+      - { id: priority-medium, name: Medium }
+      - { id: priority-high, name: High }
   - id: field-task-effort
     name: Estimated hours
     type: number

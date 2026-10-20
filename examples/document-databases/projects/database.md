@@ -10,14 +10,14 @@ fields:
     type: status
     default: option-active
     options:
-      - {id: option-active, name: Active, group: in-progress}
-      - {id: option-completed, name: Completed, group: complete}
-      - {id: option-archived, name: Archived, group: complete}
+      - { id: option-active, name: Active, group: in-progress }
+      - { id: option-completed, name: Completed, group: complete }
+      - { id: option-archived, name: Archived, group: complete }
 capabilities:
   project:
     active:
       field: field-project-status
-      values: [option-active]
+      values: [ option-active ]
 ---
 
 # Projects

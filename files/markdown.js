@@ -23,10 +23,10 @@ function updateMap(document, path, before, after) {
 
 function serialize(record, original) {
   const parsed = parse(original || '');
-  const { body, database, ...metadata } = record;
+  const { body, ...metadata } = record;
   const next = { ...parsed.metadata, ...metadata, bento_version: 1 };
-  // Content owns its membership; control documents have no database membership.
-  if (!record.kind) next.database = database ?? null;
+  // Membership is derived from the enclosing registered database folder.
+  delete next.database;
   updateMap(parsed.document, [], parsed.metadata, next);
   const eol = original?.includes('\r\n') ? '\r\n' : '\n';
   const header = parsed.document.toString({ lineWidth: 0 }).replace(/\r?\n/g, eol);

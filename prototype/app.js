@@ -15,6 +15,8 @@ import { legacyPreferences } from './personal-settings.js';
 import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
 import InlineProperties from './inline-properties.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
+import { folderDatabase, foldersFor, folderAvailable } from './folders.js';
+import { propertyChoices } from './property-editor.js';
 import BentoWorkspace from './workspace.js';
 import BentoProfile from './profile.js';
 import RichEditor from './vendor/rich-editor.js';
@@ -266,7 +268,7 @@ import BentoFileSession from './file-session.js';
     return doc && doc.id !== workspace().home && !model.capability(workspace(), doc, 'task') && !model.capability(workspace(), doc, 'project');
   }
   const folderDialog = new FolderDialog(root, {
-    folders: () => workspace().folders || [],
+    folders: (mode, id) => mode === 'move' ? foldersFor(workspace(), workspace().records[id]?.database || null) : ['', ...workspace().folders].filter(folder => folderAvailable(workspace(), folder) && (!folderDatabase(workspace(), folder) || workspace().databases[folderDatabase(workspace(), folder)])),
     async save({ mode, id, folder, name }) {
       const result = await files.mutate(() => mode === 'move' ? desktop.moveDocument(id, folder) : desktop.createFolder(folder, name));
       if (!result) throw new Error(files.lastError || 'Could not organize files.');
@@ -281,13 +283,27 @@ import BentoFileSession from './file-session.js';
   }
   function folderPath(folder, title = null) {
     let path = '';
-    return `<nav class="b-folder-path" aria-label="File path"><button type="button" data-open-folder="">Files</button>${folder.split('/').filter(Boolean).map(part => { path += (path ? '/' : '') + part; return `<span aria-hidden="true">/</span><button type="button" data-open-folder="${escape(path)}">${escape(part)}</button>`; }).join('')}${title ? `<span aria-hidden="true">/</span><span>${escape(title)}</span>` : ''}</nav>`;
+    return `<nav class="b-folder-path" aria-label="File path"><button type="button" data-open-folder="">${escape(files.view.title)}</button>${folder.split('/').filter(Boolean).map(part => { path += (path ? '/' : '') + part; const database = Object.entries(workspace().databasePaths).find(([, value]) => value === path)?.[0]; return `<span aria-hidden="true">/</span><button type="button" data-open-folder="${escape(path)}">${escape(workspace().databases[database]?.title || part)}</button>`; }).join('')}${title ? `<span aria-hidden="true">/</span><span>${escape(title)}</span>` : ''}</nav>`;
+  }
+  function databaseValue(field, record) {
+    const value = record.properties[field.id];
+    if (value == null) return '—';
+    const choices = propertyChoices(workspace(), field, value) || [];
+    const display = item => choices.find(choice => choice.id === item)?.name ?? (typeof item === 'boolean' ? item ? 'Yes' : 'No' : item);
+    return (Array.isArray(value) ? value : [value]).map(display).join(', ');
+  }
+  function databaseList(id) {
+    const database = workspace().databases[id];
+    if (!database) return '<p class="b-issues">Restore this database’s definition to edit its records.</p>';
+    const records = Object.values(workspace().records).filter(record => record.database === id).sort((a, b) => a.title.localeCompare(b.title));
+    return `<div class="b-database-table"><table aria-label="${escape(database.title)} records"><thead><tr><th scope="col">Page</th>${database.fields.map(field => `<th scope="col">${escape(field.name)}</th>`).join('')}</tr></thead><tbody>${records.map(record => `<tr><th scope="row"><button type="button" data-record="${escape(record.id)}">${escape(record.title)}</button></th>${database.fields.map(field => `<td>${escape(databaseValue(field, record))}</td>`).join('')}</tr>`).join('')}</tbody></table>${records.length ? '' : '<p class="b-muted">No records yet.</p>'}</div>`;
   }
   function renderFolder() {
     const path = state.folder || '';
     let node = directoryTree(workspace());
-    for (const part of path.split('/').filter(Boolean)) node = node?.folders.find(folder => folder.name === part);
-    main.innerHTML = `${folderPath(path)}<h1>${escape(path.split('/').at(-1) || 'Files')}</h1><div class="b-actions"><button type="button" class="b-button" data-new-page>New page</button><button type="button" class="b-button" data-new-folder>New folder</button></div><ul class="b-folder-list">${(node?.folders || []).map(folder => `<li><button type="button" data-open-folder="${escape(folder.path)}">▸ ${escape(folder.name)}</button></li>`).join('')}${(node?.documents || []).map(page => `<li><button type="button" data-record="${escape(page.id)}">${escape(page.title)}</button><small>${escape(workspace().databases[workspace().records[page.id].database]?.title || 'Page')}</small></li>`).join('')}</ul>${node?.folders.length || node?.documents.length ? '' : '<p class="b-muted">This folder is empty.</p>'}`;
+    for (const part of path.split('/').filter(Boolean)) node = node?.folders.find(folder => folder.path.split('/').at(-1) === part);
+    const database = node?.database;
+    main.innerHTML = `${folderPath(path)}${database ? '<p class="b-eyebrow">Database</p>' : ''}<h1>${escape(node?.name || files.view.title)}</h1><div class="b-actions"><button type="button" class="b-button" data-new-page ${node?.unavailable ? 'disabled' : ''}>New page</button><button type="button" class="b-button" data-new-folder ${node?.unavailable ? 'disabled' : ''}>New folder</button></div><ul class="b-folder-list">${(node?.folders || []).map(folder => `<li><button type="button" data-open-folder="${escape(folder.path)}">${folderIcon(!!folder.database)} ${escape(folder.name)}</button><small>${folder.database ? 'Database' : 'Folder'}</small></li>`).join('')}${database ? '' : (node?.documents || []).map(page => `<li><button type="button" data-record="${escape(page.id)}">${escape(page.title)}</button><small>Page</small></li>`).join('')}</ul>${database ? databaseList(database) : node?.folders.length || node?.documents.length ? '' : '<p class="b-muted">This folder is empty.</p>'}`;
   }
   function creationLabel(database) { return `New page in ${database.title}`; }
   function readOnly(doc) { return !!files?.view?.readOnly || !!workspace().readOnlyRecords?.includes(doc.id); }
@@ -296,7 +312,9 @@ import BentoFileSession from './file-session.js';
     rememberPresentation();
     if (files?.view?.readOnly) return notify('Repair this workspace before creating documents.');
     if (databaseId !== null && !workspace().databases[databaseId]) return notify('This database is unavailable. Reload or restore its definition.');
-    creation = { database: databaseId, project, folder: folder ?? (state.view === 'folder' ? currentFolder() : databaseId ? workspace().databasePaths[databaseId] : currentFolder()), previous: location() };
+    const eligible = foldersFor(workspace(), databaseId);
+    const desired = folder ?? currentFolder();
+    creation = { database: databaseId, project, folder: eligible.includes(desired) ? desired : databaseId ? workspace().databasePaths[databaseId] : workspace().defaultPageFolder, previous: location() };
     state.view = 'create'; render();
     main.querySelector('[name="title"]').focus();
   }
@@ -306,7 +324,7 @@ import BentoFileSession from './file-session.js';
     main.innerHTML = `<p class="b-eyebrow">${escape(database?.title || 'Workspace')}</p><h1>${escape(database ? creationLabel(database) : 'New page')}</h1>
       <p class="b-muted">A Markdown document for your notes and details.</p>
       <form id="b-create-document"><label class="b-field">Title<input name="title" aria-label="Document title" required maxlength="200" value="${escape(creation.title || '')}" placeholder="${database?.capabilities.project ? 'e.g. Creekside improvements' : 'Give this page a title'}"></label>
-      ${desktop ? `<label class="b-field">Database<select data-create-database name="database" aria-label="Database"><option value="">None · ordinary page</option>${Object.values(workspace().databases).map(db => `<option value="${escape(db.id)}" ${db.id === creation.database ? 'selected' : ''}>${escape(db.title)}</option>`).join('')}</select></label><label class="b-field">Folder<select name="folder" aria-label="Folder">${['', ...workspace().folders].map(path => `<option value="${escape(path)}" ${path === creation.folder ? 'selected' : ''}>${escape(path || 'Workspace root')}</option>`).join('')}</select></label>` : ''}
+      ${desktop ? `<label class="b-field">Database<select data-create-database name="database" aria-label="Database"><option value="">None · ordinary page</option>${Object.values(workspace().databases).map(db => `<option value="${escape(db.id)}" ${db.id === creation.database ? 'selected' : ''}>${escape(db.title)}</option>`).join('')}</select></label><label class="b-field">Folder<select name="folder" aria-label="Folder">${foldersFor(workspace(), creation.database).map(path => `<option value="${escape(path)}" ${path === creation.folder ? 'selected' : ''}>${escape(path || 'Workspace root')}</option>`).join('')}</select></label>` : ''}
       ${relation ? `<label class="b-field">Project<select name="project" aria-label="Project"><option value="">Unassigned</option>${projects.map(project => `<option value="${project.id}" ${creation.project === project.id ? 'selected' : ''}>${escape(project.title)}</option>`).join('')}</select></label>` : ''}
       <p id="b-create-error" class="b-issues" role="alert" hidden></p>
       <div class="b-actions"><button type="submit" class="b-button b-primary">Create page</button><button type="button" class="b-button" data-cancel-create>Cancel</button></div></form>`;
@@ -320,18 +338,20 @@ import BentoFileSession from './file-session.js';
     const label = node.name;
     const fallback = !node.path.includes('/');
     return `<li class="b-tree-folder"><details data-directory="${escape(node.path)}" ${directoryState.expanded(node.path, fallback) ? 'open' : ''}>
-      <summary title="${escape(node.path || files.view.folder)}"><span class="b-tree-chevron" aria-hidden="true"></span><button type="button" class="b-tree-folder-name" data-open-folder="${escape(node.path)}" ${state.view === 'folder' && state.folder === node.path ? 'aria-current="page"' : ''}>${escape(label)}</button></summary>
+      <summary title="${escape(node.path || files.view.folder)}"><span class="b-tree-chevron" aria-hidden="true"></span>${folderIcon(!!node.database)}<button type="button" class="b-tree-folder-name" data-open-folder="${escape(node.path)}" ${node.database ? `aria-description="${node.unavailable ? 'Unavailable database' : 'Database'}"` : ''} ${state.view === 'folder' && state.folder === node.path ? 'aria-current="page"' : ''}>${escape(label)}</button></summary>
       ${directoryContents(node)}</details>
-      <button type="button" class="b-tree-create" data-page-folder="${escape(node.path)}" aria-label="New page in ${escape(node.name)}" title="New page in ${escape(node.name)}" ${files.view.readOnly ? 'disabled' : ''}>+</button></li>`;
+      ${node.path === '' ? '<button type="button" class="b-tree-new-folder" data-new-folder data-folder-parent="" aria-label="New folder" title="New folder">'+folderIcon(false)+'</button>' : ''}<button type="button" class="b-tree-create" data-page-folder="${escape(node.path || workspace().defaultPageFolder)}" aria-label="${node.path ? `New page in ${escape(node.name)}` : 'New page'}" title="New page" ${files.view.readOnly || node.unavailable ? 'disabled' : ''}>+</button></li>`;
+  }
+  function folderIcon(database) {
+    return `<svg class="b-folder-icon${database ? ' b-database-icon' : ''}" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">${database ? '<rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 6v8"/>' : '<path d="M1.5 5V3h5l2 2h6v8h-13V5Z"/>'}</svg>`;
   }
   function renderSidebar() {
     const sidebar = root.querySelector('aside');
     sidebar.hidden = !files?.view;
     if (sidebar.hidden) return;
     const scroll = sidebar.querySelector('.b-directory-tree')?.scrollTop || 0;
-    sidebar.innerHTML = `<nav class="b-nav" aria-label="Workspace">${workspace().home ? `<button type="button" data-record="${workspace().home}" ${state.view === 'document' && state.document === workspace().home ? 'aria-current="page"' : ''}>Workspace</button>` : ''}<button type="button" data-view="daily" ${state.view === 'daily' ? 'aria-current="page"' : ''}>Daily overview</button></nav>
-      <div class="b-sidebar-section"><button type="button" class="b-sidebar-files" data-open-folder="">Files</button><div class="b-sidebar-tools"><button type="button" data-collapse-folders aria-label="Collapse all folders" title="Collapse all folders"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m4 6 4-4 4 4M4 13l4-4 4 4"/></svg></button><button type="button" data-new-folder aria-label="New folder" title="New folder"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 7V5h6l3 3h9v12H3V7Z M12 11v6m-3-3h6"/></svg></button><button type="button" data-new-page aria-label="New page" title="New page" ${files.view.readOnly ? 'disabled' : ''}>+</button></div></div>
-      <nav class="b-directory-tree" aria-label="Workspace files">${directoryContents(directoryTree(workspace()))}</nav>
+    sidebar.innerHTML = `<nav class="b-nav" aria-label="Workspace"><button type="button" data-view="daily" ${state.view === 'daily' ? 'aria-current="page"' : ''}>Daily overview</button></nav>
+      <nav class="b-directory-tree" aria-label="Workspace files"><ul class="b-tree-children">${directoryFolder(directoryTree(workspace()))}</ul></nav>
       <nav class="b-nav b-sidebar-settings" aria-label="Settings"><button type="button" data-view="profile" ${state.view === 'profile' ? 'aria-current="page"' : ''}>Settings</button></nav>`;
     const tree = sidebar.querySelector('.b-directory-tree'); tree.scrollTop = scroll;
     const selected = tree.querySelector('[aria-current="page"]');
@@ -578,16 +598,11 @@ import BentoFileSession from './file-session.js';
     try {
       if (button.hasAttribute('data-open-folder')) { event.preventDefault(); navigate('folder', null, null, button.dataset.openFolder); }
       else if (button.hasAttribute('data-new-folder')) {
-        if (!files.view.readOnly && (!propertyEditor || propertyEditor.commit())) folderDialog.show('create', state.view === 'folder' ? state.folder : '');
+        if (!files.view.readOnly && (!propertyEditor || propertyEditor.commit())) folderDialog.show('create', button.hasAttribute('data-folder-parent') ? button.dataset.folderParent : state.view === 'folder' ? state.folder : '');
       }
       else if (button.hasAttribute('data-move-page')) { if (!propertyEditor || propertyEditor.commit()) folderDialog.show('move', (workspace().paths[record().id] || '').split('/').slice(0, -1).join('/'), record().id); }
-      else if (button.hasAttribute('data-page-folder')) showCreate(null, null, button.dataset.pageFolder);
-      else if (button.hasAttribute('data-collapse-folders')) {
-        const folders = [...root.querySelectorAll('aside details[data-directory]')];
-        directoryState.collapse(folders.map(folder => folder.dataset.directory));
-        folders.forEach(folder => { folder.open = false; });
-      }
-      else if (button.hasAttribute('data-new-page')) showCreate(null);
+      else if (button.hasAttribute('data-page-folder')) showCreate(folderDatabase(workspace(), button.dataset.pageFolder) || null, null, button.dataset.pageFolder);
+      else if (button.hasAttribute('data-new-page')) showCreate(folderDatabase(workspace(), currentFolder()) || null, null, currentFolder());
       else if (button.hasAttribute('data-reload-settings')) loadPersonal().then(() => { render(); notify(personalSettings?.warning || 'Personal settings reloaded.'); });
       else if (button.hasAttribute('data-theme-toggle')) changeAppearance(nextTheme(appearance.theme, systemAppearance.matches)).then(() => themePicker?.render());
       else if (button.dataset.walkthrough) handleWalkthrough(button.dataset.walkthrough);
@@ -642,7 +657,10 @@ import BentoFileSession from './file-session.js';
     try {
       if (event.target.matches('[data-create-database]')) {
         creation.title = main.querySelector('[name=title]').value; creation.folder = main.querySelector('[name=folder]').value;
-        creation.database = event.target.value || null; renderCreation();
+        const database = event.target.value || null;
+        if (database !== creation.database) creation.folder = database ? workspace().databasePaths[database] : workspace().defaultPageFolder;
+        creation.database = database;
+        renderCreation(); main.querySelector('[data-create-database]').focus();
       }
       else if (event.target.dataset.task) completeTask(event.target);
 

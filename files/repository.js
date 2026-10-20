@@ -11,7 +11,8 @@ import model from '../prototype/workspace.js';
 import { exampleWorkspace } from './example-workspace.js';
 import schema from '../prototype/schema.js';
 import { publicFolder, folderPlan, movePlan, vacant } from './organization.js';
-import { loadDefinitions, definitionPath, defaultFolder } from './database-definitions.js';
+import { loadDefinitions, definitionPath } from './database-definitions.js';
+import { folderDatabase, folderAvailable } from '../prototype/folders.js';
 
 async function snapshot(root, folders = []) {
   const names = await paths.walk(root, '', [], folders);
@@ -35,15 +36,19 @@ function manifest(files) {
   const parsed = parseFile(files, 'workspace.md', 'workspace-definition');
   const data = parsed.metadata;
   if (!schema.identity(data.id) || typeof data.title !== 'string' || !Array.isArray(data.databases)) throw new Error('Invalid workspace.md definition.');
-  if (data.organization_version !== 2) throw new Error('Unsupported workspace organization version.');
-  const ids = new Set();
+  if (data.organization_version !== 3) throw new Error('Unsupported workspace organization version.');
+  const ids = new Set(), folders = [];
   publicFolder(data.default_page_folder || 'notes');
   for (const entry of data.databases) {
     if (!schema.identity(entry.id) || ids.has(entry.id)) throw new Error('Duplicate or invalid database identity.');
     ids.add(entry.id);
-    if (entry.definition !== `databases/${entry.id}.md`) throw new Error('Invalid schema definition path.');
-    publicFolder(defaultFolder(entry));
+    publicFolder(entry.path);
+    if (!entry.path) throw new Error('A database must have its own folder.');
+    const folded = entry.path.normalize('NFC').toLowerCase();
+    if (folders.some(folder => folded === folder || folded.startsWith(folder + '/') || folder.startsWith(folded + '/'))) throw new Error('Database folders must be distinct and must not nest.');
+    folders.push(folded);
   }
+  if (folderDatabase({ databasePaths: Object.fromEntries(data.databases.map(entry => [entry.id, entry.path])) }, data.default_page_folder || 'notes')) throw new Error('The default notes folder must be outside databases.');
   return data;
 }
 function contentRecord(name, parsed, database, definitions) {
@@ -93,11 +98,12 @@ class WorkspaceRepository {
     catch (error) { recoveryIssue = error.message; }
     const folders = [], files = await snapshot(this.root, folders), info = manifest(files);
     const workspace = { version: 4, home: info.id, defaultTaskDatabase: info.default_task_database ?? null, databases: {}, records: {}, issues: [], paths: {}, databasePaths: {} };
-    workspace.folders = folders.filter(folder => folder !== 'databases' && !folder.startsWith('databases/'));
+    workspace.folders = folders;
     workspace.defaultPageFolder = info.default_page_folder || 'notes';
     if (info.tag_colors !== undefined) workspace.tagColors = info.tag_colors;
     const loaded = loadDefinitions(files, info);
     workspace.databases = loaded.databases; workspace.databasePaths = loaded.databasePaths;
+    workspace.unavailableFolders = loaded.unavailableFolders;
     workspace.readOnlyRecords = [];
     if (!workspace.databases[workspace.defaultTaskDatabase]?.capabilities.task) {
       workspace.defaultTaskDatabase = null;
@@ -112,12 +118,11 @@ class WorkspaceRepository {
       if (controls.has(name)) continue;
       try {
         const parsed = parseFile(files, name);
-        if (name.startsWith('databases/')) throw new Error(parsed.metadata.kind === 'database-definition' ? 'This database definition is not registered in workspace.md.' : 'Move content pages out of the managed databases folder.');
-        if (parsed.metadata.database != null && !schema.identity(parsed.metadata.database)) throw new Error('Invalid database membership.');
-        const database = parsed.metadata.database ?? undefined;
-        const protectedPage = !!database && !workspace.databases[database];
+        if (parsed.metadata.database !== undefined) throw new Error('Database membership comes from the folder. Remove redundant database metadata.');
+        const database = folderDatabase(workspace, path.posix.dirname(name));
+        const protectedPage = !!database && !workspace.databases[database] || !folderAvailable(workspace, path.posix.dirname(name));
         const record = contentRecord(name, parsed, protectedPage ? undefined : database, workspace.databases);
-        if (protectedPage) errors.push({ path: name, message: `Database ${database} is unavailable. This page is protected; its metadata is retained.` });
+        if (protectedPage) errors.push({ path: name, message: 'The containing database is unavailable or unregistered. This page is protected; its metadata is retained.' });
         if (protectedPage) workspace.readOnlyRecords.push(record.id);
         if (identities.has(record.id)) throw new Error(`Duplicate document ID ${record.id} in ${identities.get(record.id)} and ${name}.`);
         identities.set(record.id, name);
@@ -160,7 +165,7 @@ class WorkspaceRepository {
       model.assertWorkspace(workspace);
       if (!isDeepStrictEqual(workspace.databases, this.workspace.databases) || workspace.defaultTaskDatabase !== this.workspace.defaultTaskDatabase || workspace.home !== this.workspace.home || !isDeepStrictEqual(workspace.readOnlyRecords, this.workspace.readOnlyRecords)) throw new Error('Schema changes must be made in their Markdown definitions and reloaded.');
       const next = model.clone(workspace), entries = [];
-      if (!isDeepStrictEqual(next.folders, this.workspace.folders) || next.defaultPageFolder !== this.workspace.defaultPageFolder) throw new Error('Folder settings are repository-owned.');
+      if (!isDeepStrictEqual(next.folders, this.workspace.folders) || !isDeepStrictEqual(next.unavailableFolders, this.workspace.unavailableFolders) || next.defaultPageFolder !== this.workspace.defaultPageFolder) throw new Error('Folder settings are repository-owned.');
       for (const id of this.workspace.readOnlyRecords) if (!isDeepStrictEqual(next.records[id], this.workspace.records[id])) throw new Error('This page belongs to an unavailable database. Restore or migrate its definition before editing.');
       for (const id of Object.keys(this.workspace.records)) if (!next.records[id]) throw new Error('Deleting documents through a snapshot is not supported.');
       // Existing paths and creation defaults remain repository-owned.
@@ -176,6 +181,7 @@ class WorkspaceRepository {
           if (path.posix.basename(requested) !== `${record.id}.md`) throw new Error('Invalid new document filename.');
           const folder = path.posix.dirname(requested) === '.' ? '' : path.posix.dirname(requested);
           publicFolder(folder); if (folder && !this.folders.includes(folder)) throw new Error('Choose an existing folder.');
+          if ((folderDatabase(this.workspace, folder) || null) !== (record.database || null) || !folderAvailable(this.workspace, folder)) throw new Error('New pages must live inside their database folder; ordinary pages must live outside databases.');
           await vacant(this, requested); next.paths[record.id] = requested;
           if (this.files.has(next.paths[record.id])) throw new Error('New document path already exists.');
         }

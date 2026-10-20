@@ -60,14 +60,21 @@ test('malformed or unavailable settings never prevent navigation', () => {
 });
 
 
-test('collapse all persists every folder and reveal reopens only the selected path', () => {
+test('workspace disclosure persists without changing descendant disclosure, and page reveal opens it', () => {
   const saved = storage(), state = new DirectoryState('workspace', saved);
-  const paths = ['projects', 'projects/Design', 'todos'];
-  state.collapse(paths);
+  state.set('', false); state.set('projects', true); state.set('todos', false);
   const restored = new DirectoryState('workspace', saved);
-  for (const path of paths) assert.equal(restored.expanded(path), false);
+  assert.equal(restored.expanded(''), false); assert.equal(restored.expanded('projects'), true);
   restored.reveal('projects/Design/review.md');
-  assert.equal(restored.expanded('projects'), true);
-  assert.equal(restored.expanded('projects/Design'), true);
+  assert.equal(restored.expanded(''), true); assert.equal(restored.expanded('projects/Design'), true);
   assert.equal(restored.expanded('todos'), false);
+});
+test('one workspace root contains its home page, named database folders, and regular folders', () => {
+  const input = workspace(); input.home = 'home'; input.records.home = { id: 'home', title: 'Makena’s desk' }; input.paths.home = 'workspace.md';
+  input.databasePaths = { projects: 'projects', todos: 'todos' }; input.folders.push('notes');
+  const tree = directoryTree(input);
+  assert.equal(tree.name, 'Makena’s desk'); assert.equal(tree.path, '');
+  assert.deepEqual(tree.folders.map(folder => folder.name), ['Projects', 'Todos', 'notes']);
+  assert.equal(tree.folders[0].database, 'projects');
+  assert.equal(tree.documents.filter(doc => doc.id === 'home').length, 1);
 });

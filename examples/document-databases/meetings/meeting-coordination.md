@@ -11,7 +11,6 @@ references:
   todo-review-comments:
     base_title: Review drainage comments
     base_completed: false
-database: db-meetings
 ---
 
 # Weekly coordination

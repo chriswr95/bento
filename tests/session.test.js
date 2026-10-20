@@ -48,5 +48,5 @@ test('folder restoration retains existing folders and falls back to Files when m
   const restored = await session.restore(async () => repository);
   assert.deepEqual(restored.location, { view: 'folder', folder: '', document: null, project: null });
   assert.match(restored.warning, /last folder/);
-  for (const folder of ['../outside', 'databases', '/absolute', '.bento-local']) assert.equal(validLocation({ ...location, folder }), false);
+  for (const folder of ['../outside', '/absolute', '.bento-local']) assert.equal(validLocation({ ...location, folder }), false);
 });

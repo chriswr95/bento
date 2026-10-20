@@ -1,6 +1,7 @@
 import './vendor/marked.umd.js';
 import schema from './schema.js';
 import { validColor } from './colors.js';
+import { folderDatabase, folderAvailable } from './folders.js';
 const marked = globalThis.marked;
 const clone = value => JSON.parse(JSON.stringify(value));
 const id = prefix => `${prefix}-${globalThis.crypto.randomUUID()}`;
@@ -140,6 +141,7 @@ function createDocument(workspace, options) {
   if (next.paths) {
     const destination = folder ?? (definition ? next.databasePaths[database] : next.defaultPageFolder);
     if (destination !== '' && !next.folders?.includes(destination)) throw new Error('Choose an existing folder.');
+    if ((folderDatabase(next, destination) || null) !== database || !folderAvailable(next, destination)) throw new Error('Choose a folder inside the selected database, or a regular folder for an ordinary page.');
     next.paths[documentId] = (destination ? destination + '/' : '') + documentId + '.md';
   }
   assertWorkspace(next);

@@ -6,7 +6,7 @@ import { WorkspaceRepository } from '../files/repository.js';
 export async function checkWorkspaceCustomization({ launch, stop, temporary, root }) {
   const folder = path.join(temporary, 'Custom workspace');
   await fs.cp(path.join(root, 'examples/document-databases'), folder, { recursive: true });
-  const definition = path.join(folder, 'databases/db-meetings.md');
+  const definition = path.join(folder, 'meetings/database.md');
   await fs.writeFile(definition, (await fs.readFile(definition, 'utf8')).replace('title: Meeting Notes', 'title: Field Notes'));
   const userData = path.join(temporary, 'CustomizationUserData');
   let launched = await launch(folder, userData), app = launched.app, page = launched.page;
@@ -28,7 +28,7 @@ export async function checkWorkspaceCustomization({ launch, stop, temporary, roo
     await page.getByRole('option', { name: /New page in Field Notes/ }).waitFor();
     await search.press('Escape');
     await stop(app); app = null;
-    await fs.unlink(path.join(folder, 'databases/db-todos.md'));
+    await fs.unlink(path.join(folder, 'todos/database.md'));
     launched = await launch(null, userData); app = launched.app; page = launched.page;
     await page.getByRole('textbox', { name: 'Workspace Markdown', exact: true }).waitFor();
     assert.equal(await page.locator('[data-workspace-name]').innerText(), 'Makena’s desk');
@@ -38,7 +38,7 @@ export async function checkWorkspaceCustomization({ launch, stop, temporary, roo
     assert.equal(await protectedEditor.getAttribute('contenteditable'), 'false');
     assert.equal(await page.getByRole('button', { name: 'Edit Page title', exact: true }).isDisabled(), true);
     assert.match(await page.locator('main').innerText(), /read-only/);
-    await assert.rejects(fs.access(path.join(folder, 'databases/db-todos.md')));
+    await assert.rejects(fs.access(path.join(folder, 'todos/database.md')));
     console.log('Passed editable Workspace page, checkbox capture, title persistence, renamed database commands and protected pages after database removal.');
   } finally { await stop(app); }
 }

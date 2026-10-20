@@ -18,7 +18,7 @@ export async function checkPageWorkflow({ launch, stop, temporary, root }) {
     await tree.waitFor();
     assert.equal(await page.getByRole('group', { name: 'Sidebar view', exact: true }).count(), 0);
     assert.equal(await page.locator('aside .b-record-marker').count(), 0);
-    assert.equal(await tree.locator('[data-directory="projects"]>summary').innerText(), 'projects');
+    assert.equal(await tree.locator('[data-directory="projects"]>summary').innerText(), 'Projects');
     await createPage('Drainage calculations');
     await createPage('Assumptions');
     const repo = await WorkspaceRepository.open(folder);
@@ -28,7 +28,7 @@ export async function checkPageWorkflow({ launch, stop, temporary, root }) {
       assert.equal(doc.parent, undefined); assert.equal(doc.database, undefined);
       const row = tree.getByRole('button', { name: doc.title, exact: true });
       assert.equal(await row.getAttribute('title'), `notes/${doc.id}.md`);
-      assert.equal(await row.locator('xpath=ancestor::details').count(), 1);
+      assert.equal(await row.locator('xpath=ancestor::details').count(), 2);
     }
     assert.equal(await page.getByRole('button', { name: 'Edit Parent', exact: true }).count(), 0);
     assert.equal(await page.getByRole('navigation', { name: 'Page parents', exact: true }).count(), 0);

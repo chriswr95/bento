@@ -178,10 +178,10 @@ async function addTag(page, value) {
   await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
 
   assert.equal(await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).count(), 1);
-  await page.locator('aside').getByRole('button', { name: 'New page in projects', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'New page in Projects', exact: true }).click();
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Canceled project');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.locator('aside').getByRole('button', { name: 'New page in projects', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'New page in Projects', exact: true }).click();
   await page.keyboard.press('ControlOrMeta+,');
   await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
   await page.keyboard.press('ControlOrMeta+['); await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
@@ -223,7 +223,7 @@ async function addTag(page, value) {
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Weekly coordination');
   await page.getByRole('button', { name: 'Create page', exact: true }).click();
   await saved(page);
-  const meetingFile = (await fs.readdir(path.join(workspace, 'meetings'))).find(name => name.endsWith('.md'));
+  const meetingFile = (await fs.readdir(path.join(workspace, 'meetings'))).find(name => name.endsWith('.md') && name !== 'database.md');
   assert.ok(meetingFile);
   await editProperty(page, 'Meeting date');
   await page.getByLabel('Meeting date', { exact: true }).fill('2026-10-20');
@@ -256,7 +256,7 @@ async function addTag(page, value) {
   await saved(page);
   let raw = await fs.readFile(path.join(workspace, 'todos', filename), 'utf8');
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
-  assert.match(raw, /^database: db-todos$/m);
+  assert.doesNotMatch(raw, /^database:/m);
   assert.match(raw, new RegExp(projectId));
   assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'save', 'settingsRead', 'settingsSave'] });
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
@@ -274,13 +274,15 @@ async function addTag(page, value) {
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/project-review.png') });
   await page.getByRole('region', { name: 'Related notes', exact: true }).getByRole('button', { name: 'Weekly coordination', exact: true }).click();
   await page.getByRole('article', { name: 'Editable Markdown document' }).waitFor();
-  await page.getByRole('button', { name: 'Collapse all folders', exact: true }).click();
-  assert.equal(await page.locator('aside details[open]').count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Collapse all folders', exact: true }).evaluate(button => document.activeElement === button), true);
-  await page.waitForFunction(key => {
-    const folders = JSON.parse(localStorage.getItem(key) || '{}');
-    return folders.projects === false && folders.todos === false;
-  }, 'bento.sidebar.tree.v1:' + await fs.realpath(workspace));
+  assert.equal(await page.getByRole('button', { name: 'Collapse all folders', exact: true }).count(), 0);
+  const workspaceRoot = page.locator('aside details[data-directory=""]');
+  await workspaceRoot.locator(':scope>summary').press('Enter');
+  assert.equal(await workspaceRoot.getAttribute('open'), null);
+  await page.locator('aside [data-record]').filter({ hasText: /^Workspace$/ }).waitFor({ state: 'hidden' });
+  await page.waitForFunction(key => JSON.parse(localStorage.getItem(key) || '{}')[''] === false, 'bento.sidebar.tree.v1:' + await fs.realpath(workspace));
+  await workspaceRoot.locator(':scope>summary').press('Enter');
+  if (await projectsFolder.getAttribute('open') !== null) await projectsFolder.locator(':scope>summary').press('Enter');
+  await page.waitForFunction(key => JSON.parse(localStorage.getItem(key) || '{}').projects === false, 'bento.sidebar.tree.v1:' + await fs.realpath(workspace));
   await application.close(); application = null;
   console.log('Closed the app after saving. Reopening workspace.');
   launched = await launch(null, userData); application = launched.app; page = launched.page;
@@ -304,7 +306,7 @@ async function addTag(page, value) {
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-meeting-properties.png') });
   assert.equal(await page.getByRole('group', { name: 'Related projects', exact: true }).getByRole('checkbox', { name: 'My first project', exact: true }).isChecked(), true);
 
-  await page.locator('aside details[data-directory="todos"]>summary').press('Enter');
+  if (await page.locator('aside details[data-directory="todos"]').getAttribute('open') === null) await page.locator('aside details[data-directory="todos"]>summary').press('Enter');
   await page.getByRole('navigation', { name: 'Workspace files', exact: true }).getByRole('button', { name: 'Desktop action', exact: true }).click();
   assert.match(await page.locator('#b-reading').innerText(), /Keep this project detail/);
   assert.equal(await page.getByRole('button', { name: 'Edit Status', exact: true }).innerText(), 'In progress');

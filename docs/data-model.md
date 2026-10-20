@@ -8,13 +8,13 @@ The [specification](spec.md) describes who Bento serves and what it must do. Thi
 
 1. Every content record is an editable Markdown document.
 2. A workspace is a folder containing `workspace.md`.
-3. A database is a registered schema; its definition lives in `databases/<database-id>.md`.
-4. A record belongs to zero or one database, explicitly named by its `database` metadata. Folders never confer membership.
+3. A database is a registered folder containing `database.md` and its record files.
+4. A record belongs to zero or one database, determined by its enclosing registered database folder. Ordinary subfolders inherit that membership.
 5. Relations and views do not confer database membership.
 6. Database, document, field, and option identities remain stable when labels change.
 7. Unknown values and metadata are retained. Incompatible changes must be surfaced rather than discarded.
 
-Folders answer where a page belongs; databases answer what structured fields it has. A project folder can contain an ordinary note, a Meeting Note, a Todo, and a Project record together. A relation connects pages; it does not move them or change their database.
+Database folders contain structured records; regular folders contain ordinary Markdown notes. Relations connect a project to its meetings and todos without physically mixing their files. There is one filesystem tree rooted at the workspace, not a separate page hierarchy.
 
 ## Three layers
 
@@ -31,46 +31,48 @@ Workspace and database definition documents have Markdown bodies for description
 ```text
 My workspace/
   workspace.md
-  databases/                 # Managed schemas, omitted from the file explorer
-    db-todos.md
-    db-projects.md
-    db-meetings.md
-  notes/                     # Default for ordinary pages
-    note-<id>.md
-  projects/                  # Creation default, not a membership boundary
+  projects/                  # Projects database
+    database.md
     project-<id>.md
-    Creekside/
-      meeting-<id>.md
+  todos/                     # Todos database
+    database.md
+    Review/
       todo-<id>.md
+  meetings/                  # Meeting Notes database
+    database.md
+    meeting-<id>.md
+  notes/                     # Ordinary folders and Markdown
+    Drainage/
       assumptions.md
-  meetings/
-  todos/
 ```
 
-The workspace manifest registers stable database IDs, schema locations, and optional creation defaults:
+The workspace manifest registers stable database IDs and relative folder paths:
 
 ```yaml
 bento_version: 1
 kind: workspace-definition
 id: workspace-example
 title: My workspace
-organization_version: 2
+organization_version: 3
 default_page_folder: notes
 databases:
-  - {id: db-todos, definition: databases/db-todos.md, default_folder: todos}
-  - {id: db-projects, definition: databases/db-projects.md, default_folder: projects}
-  - {id: db-meetings, definition: databases/db-meetings.md, default_folder: meetings}
-default_task_database: db-todos
-default_project_database: db-projects
+  - {id: db-todos, path: todos}
+  - {id: db-projects, path: projects}
+  - {id: db-meetings, path: meetings}
+default_task_default_project_database: db-projects
 ```
 
-Defaults select existing databases; they do not make Todos or Projects mandatory. A missing task destination leaves checkboxes pending instead of recreating a database. Creation controls and summaries use capability mappings. The New page form selects Database and Folder independently. Creating from a folder uses that folder; database commands use the registered creation default outside folder context. Checkbox-created todos use their task database's default folder.
+Database folders are distinct and cannot nest. Their schema is `<path>/database.md`; every other content document within that folder or its ordinary subfolders belongs to that database. Names and IDs remain independent, so a database can be relabeled without renaming files. Regular folders live outside databases. New ordinary pages default to `notes/`; root-level ordinary documents remain valid, and `workspace.md` is the workspace home page.
 
-Only `workspace.md` needs to remain at the root. Ordinary root-level files remain valid, but new ordinary pages default to `notes/`. Empty and nested folders are first-class filesystem locations. The `databases/` directory is reserved for schema definitions. Hidden operational folders and symlinks are not traversed. Folder names and paths must be portable across Windows and macOS; creation rejects reserved names, traversal, and case/Unicode collisions.
+Creation from a database folder selects that database and location. Choosing another database restricts destinations to its folder and subfolders. An ordinary page can only use regular folders. Checkbox capture creates todos in the configured task database folder. Missing task configuration preserves pending checkboxes instead of recreating a database.
+
+The sidebar is one collapsible workspace folder containing its home document, named database folders, regular folders, and Markdown pages. Database folders sort before regular folders and have a table icon; ordinary folders use a folder icon. Schemas are structural files, not separate page entries. Clicking a database folder opens a table of all its records and schema fields; clicking a regular folder opens its contents. Disclosure remains independent of browsing. Collapsing the workspace hides its entire tree without changing descendant disclosure preferences; opening a document reveals its ancestors. There is no Collapse all action or duplicate Workspace shortcut outside the tree.
+
+Hidden operational directories and symlinks are not traversed. Paths must be portable across Windows and macOS; creation rejects traversal, reserved names, and case/Unicode collisions. Empty folders remain visible.
 
 ### Development format policy
 
-Bento currently supports one filesystem format: organization version 2 with explicit page membership and managed schema files. Starter templates and the checked-in example use this format directly. There is no in-app upgrade screen, migration command, or folder-derived membership fallback. Pre-v1 format changes update the development fixtures directly; preserving old layouts is not a product requirement. Normal interrupted-save and page-move recovery remains supported.
+Bento supports only organization version 3. Templates and the checked-in example use this format directly. There is no in-app upgrade screen, migration command, or alternate metadata-membership mode. Pre-v1 format changes update development workspaces directly; preserving old layouts is not a product requirement. Normal interrupted-save and page-move recovery remains supported.
 
 ## Typed fields
 
@@ -110,7 +112,7 @@ Database names and field labels do not identify behavior. A definition opts into
 
 A task capability maps its completion field, designated checked/reopening options, optional due-date value, and project relation. Status values in the complete group count as checked; Not started and In progress count as unchecked. Checking selects the designated completed option. Explicitly unchecking selects the designated reopening option. Refreshing an unchanged unchecked reference preserves In progress.
 
-The [Todos definition](../examples/document-databases/databases/db-todos.md) is customizable. The [Projects definition](../examples/document-databases/databases/db-projects.md) separately maps active status values for summaries. Meeting Notes needs no specialized capability. Renaming labels preserves bindings. Removing or changing a bound field requires repairing its capability mapping.
+The [Todos definition](../examples/document-databases/todos/database.md) is customizable. The [Projects definition](../examples/document-databases/projects/database.md) separately maps active status values for summaries. Meeting Notes needs no specialized capability. Renaming labels preserves bindings. Removing or changing a bound field requires repairing its capability mapping.
 
 ## Record envelope
 
@@ -119,7 +121,6 @@ A [todo record](../examples/document-databases/todos/todo-review-comments.md) co
 ```yaml
 bento_version: 1
 id: todo-review-comments
-database: db-todos
 schema_version: 1
 title: Review drainage comments
 tags: [review]
@@ -128,7 +129,7 @@ properties:
   field-task-project: project-creekside
 ```
 
-The Markdown body follows the frontmatter. `schema_version` identifies the selected database's schema. In organization version 2, `database` is a scalar database ID, or absent/null for an ordinary page; multiple memberships are invalid. New ordinary pages explicitly use null and omit schema version. An unavailable database protects each affected record wherever it lives, retaining its original metadata.
+The Markdown body follows the frontmatter. `schema_version` identifies the enclosing database's schema. Membership is derived only from the registered folder; content files omit `database`. Redundant membership metadata is reported for repair rather than overriding location. An unavailable or unregistered database protects its folder's records while retaining their original contents. Ordinary pages have no database or schema version.
 
 New todo filenames are their stable ID plus `.md`. Other existing Markdown filenames are retained. Unclassified plain Markdown gets a provisional path-derived identity in memory; explicit editing assigns metadata without rewriting untouched files. Stable identity across external renames requires an explicit document ID.
 
@@ -159,9 +160,9 @@ The repository checks relative paths against its ID-to-path map. In-app page mov
 
 ## Moves and schema evolution
 
-Move page changes only physical location, retaining its filename, identity, database, schema version, and properties. A move creates the destination, updates Markdown destinations, then deletes the source through a journal. It flushes pending autosave first and stops on external changes, unavailable records, or collisions. Directory creation is also journaled. Folder renaming, moving, deletion, and document renaming are not implemented. HTML URLs and arbitrary strings in custom properties are outside Markdown link repair.
+Move page changes physical location within the same database, or between regular folders for an ordinary page. It retains the filename, identity, schema version, and properties. A move creates the destination, updates Markdown destinations, then deletes the source through a journal. It flushes pending autosave first and stops on external changes, unavailable records, or collisions. Directory creation is also journaled. Folder renaming, moving, deletion, and document renaming are not implemented. HTML URLs and arbitrary strings in custom properties are outside Markdown link repair.
 
-Changing database membership is a separate schema transfer requiring field mapping and validation, not a filesystem move. Snapshot saves reject membership changes. External edits are validated on Reload files; unknown values are retained, and incompatible schema versions are surfaced.
+Moving across database boundaries changes membership and therefore requires a separate schema transfer with field mapping and validation. The ordinary Move page dialog excludes those destinations, and the backend rejects them. Change database / Add to database is deferred. Snapshot saves reject membership changes. External edits are validated on Reload files; unknown values are retained, and incompatible schema versions are surfaced.
 
 Database removal must detach documents while preserving values and sufficient schema history. Field/option retirement and type conversion need recoverable schema revisions before they can become UI commands. Those operations are not implemented by the first file-backed slice; snapshot saves explicitly reject deletion and membership/schema changes.
 
@@ -196,7 +197,7 @@ The repository saves changed tag assignments transactionally with other workspac
 
 ## File organization and page references
 
-The filesystem is the only page hierarchy. Standalone pages created in Bento are `note-<uuid>.md` files in the selected folder, defaulting to `notes/`. Database records can share any ordinary folder with them. Folder names browse their contents; chevrons expand/collapse the sidebar independently. New folder supports nested empty directories, page creation allows independent folder/database selection, and document breadcrumbs navigate every physical ancestor. Folder history and the current folder survive navigation/restart. There is no separate subpage model.
+The filesystem is the only page hierarchy. Standalone pages created in Bento are `note-<uuid>.md` files in the selected folder, defaulting to `notes/`. Database records live only inside their registered database folders. Folder names browse their contents; chevrons expand/collapse the sidebar independently. New folder supports nested empty directories, page creation restricts folders to the selected database or regular note locations, and document breadcrumbs navigate every physical ancestor. Folder history and the current folder survive navigation/restart. There is no separate subpage model.
 
 Existing top-level `parent` metadata is preserved as unknown legacy metadata. It is ignored when reading, validating, editing, and navigating pages. New documents do not receive it, and document property commands cannot set it. Removing this feature requires no destructive workspace migration: files, paths, database memberships, and authored links remain intact.
 

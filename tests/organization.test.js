@@ -22,37 +22,50 @@ test('opening the current layout does not rewrite content or offer an upgrade op
 });
 test('unsupported development layouts fail without migrating or rewriting files', async t => {
   const repo = await fixture(t), filename = path.join(repo.root, 'workspace.md');
-  const older = (await fs.readFile(filename, 'utf8')).replace('organization_version: 2\n', '');
+  const older = (await fs.readFile(filename, 'utf8')).replace('organization_version: 3\n', '');
   await fs.writeFile(filename, older);
   await assert.rejects(WorkspaceRepository.open(repo.root), /Unsupported workspace organization/);
   assert.equal(await fs.readFile(filename, 'utf8'), older);
   await assert.rejects(fs.access(path.join(repo.root, '.bento-local/pending.json')));
 });
-test('database membership follows metadata across mixed folders and new ordinary pages default to notes', async t => {
+test('folders own membership and creation rejects mismatched database placement', async t => {
   const repo = await fixture(t); await repo.createFolder('projects', 'Drainage');
-  const ordinary = model.createDocument(repo.workspace, { database: null, title: 'Musings', folder: 'projects/Drainage' });
-  await repo.save(ordinary.workspace);
-  assert.equal(repo.workspace.records[ordinary.documentId].database, undefined);
-  assert.equal(repo.workspace.paths[ordinary.documentId], `projects/Drainage/${ordinary.documentId}.md`);
-  const project = model.createDocument(repo.workspace, { database: 'db-projects', title: 'Project anywhere', folder: 'notes' });
+  assert.throws(() => model.createDocument(repo.workspace, { database: null, title: 'Musings', folder: 'projects/Drainage' }), /inside the selected database/);
+  assert.throws(() => model.createDocument(repo.workspace, { database: 'db-projects', title: 'Wrong location', folder: 'notes' }), /inside the selected database/);
+  const project = model.createDocument(repo.workspace, { database: 'db-projects', title: 'Project', folder: 'projects/Drainage' });
   await repo.save(project.workspace);
-  const task = 'todo-review-comments'; await repo.moveDocument(task, 'projects/Drainage');
+  assert.doesNotMatch(await fs.readFile(path.join(repo.root, repo.workspace.paths[project.documentId]), 'utf8'), /^database:/m);
   const reopened = await WorkspaceRepository.open(repo.root);
-  assert.equal(reopened.workspace.records[task].database, 'db-todos');
   assert.equal(reopened.workspace.records[project.documentId].database, 'db-projects');
-  assert.equal(reopened.workspace.records[ordinary.documentId].database, undefined);
-  const generic = model.createDocument(reopened.workspace, { database: null, title: 'General note' });
-  assert.equal(generic.workspace.paths[generic.documentId], `notes/${generic.documentId}.md`);
-  const forged = model.clone(reopened.workspace); forged.records[task].database = 'db-projects';
-  await assert.rejects(reopened.save(forged), /schema mapping|properties|field|transfer/i);
+  const ordinary = model.createDocument(reopened.workspace, { database: null, title: 'General notes' });
+  assert.equal(ordinary.workspace.paths[ordinary.documentId], `notes/${ordinary.documentId}.md`);
+  const forged = model.clone(reopened.workspace); forged.records[project.documentId].database = 'db-todos';
+  await assert.rejects(reopened.save(forged), /mapping|properties|field|transfer/i);
+  await assert.rejects(reopened.moveDocument(project.documentId, 'notes'), /Change database/);
+  const forgedNew = model.createDocument(reopened.workspace, { database: null, title: 'Forged placement' });
+  forgedNew.workspace.paths[forgedNew.documentId] = `projects/${forgedNew.documentId}.md`;
+  await assert.rejects(reopened.save(forgedNew.workspace), /must live/);
+});
+test('database registrations cannot overlap or contain the default ordinary-note folder', async t => {
+  const repo = await fixture(t), filename = path.join(repo.root, 'workspace.md');
+  const before = await fs.readFile(filename, 'utf8');
+  for (const [raw, message] of [
+    [before.replace('path: projects', 'path: todos/Projects'), /must not nest/],
+    [before.replace('path: projects', 'path: TODOS'), /must not nest/],
+    [before.replace('default_page_folder: notes', 'default_page_folder: todos'), /outside databases/]
+  ]) {
+    await fs.writeFile(filename, raw);
+    await assert.rejects(WorkspaceRepository.open(repo.root), message);
+    assert.equal(await fs.readFile(filename, 'utf8'), raw);
+  }
 });
 test('moving a page rewrites incoming, outgoing, reference and image links while preserving source and identity', async t => {
-  const repo = await fixture(t); await repo.createFolder('notes', 'Design (final)');
+  const repo = await fixture(t); await repo.createFolder('todos', 'Design (final)');
   const id = 'todo-review-comments', source = 'meeting-coordination', before = model.clone(repo.workspace.records[id]);
   let next = model.applyEdit(repo.workspace, id, '# Notes\n\n[Meeting](../meetings/meeting-coordination.md#actions "Context")\n\n`[literal](../meetings/meeting-coordination.md)`\n\n![Plan](../assets/plan.png)\n').workspace;
   await repo.save(next);
   const body = repo.workspace.records[id].body;
-  await repo.moveDocument(id, 'notes/Design (final)');
+  await repo.moveDocument(id, 'todos/Design (final)');
   assert.equal(repo.workspace.records[id].id, before.id); assert.equal(repo.workspace.records[id].database, before.database);
   assert.deepEqual(repo.workspace.records[id].properties, before.properties);
   const meeting = repo.workspace.records[source];
@@ -65,7 +78,7 @@ test('moving a page rewrites incoming, outgoing, reference and image links while
   assert.notEqual(repo.workspace.records[id].body, body);
   await assert.rejects(fs.access(path.join(repo.root, 'todos/todo-review-comments.md')));
   const reopened = await WorkspaceRepository.open(repo.root);
-  assert.equal(reopened.readOnly, false); assert.equal(reopened.workspace.paths[id], 'notes/Design (final)/todo-review-comments.md');
+  assert.equal(reopened.readOnly, false); assert.equal(reopened.workspace.paths[id], 'todos/Design (final)/todo-review-comments.md');
 });
 test('link rebasing changes only destinations, including nested labels, definitions and code examples', () => {
   const body = '[**Review** `](`](<../todos/task.md> "Title")\n\n[ref]: ../todos/task.md#part "ref title"\n\n[Use][ref]\n\n> [Nested](../todos/task.md)\n\n```md\n[Code](../todos/task.md)\n```\n\n[External](https://example.com/task.md)';
@@ -83,39 +96,41 @@ test('empty folders survive restart, remain untyped, and reject unsafe names and
   assert.equal(notes.database, undefined); assert.equal(notes.folders[0].folders[0].name, 'Nested');
   for (const name of ['../escape', '.hidden', 'CON', 'bad.', 'with/slash', 'bad\nname', 'a'.repeat(256), 'Empty']) await assert.rejects(repo.createFolder('notes', name));
   await assert.rejects(repo.createFolder('', 'Notes'), /collid|exists/i);
-  await assert.rejects(repo.createFolder('', 'databases'));
+  await repo.createFolder('', 'References');
   await assert.rejects(repo.moveDocument('todo-review-comments', '../outside'));
   await assert.rejects(repo.moveDocument(repo.workspace.home, 'notes'));
   await assert.rejects(repo.moveDocument('todo-review-comments', 'missing'));
 });
-test('unknown schemas protect records wherever they live while ordinary neighbors remain editable', async t => {
-  const repo = await fixture(t); await repo.moveDocument('todo-review-comments', 'notes');
-  await fs.unlink(path.join(repo.root, 'databases/db-todos.md'));
+test('unknown schemas protect their records while ordinary folders remain editable', async t => {
+  const repo = await fixture(t);
+  await fs.unlink(path.join(repo.root, 'todos/database.md'));
   await repo.reload(); assert.ok(repo.workspace.readOnlyRecords.includes('todo-review-comments'));
   const created = model.createDocument(repo.workspace, { database: null, title: 'Still writable', folder: 'notes' });
   await repo.save(created.workspace);
-  assert.match(await fs.readFile(path.join(repo.root, 'notes/todo-review-comments.md'), 'utf8'), /database: db-todos/);
+  assert.match(await fs.readFile(path.join(repo.root, 'todos/todo-review-comments.md'), 'utf8'), /id: todo-review-comments/);
 });
 test('external edits and folder changes prevent reorganization before changing files', async t => {
   const repo = await fixture(t);
+  await repo.createFolder('todos', 'Archive');
   await fs.mkdir(path.join(repo.root, 'External'));
-  await assert.rejects(repo.moveDocument('todo-review-comments', 'notes'), /changed on disk/);
+  await assert.rejects(repo.moveDocument('todo-review-comments', 'todos/Archive'), /changed on disk/);
   await fs.access(path.join(repo.root, 'todos/todo-review-comments.md'));
-  await assert.rejects(fs.access(path.join(repo.root, 'notes/todo-review-comments.md')));
+  await assert.rejects(fs.access(path.join(repo.root, 'todos/Archive/todo-review-comments.md')));
 });
 test('interrupted page moves recover once, retaining the original in journal history', async t => {
-  const repo = await fixture(t, { beforeWrite(entry) { if (entry.after === null) throw new Error('Interrupted delete'); } });
-  await assert.rejects(repo.moveDocument('todo-review-comments', 'notes'), /Interrupted delete/);
+  const repo = await fixture(t); await repo.createFolder('todos', 'Archive');
+  repo.options.beforeWrite = entry => { if (entry.after === null) throw new Error('Interrupted delete'); };
+  await assert.rejects(repo.moveDocument('todo-review-comments', 'todos/Archive'), /Interrupted delete/);
   const moved = await WorkspaceRepository.open(repo.root);
-  assert.equal(moved.workspace.paths['todo-review-comments'], 'notes/todo-review-comments.md'); assert.equal(moved.readOnly, false);
+  assert.equal(moved.workspace.paths['todo-review-comments'], 'todos/Archive/todo-review-comments.md'); assert.equal(moved.readOnly, false);
   await assert.rejects(fs.access(path.join(repo.root, 'todos/todo-review-comments.md')));
   assert.ok((await fs.readdir(path.join(repo.root, '.bento-local/history'))).length);
 });
-test('new workspaces start with explicit memberships and dedicated schemas', async t => {
+test('new workspaces start with database folders containing schemas and no membership metadata', async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-new-layout-')); t.after(() => fs.rm(root, { recursive: true, force: true }));
   const repo = await create(root);
   assert.equal(Object.hasOwn(repo.view(), 'needsUpgrade'), false); assert.ok(repo.workspace.folders.includes('notes'));
-  assert.equal(repo.info.databases[0].definition, 'databases/db-todos.md');
+  assert.equal(repo.info.databases[0].path, 'todos');
   const next = model.createDocument(repo.workspace, { database: null, title: 'Notes first' }); await repo.save(next.workspace);
   assert.equal(repo.workspace.paths[next.documentId], `notes/${next.documentId}.md`);
 });
@@ -126,23 +141,23 @@ test('multiline destinations in nested blockquotes retain their surrounding Mark
   assert.equal(moveLinks(body, 'projects/a.md', 'projects/a.md', moved), body.replaceAll('../todos/task.md', '../notes/task.md'));
 });
 test('divergent interrupted move retains both copies and stops recovery', async t => {
-  const repo = await fixture(t);
+  const repo = await fixture(t); await repo.createFolder('todos', 'Archive');
   repo.options.beforeWrite = entry => { if (entry.after === null) throw new Error('Stop before deletion'); };
-  await assert.rejects(repo.moveDocument('todo-review-comments', 'notes'), /Stop before deletion/);
+  await assert.rejects(repo.moveDocument('todo-review-comments', 'todos/Archive'), /Stop before deletion/);
   const source = path.join(repo.root, 'todos/todo-review-comments.md');
   await fs.appendFile(source, '\nExternal work\n');
   const recovered = await WorkspaceRepository.open(repo.root);
   assert.equal(recovered.readOnly, true);
   assert.match(await fs.readFile(source, 'utf8'), /External work/);
-  await fs.access(path.join(repo.root, 'notes/todo-review-comments.md'));
+  await fs.access(path.join(repo.root, 'todos/Archive/todo-review-comments.md'));
 });
 
-test('managed schema folders report misplaced content without altering it', async t => {
-  const repo = await fixture(t);
-  await fs.writeFile(path.join(repo.root, 'databases/external.md'), '# External notes\n');
-  await repo.reload();
-  assert.ok(repo.errors.some(error => error.path === 'databases/external.md' && /managed databases folder/.test(error.message)));
-  assert.equal(await fs.readFile(path.join(repo.root, 'databases/external.md'), 'utf8'), '# External notes\n');
+test('redundant database metadata is rejected instead of overriding folder membership', async t => {
+  const repo = await fixture(t), filename = path.join(repo.root, 'notes/wrong.md');
+  const raw = '---\nid: wrong\ndatabase: db-todos\n---\nKeep these notes\n';
+  await fs.writeFile(filename, raw); await repo.reload();
+  assert.ok(repo.errors.some(error => /Remove redundant database metadata/.test(error.message)));
+  assert.equal(await fs.readFile(filename, 'utf8'), raw);
 });
 test('moving a page retains query-only references and directory destination semantics', () => {
   const body = '[Query](?view=notes) [Here](#part) [Assets](../assets/) [Directory](.)';

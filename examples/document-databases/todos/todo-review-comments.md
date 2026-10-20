@@ -8,7 +8,6 @@ properties:
   field-task-status: option-open
   field-task-due: "2026-10-24"
   field-task-project: project-creekside
-database: db-todos
 ---
 
 # Review drainage comments

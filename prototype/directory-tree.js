@@ -1,6 +1,7 @@
 /* Navigation reflects folder paths; relationships never move or duplicate files. */
+import { folderDatabase, folderAvailable } from './folders.js';
 export function directoryTree(workspace) {
-  const root = { path: '', name: '', folders: [], documents: [] };
+  const root = { path: '', name: workspace.records[workspace.home]?.title || 'Workspace', folders: [], documents: [] };
   const folders = new Map([['', root]]);
   function folder(path) {
     if (folders.has(path)) return folders.get(path);
@@ -11,15 +12,22 @@ export function directoryTree(workspace) {
     return node;
   }
   for (const path of workspace.folders || []) folder(path);
+  for (const [id, path] of Object.entries(workspace.databasePaths || {})) {
+    const node = folder(path);
+    node.database = id;
+    node.name = workspace.databases[id]?.title || path.split('/').at(-1);
+    node.unavailable = !workspace.databases[id];
+  }
   for (const document of Object.values(workspace.records)) {
-    if (document.id === workspace.home) continue;
     const path = workspace.paths?.[document.id];
     if (!path) continue;
     const parts = path.split('/'); parts.pop();
-    folder(parts.join('/')).documents.push({ id: document.id, title: document.title, path });
+    folder(parts.join('/')).documents.push({ id: document.id, title: document.id === workspace.home ? 'Workspace' : document.title, path });
   }
   function sort(node) {
-    node.folders.sort((a, b) => a.name.localeCompare(b.name));
+    const database = folderDatabase(workspace, node.path);
+    node.unavailable = !!(database && !workspace.databases[database]) || !folderAvailable(workspace, node.path);
+    node.folders.sort((a, b) => Number(!!b.database) - Number(!!a.database) || a.name.localeCompare(b.name));
     node.documents.sort((a, b) => a.title.localeCompare(b.title) || a.path.localeCompare(b.path));
     node.folders.forEach(sort);
   }
@@ -41,10 +49,6 @@ export class DirectoryState {
   expanded(path, fallback = true) { return this.preferences.get(path) ?? fallback; }
   set(path, expanded) {
     this.preferences.set(path, expanded);
-    this.persist();
-  }
-  collapse(paths) {
-    for (const path of paths) this.preferences.set(path, false);
     this.persist();
   }
   reveal(documentPath) {

@@ -6,7 +6,6 @@ title: Creekside improvements
 tags: [ site review ]
 properties:
   field-project-status: option-active
-database: db-projects
 ---
 
 # Creekside improvements

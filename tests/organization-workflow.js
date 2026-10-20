@@ -12,7 +12,7 @@ export async function checkOrganizationWorkflow({ launch, stop, temporary, root 
   const main = () => page.locator('main');
   const browse = async name => {
     await page.locator(`aside [data-open-folder="${name}"]`).click();
-    await main().getByRole('heading', { name: name.split('/').at(-1) || 'Files', exact: true }).waitFor();
+    await main().getByRole('heading', { name: ({projects:'Projects',todos:'Todos',meetings:'Meeting Notes'})[name] || name.split('/').at(-1) || 'Example workspace', exact: true }).waitFor();
   };
   const createFolder = async name => {
     await main().getByRole('button', { name: 'New folder', exact: true }).click();
@@ -25,13 +25,19 @@ export async function checkOrganizationWorkflow({ launch, stop, temporary, root 
     await main().getByRole('button', { name: 'New page', exact: true }).click();
     await page.getByRole('textbox', { name: 'Document title', exact: true }).fill(title);
     await page.getByRole('combobox', { name: 'Database', exact: true }).selectOption(database);
+    if (database) {
+      assert.equal(await page.getByRole('combobox', { name: 'Folder', exact: true }).inputValue(), 'meetings');
+      assert.equal(await page.getByRole('combobox', { name: 'Folder', exact: true }).locator('option[value="notes"]').count(), 0);
+    }
     await page.getByRole('button', { name: 'Create page', exact: true }).click(); await saved();
   };
   try {
     await saved();
     assert.equal(await page.getByRole('button', { name: 'Review upgrade', exact: true }).count(), 0);
     assert.equal(await page.evaluate(() => 'upgrade' in window.bentoDesktop), false);
-    assert.equal(await page.locator('aside [data-directory="databases"]').count(), 0);
+    assert.equal(await page.locator('aside [data-directory=""]').count(), 1);
+    assert.equal(await page.locator('aside').getByRole('button', { name: 'Workspace', exact: true }).count(), 1);
+    assert.equal(await page.getByRole('button', { name: 'Collapse all folders', exact: true }).count(), 0);
     await browse('notes'); await createFolder('Drainage'); await createFolder('Design');
     // Empty folders are real filesystems entries, visible and traversable before any pages exist.
     await fs.access(path.join(folder, 'notes/Drainage/Design'));
@@ -50,7 +56,7 @@ export async function checkOrganizationWorkflow({ launch, stop, temporary, root 
     repo = await WorkspaceRepository.open(folder);
     const meeting = Object.values(repo.workspace.records).find(doc => doc.title === 'Design coordination');
     assert.equal(meeting.database, 'db-meetings');
-    assert.equal(repo.workspace.paths[meeting.id], `notes/Drainage/Design/${meeting.id}.md`);
+    assert.equal(repo.workspace.paths[meeting.id], `meetings/${meeting.id}.md`);
     const editor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
     await editor.press('ControlOrMeta+End'); await editor.press('Enter'); await editor.pressSequentially('See [[Drainage mus');
     await page.getByRole('listbox', { name: 'Link a page', exact: true }).waitFor(); await editor.press('Enter'); await saved();
@@ -58,19 +64,20 @@ export async function checkOrganizationWorkflow({ launch, stop, temporary, root 
     await page.locator('summary[aria-label="Document actions"]').click();
     await page.getByRole('button', { name: 'Move page…', exact: true }).click();
     dialog = page.getByRole('dialog', { name: 'Move page', exact: true });
-    await dialog.getByRole('combobox', { name: 'Destination folder', exact: true }).selectOption('projects');
+    assert.equal(await dialog.locator('option[value="projects"]').count(), 0);
+    await dialog.getByRole('combobox', { name: 'Destination folder', exact: true }).selectOption('notes/Drainage');
     await dialog.getByRole('button', { name: 'Move page', exact: true }).click();
-    await main().getByRole('heading', { name: 'projects', exact: true }).waitFor();
+    await main().getByRole('heading', { name: 'Drainage', exact: true }).waitFor();
     await main().getByRole('button', { name: 'Drainage musings', exact: true }).click();
     repo = await WorkspaceRepository.open(folder);
-    assert.equal(repo.workspace.records[note.id].database, undefined, 'Moving into projects must not turn an ordinary page into a Project');
-    assert.equal(repo.workspace.paths[note.id], `projects/${note.id}.md`);
-    assert.match(repo.workspace.records[meeting.id].body, /\.\.\/\.\.\/\.\.\/projects\/note-/);
-    await page.getByRole('navigation', { name: 'File path', exact: true }).getByRole('button', { name: 'projects', exact: true }).click();
+    assert.equal(repo.workspace.records[note.id].database, undefined, 'Moving between regular folders keeps an ordinary page untyped');
+    assert.equal(repo.workspace.paths[note.id], `notes/Drainage/${note.id}.md`);
+    assert.match(repo.workspace.records[meeting.id].body, /\.\.\/notes\/Drainage\/note-/);
+    await page.getByRole('navigation', { name: 'File path', exact: true }).getByRole('button', { name: 'Drainage', exact: true }).click();
     await page.keyboard.press('ControlOrMeta+[');
     await page.getByRole('textbox', { name: 'Page Markdown', exact: true }).waitFor();
     await page.keyboard.press('ControlOrMeta+]');
-    await main().getByRole('heading', { name: 'projects', exact: true }).waitFor();
+    await main().getByRole('heading', { name: 'Drainage', exact: true }).waitFor();
     await browse('notes/Drainage/Design');
     await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/folder-browser.png') });
     await page.setViewportSize({ width: 800, height: 500 });
@@ -80,10 +87,30 @@ export async function checkOrganizationWorkflow({ launch, stop, temporary, root 
     await app.close(); app = null;
     launched = await launch(null, userData); app = launched.app; page = launched.page;
     await main().getByRole('heading', { name: 'Design', exact: true }).waitFor();
-    await main().getByRole('button', { name: 'Design coordination', exact: true }).click();
+    await browse('meetings');
+    const meetingTable = page.getByRole('table', { name: 'Meeting Notes records', exact: true });
+    await meetingTable.getByRole('columnheader', { name: 'Meeting date', exact: true }).waitFor();
+    assert.match(await meetingTable.innerText(), /Creekside improvements/);
+    await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/database-browser.png') });
+    await meetingTable.getByRole('button', { name: 'Design coordination', exact: true }).click();
     await page.getByRole('textbox', { name: 'Page Markdown', exact: true }).getByRole('link', { name: 'Drainage musings', exact: true }).click();
     await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'Drainage musings', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
+    const workspaceRoot = page.locator('aside details[data-directory=""]');
+    await workspaceRoot.locator(':scope>summary').press('Enter');
+    await page.waitForFunction(() => {
+      const key = Object.keys(localStorage).find(key => key.startsWith('bento.sidebar.tree.v1:'));
+      return key && JSON.parse(localStorage.getItem(key))[''] === false;
+    });
+    await app.close(); app = null;
+    launched = await launch(null, userData); app = launched.app; page = launched.page;
+    await page.locator('aside details[data-directory=""]').waitFor();
+    assert.equal(await page.locator('aside details[data-directory=""]').getAttribute('open'), null);
+    await page.locator('aside [data-record]').filter({ hasText: /^Workspace$/ }).waitFor({ state: 'hidden' });
+    await page.locator('aside details[data-directory=""]>summary').press('Enter');
+    await page.locator('aside').getByRole('button', { name: 'Workspace', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Workspace Markdown', exact: true }).waitFor();
     assert.deepEqual(errors, []);
-    console.log('Passed immediate folder access without upgrade UI, nested empty folders, folder browsing/creation, mixed database membership, page move/link repair, breadcrumbs/history, responsive layout and folder restoration.');
+    console.log('Passed immediate folder access without upgrade UI, nested empty folders, folder browsing/creation, folder-owned database membership, page move/link repair, breadcrumbs/history, responsive layout and folder restoration.');
   } finally { await stop(app); }
 }

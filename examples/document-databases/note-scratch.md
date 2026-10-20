@@ -2,7 +2,7 @@
 bento_version: 1
 id: note-scratch
 title: Scratch notes
-tags: [ideas]
+tags: [ ideas ]
 ---
 
 # Scratch notes
