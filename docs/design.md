@@ -318,6 +318,7 @@ This is the shared idea backlog for Bento. **Captured** means worth exploring, n
 | IDEA-005 | References to external files | Captured | Link to files outside the workspace from a page. Decide portable versus machine-specific paths, missing-file behavior, and the explicit action used to open a referenced file. |
 | IDEA-006 | Subpages under pages | Deferred | Removed from the current product. Use the existing filesystem layout and ordinary Markdown links; revisit only if a separate hierarchy solves a demonstrated workflow need. |
 | IDEA-007 | Slash commands | Implemented | A filtered `/` menu inserts Markdown blocks. Keyboard selection, cancellation, code/read-only guards, and normal Markdown persistence share the rich editor. |
+| IDEA-008 | Inline menu stability while typing | Captured | Investigate intermittent slash-menu dismissal in headless browser checks while typing near the viewport edge. Look at queued editor scroll events and inline-picker dismissal; confirm the cause before changing behavior. Keep the fix separate from daily-review work. |
 
 Captured entries remain proposals. Implemented entries link the delivered behavior above.
 
