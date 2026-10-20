@@ -12,7 +12,7 @@ import model from './workspace.js';
 import PageLinkPicker from './page-link-picker.js';
 import SlashPicker from './slash-picker.js';
 import MicroPropertyPicker from './micro-property-picker.js';
-import { propertyQuery, entryFields, fieldValue } from './micro-syntax.js';
+import { propertyQuery, entryFields, fieldValue, microLabel } from './micro-syntax.js';
 
 function taskRule(state, match, start, end) {
   const $from = state.doc.resolve(start); if ($from.parent.type !== schema.nodes.paragraph) return null;
@@ -97,16 +97,21 @@ function safePaste(html) {
 
 export default class RichEditor {
   constructor(element, options) {
-    this.element = element; this.options = options; this.bridge = new MarkdownBridge(options.body());
+    this.element = element; this.options = options; this.bridge = new MarkdownBridge(options.body()); this.microTokens = [];
     this.mount = document.createElement('div'); element.append(this.mount);
     this.view = new EditorView(this.mount, {
       state: EditorState.create({ schema, doc: this.bridge.doc, plugins: [history(), rules(), keymap({ 'Mod-End': documentEdge(true), 'Mod-Home': documentEdge(false), 'Mod-ArrowDown': documentEdge(true), 'Mod-ArrowUp': documentEdge(false), 'Mod-z': undo, 'Mod-y': redo, 'Mod-Shift-z': redo, 'Mod-b': toggleMark(schema.marks.strong), 'Mod-i': toggleMark(schema.marks.em), 'Mod-`': toggleMark(schema.marks.code), Enter: enterList, Tab: chainCommands(goToNextCell(1), sinkListItem(schema.nodes.list_item)), 'Shift-Tab': chainCommands(goToNextCell(-1), liftListItem(schema.nodes.list_item)), Backspace: undoInputRule, 'Mod-Enter': exitCode }), keymap(baseKeymap), tableEditing()] }),
       editable: () => !options.readOnly,
       attributes: { 'aria-readonly': String(!!options.readOnly), class: 'b-rich-document', role: 'textbox', 'aria-label': options.label, 'aria-multiline': 'true', spellcheck: 'true' },
       dispatchTransaction: tr => this.dispatch(tr),
-      decorations: state => DecorationSet.create(state.doc, taskPositions(state.doc).filter(({ node }) => node.attrs.todoId && options.validTask?.(node.attrs.todoId, node.attrs.href)).map(({ node, position }) => Decoration.node(position + 1, position + 1 + node.firstChild.nodeSize, { role: 'link', tabindex: '0', 'data-todo-link': node.attrs.todoId, 'aria-label': node.firstChild.textContent, title: 'Open todo · Alt-click to edit text' }))),
+      decorations: state => DecorationSet.create(state.doc, [...taskPositions(state.doc).filter(({ node }) => node.attrs.todoId && options.validTask?.(node.attrs.todoId, node.attrs.href)).map(({ node, position }) => Decoration.node(position + 1, position + 1 + node.firstChild.nodeSize, { role: 'link', tabindex: '0', 'data-todo-link': node.attrs.todoId, 'aria-label': node.firstChild.textContent, title: 'Open todo · Alt-click to edit text' })), ...this.microTokens.map(token => Decoration.widget(token.position, () => this.microTokenElement(token), { side: -1, key: token.key, stopEvent: () => true }))]),
       handleKeyDown: (_view, event) => {
         if (this.microPicker?.keydown(event) || this.slashPicker?.keydown(event) || this.pagePicker?.keydown(event)) return true;
+        if (event.key === 'Backspace' && !event.isComposing && !this.view.composing && this.view.state.selection.empty) {
+          const token = this.microTokens.findLast(token => token.position === this.view.state.selection.from);
+          if (token) { event.preventDefault(); this.editMicroToken(token); return true; }
+        }
+        if (event.key === 'Enter' && !event.isComposing && !this.view.composing) this.finishMicro();
         const link = event.target.closest('[data-todo-link]');
         if (link && event.target === link && event.key === 'Enter') { event.preventDefault(); options.openRecord?.(link.dataset.todoLink); return true; }
         return false;
@@ -131,14 +136,19 @@ export default class RichEditor {
       query: () => this.microQuery(), rect: context => this.view.coordsAtPos(context.to),
       fields: context => entryFields(options.workspace(), context.database),
       value: (context, field) => fieldValue(options.workspace().records[context.target], field),
-      apply: (context, _field, patch) => this.applyMicro(context, patch), focus: () => this.view.focus()
+      apply: (context, field, patch) => this.applyMicro(context, field, patch), focus: () => this.view.focus()
     });
+    this.microBlur = () => setTimeout(() => {
+      if (!this.destroyed && !this.view.dom.contains(document.activeElement) && !this.microPicker?.menu.contains(document.activeElement)) this.finishMicro();
+    }, 0);
+    this.microWindowBlur = () => { if (!this.microPicker?.active) this.finishMicro(); };
+    this.view.dom.addEventListener('blur', this.microBlur, true); window.addEventListener('blur', this.microWindowBlur);
   }
   dispatch(tr) {
     if (this.options.readOnly && tr.docChanged) return;
     const previous = this.view.state;
     if (tr.docChanged && !previous.selection.empty) tr = closeHistory(tr);
-    this.view.updateState(previous.apply(tr));
+    const next = previous.apply(tr); this.mapMicroTokens(tr, next); this.view.updateState(next);
     if (tr.docChanged && !this.view.composing) this.publish(previous);
     this.pagePicker?.update(); this.slashPicker?.update(); this.microPicker?.update();
   }
@@ -156,7 +166,7 @@ export default class RichEditor {
     const context = this.options.microContext(todo);
     return context && { ...context, todo: !!todo, paragraph: $from.start() - 1, from: $from.pos - text.length + query.from, to: $from.pos, text: query.text, token: text.slice(query.from) };
   }
-  applyMicro(context, patch) {
+  applyMicro(context, field, patch) {
     if (this.view.state.doc.textBetween(context.from, context.to) !== context.token) throw new Error('The text changed. Select the property again.');
     let from = context.from;
     const paragraph = this.view.state.doc.nodeAt(context.paragraph);
@@ -164,11 +174,36 @@ export default class RichEditor {
       while (from > context.paragraph + 1 && /\s/.test(this.view.state.doc.textBetween(from - 1, from))) from--;
     }
     const transaction = closeHistory(this.view.state.tr.delete(from, context.to));
+    transaction.setSelection(TextSelection.create(transaction.doc, from));
     if (context.todo && !transaction.doc.nodeAt(context.paragraph)?.textContent.trim()) throw new Error('Add a todo title before setting properties.');
     const body = this.bridge.serialize(transaction.doc);
     this.options.applyMicro(body, context.target, patch);
-    this.view.updateState(this.view.state.apply(transaction));
+    const next = this.view.state.apply(transaction); this.mapMicroTokens(transaction, next);
+    this.microTokens = this.microTokens.filter(token => token.target !== context.target || token.field.id !== field.id);
+    this.microTokens.push({ position: from, field, target: context.target, todo: context.todo, key: crypto.randomUUID(), label: microLabel(this.options.workspace(), field, fieldValue(this.options.workspace().records[context.target], field)) });
+    this.view.updateState(next);
     this.syncTasks(); this.bridge.remember(this.view.state.doc, this.options.body());
+  }
+  microTokenElement(token) {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'b-micro-token'; button.contentEditable = 'false';
+    button.dataset.inlineMicro = token.field.id; button.textContent = token.label; button.setAttribute('aria-label', `Edit ${token.label}`);
+    button.addEventListener('mousedown', event => event.preventDefault());
+    button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); this.editMicroToken(this.microTokens.find(current => current.key === token.key)); });
+    return button;
+  }
+  mapMicroTokens(transaction, state) {
+    this.microTokens = this.microTokens.map(token => ({ ...token, position: transaction.mapping.map(token.position, -1) })).filter(token => token.position >= 0 && token.position <= state.doc.content.size && state.doc.resolve(token.position).parent === state.selection.$from.parent);
+  }
+  editMicroToken(token) {
+    if (this.destroyed || !this.microPicker || !token) return;
+    const $position = this.view.state.doc.resolve(token.position);
+    const record = this.options.workspace().records[token.target];
+    if (!record) return;
+    this.microPicker.edit({ from: token.position, to: token.position, token: '', target: token.target, database: record.database || null, todo: token.todo, paragraph: $position.start() - 1 }, token.field);
+  }
+  finishMicro() {
+    if (!this.microTokens.length) return;
+    this.microTokens = []; this.view.updateState(this.view.state);
   }
   publish(previous) {
     try {
@@ -192,7 +227,9 @@ export default class RichEditor {
         if (canonicalNode) tr = tr.replaceWith(position + 2, position + 2 + node.firstChild.content.size, canonicalNode.firstChild.content);
       }
     }
-    if (tr.docChanged) this.view.updateState(this.view.state.apply(tr.setMeta('addToHistory', false)));
+    if (tr.docChanged) {
+      const next = this.view.state.apply(tr.setMeta('addToHistory', false)); this.mapMicroTokens(tr, next); this.view.updateState(next);
+    }
   }
   navigationState() { return { selection: this.view.state.selection.toJSON(), focused: this.view.hasFocus() }; }
   restoreNavigationState(value) {
@@ -200,5 +237,5 @@ export default class RichEditor {
     if (value.focused) this.view.focus();
   }
   focus() { this.view.focus(); }
-  destroy() { this.destroyed = true; this.pagePicker?.destroy(); this.slashPicker?.destroy(); this.microPicker?.destroy(); this.view.destroy(); }
+  destroy() { this.destroyed = true; this.view.dom.removeEventListener('blur', this.microBlur, true); window.removeEventListener('blur', this.microWindowBlur); this.pagePicker?.destroy(); this.slashPicker?.destroy(); this.microPicker?.destroy(); this.view.destroy(); }
 }

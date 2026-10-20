@@ -31,3 +31,9 @@ export function valueChoices(workspace, field, current) {
   if (field.type === 'color') return colorNames.map(id => ({ id, name: colorLabel(id) }));
   return propertyChoices(workspace, field, current) || [];
 }
+export function microLabel(workspace, field, value) {
+  const choices = valueChoices(workspace, field, value);
+  const display = item => choices.find(choice => choice.id === String(item))?.name || (item == null || item === '' ? field.type === 'color' ? 'Automatic' : 'Not set' : String(item));
+  const values = (Array.isArray(value) ? value : [value]).map(display);
+  return `@${field.name}(${values.join(', ') || 'Not set'})`;
+}

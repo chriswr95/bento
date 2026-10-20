@@ -84,6 +84,10 @@ export default class MicroPropertyPicker {
     this.menu.innerHTML = `<strong>${escape(field.name)}</strong>${value}${field.type === 'date' ? '<div class="b-micro-dates"><button type="button" data-micro-date="today">Today</button><button type="button" data-micro-date="tomorrow">Tomorrow</button></div>' : ''}<p class="b-issues" role="alert" hidden></p><div class="b-micro-actions"><button type="button" data-micro-cancel>Cancel</button><button type="button" data-micro-apply>Apply</button></div>`;
     this.choices = choices; this.place(); this.menu.querySelector('input,select,textarea')?.focus();
   }
+  edit(context, field) {
+    this.context = context; this.results = [field]; this.menu.hidden = false;
+    this.choose(0);
+  }
   filterChoices(query) {
     const select = this.menu.querySelector('select'), selected = new Set([...select.selectedOptions].map(option => option.value));
     for (const option of select.options) option.hidden = option.value !== '' && !this.choices.find(choice => choice.id === option.value)?.name.toLocaleLowerCase().includes(query.toLocaleLowerCase());

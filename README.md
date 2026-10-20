@@ -45,7 +45,7 @@ Use **Cmd/Ctrl+P** to find files and **Cmd/Ctrl+Shift+P** to find commands. Both
 
 ## Keyboard-first entry
 
-Type `@` while writing a captured checkbox todo or a new entry’s title. For example, `@da` followed by a space finds **Due date**. Use arrows and Enter/Tab, or click a property, then fill its typed value. Dates offer Today/Tomorrow; project relations support search. Enter applies the value, removes the shorthand, and returns to writing. Escape preserves the literal text without applying a value. Tags use one tag per line and Cmd/Ctrl+Enter to apply.
+Type `@` while writing a captured checkbox todo or a new entry’s title. For example, `@da` followed by a space finds **Due date**. Use arrows and Enter/Tab, or click a property, then fill its typed value. Dates offer Today/Tomorrow; project relations support search. Confirming a value returns to writing and keeps a visible `@Due date(2026-10-21)` token; click it to revise. In Markdown, Enter or leaving the paragraph finishes this inline view. New-entry tokens stay in the title area until creation or cancellation. Saved titles and Markdown stay free of these display tokens. Escape preserves unconfirmed literal text without applying a value. Tags use one tag per line and Cmd/Ctrl+Enter to apply.
 
 Type `/Projects` (or another database’s name) in an empty Markdown paragraph to start an entry. Alternatively, open command search and choose **New page in Todos** or any other database. Both open the same title composer with `@` properties; no file is created until you submit. Required custom fields can be filled before creation.
 

@@ -15,7 +15,7 @@ import { legacyPreferences } from './personal-settings.js';
 import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
 import InlineProperties from './inline-properties.js';
 import MicroInput from './micro-input.js';
-import { entryFields, fieldValue, valueChoices } from './micro-syntax.js';
+import { entryFields, fieldValue, microLabel } from './micro-syntax.js';
 import PropertyLayoutDialog from './property-layout-dialog.js';
 import { withPropertyLayout } from './property-layout.js';
 import { directoryTree, DirectoryState } from './directory-tree.js';
@@ -372,10 +372,9 @@ import BentoFileSession from './file-session.js';
     const projects = Object.values(workspace().records).filter(doc => doc.database === relation?.target_database && model.capability(workspace(), doc, 'project') && (model.activeProjects(workspace()).some(active => active.id === doc.id) || doc.id === creation.project));
     main.innerHTML = `<p class="b-eyebrow">${escape(database?.title || 'Workspace')}</p><h1>${escape(database ? creationLabel(database) : 'New page')}</h1>
       <p class="b-muted">A Markdown document for your notes and details. Type @ in the title to set properties.</p>
-      <form id="b-create-document"><label class="b-field">Title<input name="title" aria-label="Document title" required maxlength="200" value="${escape(creation.title || '')}" placeholder="${database?.capabilities.project ? 'e.g. Creekside improvements' : 'Give this page a title'}"></label>
+      <form id="b-create-document"><div class="b-field"><label for="b-entry-title">Title</label><div class="b-entry-title"><input id="b-entry-title" name="title" aria-label="Document title" required maxlength="200" value="${escape(creation.title || '')}" placeholder="${database?.capabilities.project ? 'e.g. Creekside improvements' : 'Give this page a title'}"><div data-entry-properties class="b-entry-properties" aria-label="Entry properties"></div></div></div>
       ${desktop ? `<label class="b-field">Database<select data-create-database name="database" aria-label="Database"><option value="">None · ordinary page</option>${Object.values(workspace().databases).map(db => `<option value="${escape(db.id)}" ${db.id === creation.database ? 'selected' : ''}>${escape(db.title)}</option>`).join('')}</select></label><label class="b-field">Folder<select name="folder" aria-label="Folder">${foldersFor(workspace(), creation.database).map(path => `<option value="${escape(path)}" ${path === creation.folder ? 'selected' : ''}>${escape(path || 'Workspace root')}</option>`).join('')}</select></label>` : ''}
       ${relation ? `<label class="b-field">Project<select name="project" aria-label="Project"><option value="">Unassigned</option>${projects.map(project => `<option value="${project.id}" ${creation.project === project.id ? 'selected' : ''}>${escape(project.title)}</option>`).join('')}</select></label>` : ''}
-      <div data-entry-properties class="b-entry-properties" aria-label="Entry properties"></div>
       <p id="b-create-error" class="b-issues" role="alert" hidden></p>
       <div class="b-actions"><button type="submit" class="b-button b-primary">Create page</button><button type="button" class="b-button" data-cancel-create>Cancel</button></div></form>`;
     const input = main.querySelector('[name=title]');
@@ -396,9 +395,8 @@ import BentoFileSession from './file-session.js';
     const panel = main.querySelector('[data-entry-properties]'); if (!panel) return;
     const data = { properties: creation.properties || {}, tags: creation.tags, color: creation.color };
     panel.innerHTML = entryFields(workspace(), creation.database).filter(field => field.id === '$tags' ? creation.tags !== undefined : field.id === '$color' ? creation.color !== undefined : Object.hasOwn(data.properties, field.id)).map(field => {
-      const value = fieldValue(data, field), choices = valueChoices(workspace(), field, value);
-      const display = item => choices.find(choice => choice.id === String(item))?.name || (item == null || item === '' ? field.type === 'color' ? 'Automatic' : 'Not set' : String(item));
-      return `<span class="b-property-chip">${escape(field.name)} · ${escape((Array.isArray(value) ? value : [value]).map(display).join(', '))}</span>`;
+      const label = microLabel(workspace(), field, fieldValue(data, field));
+      return `<button type="button" class="b-micro-token" data-edit-entry-field="${escape(field.id)}" aria-label="Edit ${escape(label)}">${escape(label)}</button>`;
     }).join('');
   }
   function directoryContents(node) {
@@ -696,6 +694,7 @@ import BentoFileSession from './file-session.js';
       }
       else if (button.hasAttribute('data-move-page')) { if (!propertyEditor || propertyEditor.commit()) folderDialog.show('move', (workspace().paths[record().id] || '').split('/').slice(0, -1).join('/'), record().id); }
       else if (button.hasAttribute('data-new-page')) showCreate(folderDatabase(workspace(), currentFolder()) || null, null, currentFolder());
+      else if (button.hasAttribute('data-edit-entry-field')) creationComposer?.edit(button.dataset.editEntryField);
       else if (button.hasAttribute('data-reload-settings')) loadPersonal().then(() => { render(); notify(personalSettings?.warning || 'Personal settings reloaded.'); });
       else if (button.hasAttribute('data-theme-toggle')) changeAppearance(nextTheme(appearance.theme, systemAppearance.matches)).then(() => themePicker?.render());
       else if (button.dataset.walkthrough) handleWalkthrough(button.dataset.walkthrough);

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import model from '../prototype/workspace.js';
-import { propertyQuery, matchingProperties, entryFields, microPatch, valueChoices } from '../prototype/micro-syntax.js';
+import { propertyQuery, matchingProperties, entryFields, microPatch, valueChoices, microLabel } from '../prototype/micro-syntax.js';
 
 test('micro queries match bounded literal names after @ at token boundaries, including trailing spaces', () => {
   assert.deepEqual(propertyQuery('Trim trees @da '), { from: 11, to: 15, text: 'da' });
@@ -34,4 +34,12 @@ test('property search is driven by database definitions and relations resolve ca
   const created = model.createDocument(workspace, { database: database.id, title: 'Permit application', properties: patch.properties });
   assert.equal(created.workspace.records[created.documentId].properties[relation.id], 'elm');
   assert.deepEqual(workspace, before);
+});
+
+test('visible micro labels use readable values while canonical patches retain their types and IDs', () => {
+  const workspace = model.createWorkspace(), relation = workspace.databases['db-todos'].fields.find(field => field.type === 'relation');
+  assert.equal(microLabel(workspace, relation, 'elm'), '@Project(Elm Street drainage)');
+  assert.equal(microLabel(workspace, { id: 'ready', name: 'Ready', type: 'boolean' }, false), '@Ready(No)');
+  assert.equal(microLabel(workspace, { id: 'hours', name: 'Hours', type: 'number' }, 0), '@Hours(0)');
+  assert.deepEqual(microPatch(relation, 'elm'), { properties: { [relation.id]: 'elm' } });
 });

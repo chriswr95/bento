@@ -3,7 +3,7 @@ import { propertyQuery, entryFields, fieldValue } from './micro-syntax.js';
 
 export default class MicroInput {
   constructor(input, options) {
-    this.controller = new AbortController();
+    this.controller = new AbortController(); this.database = options.database;
     this.picker = new MicroPropertyPicker(options.root, {
       host: input, workspace: options.workspace, today: options.today,
       query: () => {
@@ -29,6 +29,12 @@ export default class MicroInput {
     on('click', () => this.picker.update());
     on('keydown', event => this.picker.keydown(event));
     on('keyup', event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) this.picker.update(); });
+  }
+  edit(fieldId) {
+    const field = this.picker.options.fields().find(field => field.id === fieldId);
+    if (!field) return;
+    const input = this.picker.host, position = input.selectionEnd ?? input.value.length;
+    this.picker.edit({ from: position, to: position, token: '', target: this.database() }, field);
   }
   destroy() { this.controller.abort(); this.picker.destroy(); }
 }

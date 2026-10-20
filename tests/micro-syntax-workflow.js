@@ -35,6 +35,7 @@ export async function checkMicroSyntax({ launch, stop, temporary, root }) {
     await source().pressSequentially('[] Check permit comments @da ');
     await props().getByRole('option', { name: /^Due date/ }).waitFor(); await source().press('Enter');
     await page.getByRole('dialog', { name: 'Set Due date', exact: true }).getByRole('button', { name: 'Tomorrow', exact: true }).click();
+    await page.locator('#b-reading [data-inline-micro="field-task-due"]').waitFor();
     await saved(); let repo = await WorkspaceRepository.open(folder);
     let task = Object.values(repo.workspace.records).find(record => record.title === 'Check permit comments'); assert.ok(task);
     assert.match(task.properties['field-task-due'], /^\d{4}-\d{2}-\d{2}$/);
@@ -48,12 +49,18 @@ export async function checkMicroSyntax({ launch, stop, temporary, root }) {
     assert.equal(repo.workspace.records[task.id].properties['field-task-status'], 'option-done');
     assert.match(repo.workspace.records['meeting-coordination'].body, /\[x\] \[Check permit comments\]/);
     assert.doesNotMatch(repo.workspace.records['meeting-coordination'].body, /@da|@pro|@status/);
+    assert.equal(await page.locator('#b-reading [data-inline-micro]').count(), 3);
+    await page.screenshot({ path: path.join(root, 'work/qa/micro-inline-visible.png') });
     await source().press('ControlOrMeta+End'); await source().press('Enter'); await source().press('Enter');
+    assert.equal(await page.locator('#b-reading [data-inline-micro]').count(), 0);
     await source().pressSequentially('/Permits');
     await page.getByRole('listbox', { name: 'Slash commands', exact: true }).getByRole('option', { name: /^New page in Permits/ }).waitFor();
     await source().press('Enter'); await title().fill('Tree trimming permit');
     await field('client'); await page.getByRole('textbox', { name: 'Client', exact: true }).fill('City review'); await page.keyboard.press('Enter');
     await field('da '); await page.locator('.b-micro-picker input[type=date]').fill('2026-10-27'); await page.keyboard.press('Enter');
+    await page.locator('[data-edit-entry-field="submission"]').filter({ hasText: '@Submission date(2026-10-27)' }).waitFor();
+    await page.locator('[data-edit-entry-field="client"]').click();
+    await page.getByRole('textbox', { name: 'Client', exact: true }).fill('City review updated'); await page.keyboard.press('Enter');
     await field('hours'); await page.getByRole('spinbutton', { name: 'Hours', exact: true }).fill('-1'); await page.keyboard.press('Enter');
     await page.locator('.b-micro-picker [role=alert]').filter({ hasText: /Invalid/ }).waitFor(); assert.match(await title().inputValue(), /@hours/);
     await page.getByRole('spinbutton', { name: 'Hours', exact: true }).fill('0'); await page.keyboard.press('Enter');
@@ -68,7 +75,7 @@ export async function checkMicroSyntax({ launch, stop, temporary, root }) {
     repo = await WorkspaceRepository.open(folder);
     const permit = Object.values(repo.workspace.records).find(record => record.title === 'Tree trimming permit');
     assert.ok(permit); assert.equal(permit.database, 'db-permits');
-    assert.deepEqual(permit.properties, { client: 'City review', submission: '2026-10-27', hours: 0, approved: false, disciplines: ['civil', 'landscape'] });
+    assert.deepEqual(permit.properties, { client: 'City review updated', submission: '2026-10-27', hours: 0, approved: false, disciplines: ['civil', 'landscape'] });
     assert.deepEqual(permit.tags, ['client, internal', 'Follow up']); assert.equal(permit.color, 'purple');
     await page.keyboard.press('ControlOrMeta+Shift+p');
     await page.getByRole('combobox', { name: 'Search pages and commands', exact: true }).fill('>new page in Permits'); await page.keyboard.press('Enter');
