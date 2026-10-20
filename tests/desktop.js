@@ -195,11 +195,18 @@ async function addTag(page, value) {
   assert.equal(await designFolder.getAttribute('open'), null);
   await designFolder.locator(':scope>summary').focus();
   await page.keyboard.press('Enter');
+  await page.waitForFunction(() => Math.abs(new DOMMatrix(getComputedStyle(document.querySelector('aside details[data-directory="projects/Design"]>summary>.b-tree-chevron')).transform).b - 1) < 0.01);
   await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).click();
   await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'My first project', exact: true }).waitFor();
   await projectsFolder.locator(':scope>summary').click();
   await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
   assert.equal(await projectsFolder.getAttribute('open'), null);
+  await page.waitForFunction(() => Math.abs(new DOMMatrix(getComputedStyle(document.querySelector('aside details[data-directory="projects"]>summary>.b-tree-chevron')).transform).b) < 0.01);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await projectsFolder.locator(':scope>summary').press('Enter');
+  assert.equal(await projectsFolder.locator(':scope>summary>.b-tree-chevron').evaluate(element => element.getAnimations().length), 0);
+  await projectsFolder.locator(':scope>summary').press('Enter');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   // Opening the project from the overview reveals its folder ancestry.
   await page.locator('main').getByRole('button', { name: 'My first project', exact: true }).click();
   assert.notEqual(await projectsFolder.getAttribute('open'), null);

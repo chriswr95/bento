@@ -339,8 +339,10 @@ Project pages omit the Page title property. Editing the first top-level H1 updat
 
 ### Workflow motion
 
-Document navigation fades in the new document over 140 ms after navigation and focus restoration begin. Quick open uses a 140 ms fade with a four-pixel entrance; focus, search, activation, and dismissal are immediate. These effects preserve layout and never animate the editor during typing.
+Document navigation fades in the new document over 220 ms after navigation and focus restoration begin. Quick open uses a 220 ms fade with a four-pixel entrance; focus, search, activation, and dismissal are immediate. These effects preserve layout and never animate the editor during typing.
 
-Overview and project-review completion apply and persist the domain change synchronously. The completed row dims, briefly lingers, and collapses over 180 ms before refreshing the projection. Undo remains available during that interval. Refreshing or navigating cancels outstanding presentation callbacks; those callbacks never mutate domain state. Keyboard focus moves to the next action or Undo when a focused row disappears. Document checkboxes keep their position and use a short text-color transition.
+Overview and project-review completion apply and persist the domain change synchronously. The completed row dims, briefly lingers, and collapses over 300 ms before refreshing the projection. Undo remains available during that interval. Refreshing or navigating cancels outstanding presentation callbacks; those callbacks never mutate domain state. Keyboard focus moves to the next action or Undo when a focused row disappears. Document checkboxes keep their position and use a short text-color transition.
 
-System reduced motion disables entrances and completion animation. Switching the preference during completion cancels motion and immediately refreshes the projection with focus restoration. Headless interaction checks cover persistence before animation finishes, Undo, interruption by navigation, keyboard focus, and both initial and changed reduced-motion preferences.
+Sidebar disclosure chevrons rotate a quarter turn over 220 ms in both directions while their folders toggle immediately.
+
+System reduced motion disables entrances, completion animation, and chevron rotation transitions. Switching the preference during completion cancels motion and immediately refreshes the projection with focus restoration. Headless interaction checks cover persistence before animation finishes, Undo, interruption by navigation, keyboard focus, and both initial and changed reduced-motion preferences.

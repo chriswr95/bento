@@ -93,7 +93,7 @@
 #bento-workflow .b-tree-folder>details>summary {display:flex;align-items:center;gap:7px;list-style:none;padding:8px 28px 8px 4px;border-radius:5px;color:var(--b-ink);font-size:13px}
 #bento-workflow .b-tree-folder>details>summary::-webkit-details-marker {display:none}
 #bento-workflow .b-tree-folder>details>summary:hover,#bento-workflow .b-tree-document:hover {background:var(--b-wash)}
-#bento-workflow .b-tree-chevron {width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:5px solid var(--b-soft);flex:none}
+#bento-workflow .b-tree-chevron {width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:5px solid var(--b-soft);flex:none;transition:transform 220ms ease-out}
 #bento-workflow .b-tree-folder>details[open]>summary>.b-tree-chevron {transform:rotate(90deg)}
 #bento-workflow .b-tree-folder-name {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 #bento-workflow .b-tree-create {position:absolute;top:3px;right:0;background:var(--b-side);border:0;border-radius:4px;padding:2px 7px;font-size:18px}
@@ -251,11 +251,11 @@ html {background:light-dark(#fffefa,#202127)}
   to {opacity:1;transform:translate(-50%, 0) scale(1)}
 }
 @keyframes bento-backdrop-enter {from {opacity:0} to {opacity:1}}
-#bento-workflow .b-quick-open[open] {animation:bento-palette-enter 140ms ease-out}
-#bento-workflow .b-quick-open[open]::backdrop {animation:bento-backdrop-enter 140ms ease-out}
-#bento-workflow .b-task .b-task-title {transition:color 120ms ease-out}
-#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:color 120ms ease-out}
+#bento-workflow .b-quick-open[open] {animation:bento-palette-enter 220ms ease-out}
+#bento-workflow .b-quick-open[open]::backdrop {animation:bento-backdrop-enter 220ms ease-out}
+#bento-workflow .b-task .b-task-title {transition:color 180ms ease-out}
+#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:color 180ms ease-out}
 @media(prefers-reduced-motion:reduce) {
   #bento-workflow .b-quick-open[open],#bento-workflow .b-quick-open[open]::backdrop {animation:none}
-  #bento-workflow .b-task .b-task-title,#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:none}
+  #bento-workflow .b-tree-chevron,#bento-workflow .b-task .b-task-title,#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:none}
 }

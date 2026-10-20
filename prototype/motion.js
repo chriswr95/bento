@@ -17,7 +17,7 @@ export default class Motion {
     return animation;
   }
   enter(element) {
-    this.play(element, [{ opacity: 0.75 }, { opacity: 1 }], { duration: 140, easing: 'ease-out' });
+    this.play(element, [{ opacity: 0.75 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
   }
   complete(row, finished) {
     if (this.preference.matches || !row?.animate) return false;
@@ -29,7 +29,7 @@ export default class Motion {
       { ...size, opacity: 1 },
       { ...size, opacity: 0.65, offset: 0.45 },
       { height: '0px', paddingTop: '0px', paddingBottom: '0px', borderBottomWidth: '0px', overflow: 'hidden', opacity: 0 }
-    ], { duration: 180, easing: 'ease-out' }, finish);
+    ], { duration: 300, easing: 'ease-out' }, finish);
     if (animation) this.completions.set(animation, finish);
     return !!animation;
   }

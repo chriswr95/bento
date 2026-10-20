@@ -14,7 +14,7 @@ export async function checkMotion(browser, url, screenshots) {
       const animation = row.getAnimations()[0]; animation?.pause();
       return { checked: input.checked, dimmed: row.classList.contains('b-done'), connected: row.isConnected, duration: animation?.effect.getTiming().duration };
     });
-    assert.deepEqual(result, { checked: true, dimmed: true, connected: true, duration: 180 });
+    assert.deepEqual(result, { checked: true, dimmed: true, connected: true, duration: 300 });
     assert.equal(await status(), 'option-done', 'Persistence must precede animation completion');
     await page.locator(`main [data-task="${id}"]`).evaluate(input => { input.closest('.b-task').getAnimations()[0].currentTime = 70; });
     await page.locator('#bento-workflow').screenshot({ path: path.join(screenshots, 'motion-completion.png'), animations: 'allow' });
@@ -35,7 +35,7 @@ export async function checkMotion(browser, url, screenshots) {
     const entrance = await page.getByRole('button', { name: 'Meeting note', exact: true }).evaluate(button => {
       button.click(); return document.querySelector('main').getAnimations().map(animation => animation.effect.getTiming().duration);
     });
-    assert.deepEqual(entrance, [140]);
+    assert.deepEqual(entrance, [220]);
     const editor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
     await editor.click();
     await page.keyboard.press('ControlOrMeta+p');
