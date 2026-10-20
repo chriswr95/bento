@@ -1,15 +1,14 @@
-import path from 'node:path';
 import * as markdown from './markdown.js';
 import schema from '../prototype/schema.js';
 
-export const definitionPath = entry => entry.definition || `${entry.path}/database.md`;
-export const defaultFolder = entry => entry.default_folder || entry.path || 'notes';
+export const definitionPath = entry => entry.definition;
+export const defaultFolder = entry => entry.default_folder ?? 'notes';
 
 // Runtime availability is derived; authored schema files are never repaired on load.
 export function loadDefinitions(files, info) {
-  const databases = {}, databasePaths = {}, unavailableFolders = new Set(), errors = [];
+  const databases = {}, databasePaths = {}, errors = [];
   function unavailable(entry, error) {
-    delete databases[entry.id]; unavailableFolders.add(entry.path || '');
+    delete databases[entry.id];
     errors.push({ path: definitionPath(entry), message: `Database unavailable: ${error.message}. Its pages are protected until the definition is restored or migrated.` });
   }
   for (const entry of info.databases) {
@@ -46,14 +45,5 @@ export function loadDefinitions(files, info) {
       }
     }
   }
-  const controls = new Set(info.databases.map(entry => definitionPath(entry)));
-  for (const [name, raw] of files) {
-    if (!name.endsWith('/database.md') || controls.has(name)) continue;
-    try {
-      if (markdown.parse(raw).metadata.kind !== 'database-definition') continue;
-      unavailableFolders.add(path.posix.dirname(name));
-      errors.push({ path: name, message: 'This database is not registered in workspace.md. Its pages are protected until it is restored or migrated.' });
-    } catch { /* The scanner reports malformed unregistered files separately. */ }
-  }
-  return { databases, databasePaths, unavailableFolders: [...unavailableFolders].filter(Boolean), errors };
+  return { databases, databasePaths, errors };
 }

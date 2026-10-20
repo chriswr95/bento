@@ -4,16 +4,16 @@ import { directoryTree, DirectoryState } from '../prototype/directory-tree.js';
 
 const workspace = () => ({
   databases: { projects: { id: 'projects', title: 'Projects', capabilities: { project: {} } }, todos: { id: 'todos', title: 'Todos', capabilities: { task: {} } } },
-  databasePaths: { projects: 'projects', todos: 'todos' },
+  folders: ['projects', 'projects/Design', 'todos'],
   records: { alpha: { id: 'alpha', title: 'Alpha' }, beta: { id: 'beta', title: 'Beta' }, loose: { id: 'loose', title: 'Workspace notes' } },
   paths: { alpha: 'projects/Design/alpha.md', beta: 'projects/beta.md', loose: 'notes.md' }
 });
 
-test('directory navigation mirrors nested paths, includes empty databases and lists each document once', () => {
+test('directory navigation mirrors nested paths, includes empty folders and lists each document once', () => {
   const input = workspace(), before = structuredClone(input), tree = directoryTree(input);
   assert.deepEqual(tree.folders.map(folder => folder.path), ['projects', 'todos']);
   const projects = tree.folders[0];
-  assert.equal(projects.database.title, 'Projects');
+  assert.equal(projects.database, undefined);
   assert.deepEqual(projects.documents.map(doc => doc.id), ['beta']);
   assert.equal(projects.folders[0].path, 'projects/Design');
   assert.deepEqual(projects.folders[0].documents, [{ id: 'alpha', title: 'Alpha', path: 'projects/Design/alpha.md' }]);

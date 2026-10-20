@@ -21,13 +21,12 @@ function updateMap(document, path, before, after) {
   } else document.setIn(path, after);
 }
 
-function serialize(record, original, { explicitMembership = false } = {}) {
+function serialize(record, original) {
   const parsed = parse(original || '');
   const { body, database, ...metadata } = record;
   const next = { ...parsed.metadata, ...metadata, bento_version: 1 };
-  // Upgraded workspaces persist membership; legacy workspaces still derive it from folders.
-  if (explicitMembership) next.database = database ?? null;
-  else delete next.database;
+  // Content owns its membership; control documents have no database membership.
+  if (!record.kind) next.database = database ?? null;
   updateMap(parsed.document, [], parsed.metadata, next);
   const eol = original?.includes('\r\n') ? '\r\n' : '\n';
   const header = parsed.document.toString({ lineWidth: 0 }).replace(/\r?\n/g, eol);

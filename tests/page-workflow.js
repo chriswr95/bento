@@ -27,8 +27,8 @@ export async function checkPageWorkflow({ launch, stop, temporary, root }) {
     for (const doc of [first, second]) {
       assert.equal(doc.parent, undefined); assert.equal(doc.database, undefined);
       const row = tree.getByRole('button', { name: doc.title, exact: true });
-      assert.equal(await row.getAttribute('title'), `${doc.id}.md`);
-      assert.equal(await row.locator('xpath=ancestor::details').count(), 0);
+      assert.equal(await row.getAttribute('title'), `notes/${doc.id}.md`);
+      assert.equal(await row.locator('xpath=ancestor::details').count(), 1);
     }
     assert.equal(await page.getByRole('button', { name: 'Edit Parent', exact: true }).count(), 0);
     assert.equal(await page.getByRole('navigation', { name: 'Page parents', exact: true }).count(), 0);
@@ -39,7 +39,7 @@ export async function checkPageWorkflow({ launch, stop, temporary, root }) {
     await editor.press('ControlOrMeta+End'); await editor.press('Enter'); await editor.pressSequentially('See [[Drainage');
     await page.getByRole('listbox', { name: 'Link a page', exact: true }).getByRole('option', { name: /^Drainage calculations/ }).waitFor();
     await editor.press('Enter'); await saved();
-    assert.ok((await fs.readFile(path.join(folder, `${second.id}.md`), 'utf8')).includes(`[Drainage calculations](${first.id}.md)`));
+    assert.ok((await fs.readFile(path.join(folder, `notes/${second.id}.md`), 'utf8')).includes(`[Drainage calculations](${first.id}.md)`));
     await editor.getByRole('link', { name: 'Drainage calculations', exact: true }).click();
     await page.locator('.b-backlinks>summary').click();
     await page.locator('.b-backlinks').getByRole('button', { name: 'Assumptions', exact: true }).waitFor();

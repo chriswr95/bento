@@ -138,8 +138,8 @@ function createDocument(workspace, options) {
   else { delete record.database; delete record.schema_version; }
   next.records[documentId] = record;
   if (next.paths) {
-    const destination = next.organizationVersion === 2 ? folder ?? (definition ? next.databasePaths[database] : next.defaultPageFolder) : definition ? next.databasePaths[database] : '';
-    if (next.organizationVersion === 2 && destination !== '' && !next.folders.includes(destination)) throw new Error('Choose an existing folder.');
+    const destination = folder ?? (definition ? next.databasePaths[database] : next.defaultPageFolder);
+    if (destination !== '' && !next.folders?.includes(destination)) throw new Error('Choose an existing folder.');
     next.paths[documentId] = (destination ? destination + '/' : '') + documentId + '.md';
   }
   assertWorkspace(next);

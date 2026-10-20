@@ -28,10 +28,9 @@ export async function checkOrganizationWorkflow({ launch, stop, temporary, root 
     await page.getByRole('button', { name: 'Create page', exact: true }).click(); await saved();
   };
   try {
-    await page.getByRole('button', { name: 'Review upgrade', exact: true }).click();
-    await main().getByRole('heading', { name: 'Separate folders from databases', exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Upgrade workspace', exact: true }).click(); await saved();
-    await page.locator('.b-organization-upgrade').waitFor({ state: 'hidden' });
+    await saved();
+    assert.equal(await page.getByRole('button', { name: 'Review upgrade', exact: true }).count(), 0);
+    assert.equal(await page.evaluate(() => 'upgrade' in window.bentoDesktop), false);
     assert.equal(await page.locator('aside [data-directory="databases"]').count(), 0);
     await browse('notes'); await createFolder('Drainage'); await createFolder('Design');
     // Empty folders are real filesystems entries, visible and traversable before any pages exist.
@@ -85,6 +84,6 @@ export async function checkOrganizationWorkflow({ launch, stop, temporary, root 
     await page.getByRole('textbox', { name: 'Page Markdown', exact: true }).getByRole('link', { name: 'Drainage musings', exact: true }).click();
     await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'Drainage musings', exact: true }).waitFor();
     assert.deepEqual(errors, []);
-    console.log('Passed explicit upgrade, nested empty folders, folder browsing/creation, mixed database membership, page move/link repair, breadcrumbs/history, responsive layout and folder restoration.');
+    console.log('Passed immediate folder access without upgrade UI, nested empty folders, folder browsing/creation, mixed database membership, page move/link repair, breadcrumbs/history, responsive layout and folder restoration.');
   } finally { await stop(app); }
 }

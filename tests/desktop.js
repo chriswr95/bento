@@ -223,7 +223,7 @@ async function addTag(page, value) {
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Weekly coordination');
   await page.getByRole('button', { name: 'Create page', exact: true }).click();
   await saved(page);
-  const meetingFile = (await fs.readdir(path.join(workspace, 'meetings'))).find(name => name !== 'database.md');
+  const meetingFile = (await fs.readdir(path.join(workspace, 'meetings'))).find(name => name.endsWith('.md'));
   assert.ok(meetingFile);
   await editProperty(page, 'Meeting date');
   await page.getByLabel('Meeting date', { exact: true }).fill('2026-10-20');
@@ -258,7 +258,7 @@ async function addTag(page, value) {
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
   assert.match(raw, /^database: db-todos$/m);
   assert.match(raw, new RegExp(projectId));
-  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'save', 'settingsRead', 'settingsSave', 'upgrade'] });
+  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'save', 'settingsRead', 'settingsSave'] });
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);

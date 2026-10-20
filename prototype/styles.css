@@ -337,6 +337,3 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-folder-dialog label {font-size:12px;color:var(--b-soft);margin-top:14px}
 #bento-workflow .b-folder-dialog input,#bento-workflow .b-folder-dialog select {display:block;width:100%;margin-top:5px;padding:8px;border:1px solid var(--b-line);border-radius:5px;background:var(--b-paper);color:var(--b-ink)}
 #bento-workflow .b-folder-dialog .b-actions {justify-content:flex-end;margin-bottom:0}
-#bento-workflow .b-organization-upgrade {display:flex;align-items:center;gap:16px;justify-content:space-between;padding:12px 20px;background:var(--b-side);border-bottom:1px solid var(--b-line);font-size:12px}
-#bento-workflow .b-organization-upgrade button {border:0;background:none;padding:0;color:var(--b-accent);white-space:nowrap;text-decoration:underline}
-@media(min-width:651px) {#bento-workflow[data-desktop] .b-organization-upgrade:not([hidden])~.b-shell aside {height:calc(100dvh - 140px)}}

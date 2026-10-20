@@ -289,9 +289,6 @@ import BentoFileSession from './file-session.js';
     for (const part of path.split('/').filter(Boolean)) node = node?.folders.find(folder => folder.name === part);
     main.innerHTML = `${folderPath(path)}<h1>${escape(path.split('/').at(-1) || 'Files')}</h1><div class="b-actions"><button type="button" class="b-button" data-new-page>New page</button><button type="button" class="b-button" data-new-folder>New folder</button></div><ul class="b-folder-list">${(node?.folders || []).map(folder => `<li><button type="button" data-open-folder="${escape(folder.path)}">▸ ${escape(folder.name)}</button></li>`).join('')}${(node?.documents || []).map(page => `<li><button type="button" data-record="${escape(page.id)}">${escape(page.title)}</button><small>${escape(workspace().databases[workspace().records[page.id].database]?.title || 'Page')}</small></li>`).join('')}</ul>${node?.folders.length || node?.documents.length ? '' : '<p class="b-muted">This folder is empty.</p>'}`;
   }
-  function renderUpgrade() {
-    main.innerHTML = `<p class="b-eyebrow">Workspace organization</p><h1>Separate folders from databases</h1><p>Keep pages wherever they make sense. Database membership will be recorded in each page’s metadata.</p><ul><li>Keep all existing page locations, identities, properties, and Markdown links.</li><li>Move schema definitions into the managed databases folder.</li><li>Add a notes folder as the default for ordinary pages.</li><li>Retain original file contents in the local recovery history.</li></ul><p>${Object.keys(workspace().records).length - 1} pages · ${Object.keys(workspace().databases).length} databases</p><div class="b-actions"><button type="button" class="b-button b-primary" data-upgrade-workspace>Upgrade workspace</button><button type="button" class="b-button" data-view="daily">Cancel</button></div>`;
-  }
   function creationLabel(database) { return `New page in ${database.title}`; }
   function readOnly(doc) { return !!files?.view?.readOnly || !!workspace().readOnlyRecords?.includes(doc.id); }
   function showCreate(databaseId, project = null, folder = null) {
@@ -299,7 +296,7 @@ import BentoFileSession from './file-session.js';
     rememberPresentation();
     if (files?.view?.readOnly) return notify('Repair this workspace before creating documents.');
     if (databaseId !== null && !workspace().databases[databaseId]) return notify('This database is unavailable. Reload or restore its definition.');
-    creation = { database: databaseId, project, folder: workspace().organizationVersion === 2 ? folder ?? (state.view === 'folder' ? currentFolder() : databaseId ? workspace().databasePaths[databaseId] : currentFolder()) : null, previous: location() };
+    creation = { database: databaseId, project, folder: folder ?? (state.view === 'folder' ? currentFolder() : databaseId ? workspace().databasePaths[databaseId] : currentFolder()), previous: location() };
     state.view = 'create'; render();
     main.querySelector('[name="title"]').focus();
   }
@@ -309,7 +306,7 @@ import BentoFileSession from './file-session.js';
     main.innerHTML = `<p class="b-eyebrow">${escape(database?.title || 'Workspace')}</p><h1>${escape(database ? creationLabel(database) : 'New page')}</h1>
       <p class="b-muted">A Markdown document for your notes and details.</p>
       <form id="b-create-document"><label class="b-field">Title<input name="title" aria-label="Document title" required maxlength="200" value="${escape(creation.title || '')}" placeholder="${database?.capabilities.project ? 'e.g. Creekside improvements' : 'Give this page a title'}"></label>
-      ${workspace().organizationVersion === 2 ? `<label class="b-field">Database<select data-create-database name="database" aria-label="Database"><option value="">None · ordinary page</option>${Object.values(workspace().databases).map(db => `<option value="${escape(db.id)}" ${db.id === creation.database ? 'selected' : ''}>${escape(db.title)}</option>`).join('')}</select></label><label class="b-field">Folder<select name="folder" aria-label="Folder">${['', ...workspace().folders].map(path => `<option value="${escape(path)}" ${path === creation.folder ? 'selected' : ''}>${escape(path || 'Workspace root')}</option>`).join('')}</select></label>` : ''}
+      ${desktop ? `<label class="b-field">Database<select data-create-database name="database" aria-label="Database"><option value="">None · ordinary page</option>${Object.values(workspace().databases).map(db => `<option value="${escape(db.id)}" ${db.id === creation.database ? 'selected' : ''}>${escape(db.title)}</option>`).join('')}</select></label><label class="b-field">Folder<select name="folder" aria-label="Folder">${['', ...workspace().folders].map(path => `<option value="${escape(path)}" ${path === creation.folder ? 'selected' : ''}>${escape(path || 'Workspace root')}</option>`).join('')}</select></label>` : ''}
       ${relation ? `<label class="b-field">Project<select name="project" aria-label="Project"><option value="">Unassigned</option>${projects.map(project => `<option value="${project.id}" ${creation.project === project.id ? 'selected' : ''}>${escape(project.title)}</option>`).join('')}</select></label>` : ''}
       <p id="b-create-error" class="b-issues" role="alert" hidden></p>
       <div class="b-actions"><button type="submit" class="b-button b-primary">Create page</button><button type="button" class="b-button" data-cancel-create>Cancel</button></div></form>`;
@@ -320,13 +317,12 @@ import BentoFileSession from './file-session.js';
     return `<ul class="b-tree-children">${folders}${documents}${folders || documents ? '' : '<li class="b-tree-empty">No pages yet</li>'}</ul>`;
   }
   function directoryFolder(node) {
-    const database = node.database;
     const label = node.name;
-    const fallback = database ? !database.capabilities.task : !node.path.includes('/');
+    const fallback = !node.path.includes('/');
     return `<li class="b-tree-folder"><details data-directory="${escape(node.path)}" ${directoryState.expanded(node.path, fallback) ? 'open' : ''}>
       <summary title="${escape(node.path || files.view.folder)}"><span class="b-tree-chevron" aria-hidden="true"></span><button type="button" class="b-tree-folder-name" data-open-folder="${escape(node.path)}" ${state.view === 'folder' && state.folder === node.path ? 'aria-current="page"' : ''}>${escape(label)}</button></summary>
       ${directoryContents(node)}</details>
-      ${workspace().organizationVersion === 2 ? `<button type="button" class="b-tree-create" data-page-folder="${escape(node.path)}" aria-label="New page in ${escape(node.name)}" title="New page in ${escape(node.name)}" ${files.view.readOnly ? 'disabled' : ''}>+</button>` : database ? `<button type="button" class="b-tree-create" data-create="${escape(database.id)}" aria-label="${escape(creationLabel(database))}" title="${escape(creationLabel(database))}" ${files.view.readOnly ? 'disabled' : ''}>+</button>` : ''}</li>`;
+      <button type="button" class="b-tree-create" data-page-folder="${escape(node.path)}" aria-label="New page in ${escape(node.name)}" title="New page in ${escape(node.name)}" ${files.view.readOnly ? 'disabled' : ''}>+</button></li>`;
   }
   function renderSidebar() {
     const sidebar = root.querySelector('aside');
@@ -419,7 +415,7 @@ import BentoFileSession from './file-session.js';
     const isProject = model.capability(workspace(), doc, 'project');
     const related = Object.values(workspace().databases).filter(db => !db.capabilities.task && !db.capabilities.project && db.fields.some(field => field.type === 'relation' && !field.unavailable && field.target_database === doc.database));
     const actions = [
-      desktop && workspace().organizationVersion === 2 && doc.id !== workspace().home && !readOnly(doc) ? '<button type="button" data-move-page>Move page…</button>' : '',
+      desktop && doc.id !== workspace().home && !readOnly(doc) ? '<button type="button" data-move-page>Move page…</button>' : '',
       desktop && isProject ? related.map(db => `<button type="button" data-create="${db.id}" data-for-project="${doc.id}">${escape(creationLabel(db))}</button>`).join('') : '',
       desktop && isProject ? `<button type="button" data-project="${doc.id}">Review project work</button>` : '',
       !desktop ? '<button type="button" data-export>Download Markdown</button>' : ''
@@ -533,7 +529,7 @@ import BentoFileSession from './file-session.js';
       if (selected && !state.project) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     });
     if (!desktop) root.querySelector('#b-project-nav').innerHTML = model.activeProjects(workspace()).map(project => `<button type="button" class="cursor-interaction" data-project="${project.id}" ${state.project === project.id ? 'aria-current="page"' : ''}>${escape(project.title)}</button>`).join('');
-    if (state.view === 'folder') renderFolder(); else if (state.view === 'upgrade') renderUpgrade(); else if (state.view === 'create') renderCreation(); else if (state.view === 'daily') renderDaily(); else if (state.view === 'profile') renderProfile(); else if (record()) renderDocument(); else renderDaily();
+    if (state.view === 'folder') renderFolder(); else if (state.view === 'create') renderCreation(); else if (state.view === 'daily') renderDaily(); else if (state.view === 'profile') renderProfile(); else if (record()) renderDocument(); else renderDaily();
     if (walkthrough?.active) main.insertAdjacentHTML('afterbegin', walkthrough.html());
     if (globalThis.lucide) globalThis.lucide.createIcons({ attrs: { width: 16, height: 16 } });
   }
@@ -581,11 +577,8 @@ import BentoFileSession from './file-session.js';
     const button = event.target.closest('button'); if (!button) return;
     try {
       if (button.hasAttribute('data-open-folder')) { event.preventDefault(); navigate('folder', null, null, button.dataset.openFolder); }
-      else if (button.hasAttribute('data-upgrade-workspace')) files.mutate(() => desktop.upgrade()).then(view => { if (view) { navigate('daily'); notify('Workspace organization upgraded.'); } });
-      else if (button.hasAttribute('data-review-upgrade')) { state.view = 'upgrade'; render(); }
       else if (button.hasAttribute('data-new-folder')) {
-        if (files.view.needsUpgrade) { state.view = 'upgrade'; render(); }
-        else if (!files.view.readOnly && (!propertyEditor || propertyEditor.commit())) folderDialog.show('create', state.view === 'folder' ? state.folder : '');
+        if (!files.view.readOnly && (!propertyEditor || propertyEditor.commit())) folderDialog.show('create', state.view === 'folder' ? state.folder : '');
       }
       else if (button.hasAttribute('data-move-page')) { if (!propertyEditor || propertyEditor.commit()) folderDialog.show('move', (workspace().paths[record().id] || '').split('/').slice(0, -1).join('/'), record().id); }
       else if (button.hasAttribute('data-page-folder')) showCreate(null, null, button.dataset.pageFolder);
@@ -665,7 +658,7 @@ import BentoFileSession from './file-session.js';
       try {
         const database = workspace().databases[creation.database], relation = projectField(database, getProject(creation.project)), project = String(values.get('project') || '');
         const properties = relation && project ? { [relation.id]: relation.cardinality === 'many' ? [project] : project } : {};
-        const result = model.createDocument(workspace(), { database: database?.id || null, title: String(values.get('title')), properties, ...(workspace().organizationVersion === 2 ? { folder: String(values.get('folder')) } : {}) });
+        const result = model.createDocument(workspace(), { database: database?.id || null, title: String(values.get('title')), properties, ...(desktop ? { folder: String(values.get('folder')) } : {}) });
         previous = null;
         state.workspace = result.workspace;
         creation = null;
@@ -704,7 +697,7 @@ import BentoFileSession from './file-session.js';
     root.querySelector('.b-demo').textContent = 'Markdown workspace';
     root.querySelector('.b-demo').hidden = true;
     root.querySelector('.b-theme-toggle').insertAdjacentHTML('beforebegin', `<div class="b-file-controls"><details class="b-workspace-menu"><summary aria-label="Workspace actions"><span data-workspace-name>Workspace</span><span aria-hidden="true">⌄</span></summary><div><button type="button" data-quick-open>Quick open…</button><button type="button" data-walkthrough="replay" hidden>Replay walkthrough</button><button type="button" data-files="open">Open workspace</button><button type="button" data-files="create">New workspace</button><button type="button" data-files="example">Try an example workspace</button><button type="button" data-files="reload" disabled>Reload files</button><button type="button" data-files="save" disabled>Save files</button><button type="button" data-files="restore" hidden>Restore draft</button><button type="button" data-files="draft" hidden>Download draft</button></div></details><button type="button" class="b-draft-notice" data-draft-notice hidden>Draft available</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
-    root.querySelector('.b-shell').insertAdjacentHTML('beforebegin', '<section class="b-organization-upgrade" hidden><span>This workspace uses folder-based database membership.</span><button type="button" data-review-upgrade>Review upgrade</button></section><p id="b-file-errors" class="b-issues" role="alert" hidden></p>');
+    root.querySelector('.b-shell').insertAdjacentHTML('beforebegin', '<p id="b-file-errors" class="b-issues" role="alert" hidden></p>');
 
     const errors = root.querySelector('#b-file-errors');
     files = new BentoFileSession(desktop, {
@@ -719,7 +712,6 @@ import BentoFileSession from './file-session.js';
         const treeKey = 'bento.sidebar.tree.v1:' + view.folder;
         if (directoryState?.key !== treeKey) directoryState = new DirectoryState(treeKey);
         state.workspace = view.workspace;
-        root.querySelector('.b-organization-upgrade').hidden = !view.needsUpgrade;
         state.folder = view.location?.folder || '';
         state.view = view.location?.view || 'daily'; state.project = view.location?.project || null; creation = null;
         if (view.location?.document) state.document = view.location.document;

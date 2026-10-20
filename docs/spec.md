@@ -319,7 +319,7 @@ Existing files and links are preserved. Legacy `parent` metadata is retained as 
 
 ### Sidebar navigation
 
-The explorer remembers folder disclosure state per workspace, offers Collapse all folders, and reveals the current document’s physical ancestors when opened. Selected pages have a quiet accent highlight; decorative page dots are omitted. Page creation actions appear on folder hover or keyboard focus and remain visible on touch devices. Folder names open their contents while chevrons expand/collapse the tree. Empty folders remain visible. Existing workspaces offer a reviewed upgrade that preserves content locations before enabling independent folder/database organization. Long lists scroll inside the sidebar, keeping Workspace, Daily overview, and Settings available.
+The explorer remembers folder disclosure state per workspace, offers Collapse all folders, and reveals the current document’s physical ancestors when opened. Selected pages have a quiet accent highlight; decorative page dots are omitted. Page creation actions appear on folder hover or keyboard focus and remain visible on touch devices. Folder names open their contents while chevrons expand/collapse the tree. Empty folders remain visible. Folder and database organization is available immediately when opening or creating a workspace. Pre-v1 development does not require compatibility with older workspace formats. Long lists scroll inside the sidebar, keeping Workspace, Daily overview, and Settings available.
 
 ### Daily review of personal work
 

@@ -68,11 +68,9 @@ Defaults select existing databases; they do not make Todos or Projects mandatory
 
 Only `workspace.md` needs to remain at the root. Ordinary root-level files remain valid, but new ordinary pages default to `notes/`. Empty and nested folders are first-class filesystem locations. The `databases/` directory is reserved for schema definitions. Hidden operational folders and symlinks are not traversed. Folder names and paths must be portable across Windows and macOS; creation rejects reserved names, traversal, and case/Unicode collisions.
 
-### Existing workspace upgrade
+### Development format policy
 
-Legacy workspaces omit `organization_version` and register `{id, path}` entries with `<path>/database.md`. They continue deriving membership from registered folders until the user reviews and runs Upgrade workspace. Opening alone does not migrate content. The static example and template files retain this legacy layout for compatibility coverage; newly created workspaces are upgraded before use.
-
-Upgrade preserves content locations and stable identities, writes each existing membership explicitly (ordinary pages receive `database: null`), relocates schemas, and adds `notes/`. Markdown destinations are rebased when schema descriptions or links to schemas require it. Unknown metadata, inert legacy `parent`, and existing property values remain intact. Original file contents are retained in the journal history. Upgrade refuses unavailable/unrecognized pages and schema/name conflicts before writing. Interrupted upgrades use normal recovery; they are not a single filesystem-wide atomic operation.
+Bento currently supports one filesystem format: organization version 2 with explicit page membership and managed schema files. Starter templates and the checked-in example use this format directly. There is no in-app upgrade screen, migration command, or folder-derived membership fallback. Pre-v1 format changes update the development fixtures directly; preserving old layouts is not a product requirement. Normal interrupted-save and page-move recovery remains supported.
 
 ## Typed fields
 
@@ -112,11 +110,11 @@ Database names and field labels do not identify behavior. A definition opts into
 
 A task capability maps its completion field, designated checked/reopening options, optional due-date value, and project relation. Status values in the complete group count as checked; Not started and In progress count as unchecked. Checking selects the designated completed option. Explicitly unchecking selects the designated reopening option. Refreshing an unchanged unchecked reference preserves In progress.
 
-The [Todos definition](../examples/document-databases/todos/database.md) is customizable. The [Projects definition](../examples/document-databases/projects/database.md) separately maps active status values for summaries. Meeting Notes needs no specialized capability. Renaming labels preserves bindings. Removing or changing a bound field requires repairing its capability mapping.
+The [Todos definition](../examples/document-databases/databases/db-todos.md) is customizable. The [Projects definition](../examples/document-databases/databases/db-projects.md) separately maps active status values for summaries. Meeting Notes needs no specialized capability. Renaming labels preserves bindings. Removing or changing a bound field requires repairing its capability mapping.
 
 ## Record envelope
 
-An upgraded todo record contains (the [static example](../examples/document-databases/todos/todo-review-comments.md) still uses the legacy layout):
+A [todo record](../examples/document-databases/todos/todo-review-comments.md) contains:
 
 ```yaml
 bento_version: 1
@@ -130,7 +128,7 @@ properties:
   field-task-project: project-creekside
 ```
 
-The Markdown body follows the frontmatter. `schema_version` identifies the selected database's schema. In organization version 2, `database` is a scalar database ID, or absent/null for an ordinary page; multiple memberships are invalid. New ordinary pages explicitly use null and omit schema version. An unavailable database protects each affected record wherever it lives, retaining its original metadata. Legacy workspaces continue checking membership against their registered folder until upgraded.
+The Markdown body follows the frontmatter. `schema_version` identifies the selected database's schema. In organization version 2, `database` is a scalar database ID, or absent/null for an ordinary page; multiple memberships are invalid. New ordinary pages explicitly use null and omit schema version. An unavailable database protects each affected record wherever it lives, retaining its original metadata.
 
 New todo filenames are their stable ID plus `.md`. Other existing Markdown filenames are retained. Unclassified plain Markdown gets a provisional path-derived identity in memory; explicit editing assigns metadata without rewriting untouched files. Stable identity across external renames requires an explicit document ID.
 

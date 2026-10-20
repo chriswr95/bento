@@ -4,6 +4,7 @@ import model from '../prototype/workspace.js';
 
 function emptyWorkspace() {
   const workspace = model.createWorkspace(); workspace.records = {};
+  workspace.folders = ['notes', 'projects', 'todos', 'meetings']; workspace.defaultPageFolder = 'notes';
   workspace.paths = {}; workspace.databasePaths = { 'db-projects': 'projects', 'db-todos': 'todos', 'db-meetings': 'meetings' };
   return workspace;
 }

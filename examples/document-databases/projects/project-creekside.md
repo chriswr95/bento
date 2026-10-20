@@ -3,9 +3,10 @@ bento_version: 1
 id: project-creekside
 schema_version: 1
 title: Creekside improvements
-tags: [site review]
+tags: [ site review ]
 properties:
   field-project-status: option-active
+database: db-projects
 ---
 
 # Creekside improvements

@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { WorkspaceRepository, create } from '../files/repository.js';
-import * as markdown from '../files/markdown.js';
 import model from '../prototype/workspace.js';
 import { directoryTree } from '../prototype/directory-tree.js';
 import { resolvePageLink } from '../prototype/page-links.js';
@@ -15,25 +14,22 @@ async function fixture(t, options) {
   await fs.cp(new URL('../examples/document-databases', import.meta.url), root, { recursive: true });
   return WorkspaceRepository.open(root, options);
 }
-test('explicit upgrade preserves locations, memberships, schemas, comments and legacy metadata', async t => {
-  const repo = await fixture(t), paths = { ...repo.workspace.paths }, schema = await fs.readFile(path.join(repo.root, 'todos/database.md'), 'utf8');
-  await fs.writeFile(path.join(repo.root, 'scratch.md'), '---\nid: scratch\nparent: old # retained\ncustom: value\n---\n# Scratch\n');
-  await repo.reload(); const raw = await fs.readFile(path.join(repo.root, 'scratch.md'), 'utf8');
-  assert.equal(repo.view().needsUpgrade, true); assert.equal(repo.info.organization_version, undefined);
-  assert.equal(await fs.readFile(path.join(repo.root, 'scratch.md'), 'utf8'), raw);
-  await repo.upgrade();
-  assert.equal(repo.view().needsUpgrade, false); assert.equal(repo.info.organization_version, 2);
-  for (const [id, filename] of Object.entries(paths)) assert.equal(repo.workspace.paths[id], filename);
-  assert.equal(await fs.readFile(path.join(repo.root, 'databases/db-todos.md'), 'utf8'), schema);
-  await assert.rejects(fs.access(path.join(repo.root, 'todos/database.md')));
-  assert.equal(markdown.parse(await fs.readFile(path.join(repo.root, 'todos/todo-review-comments.md'), 'utf8')).metadata.database, 'db-todos');
-  assert.equal(markdown.parse(await fs.readFile(path.join(repo.root, 'scratch.md'), 'utf8')).metadata.database, null);
-  assert.match(await fs.readFile(path.join(repo.root, 'scratch.md'), 'utf8'), /parent: old # retained/);
-  assert.equal(repo.workspace.records.scratch.body, '# Scratch\n');
-  assert.ok((await fs.readdir(path.join(repo.root, '.bento-local/history'))).length);
+test('opening the current layout does not rewrite content or offer an upgrade operation', async t => {
+  const repo = await fixture(t), before = new Map(repo.files);
+  assert.equal(repo.readOnly, false); assert.equal(repo.upgrade, undefined);
+  assert.equal(Object.hasOwn(repo.view(), 'needsUpgrade'), false);
+  await repo.reload(); assert.deepEqual(repo.files, before);
+});
+test('unsupported development layouts fail without migrating or rewriting files', async t => {
+  const repo = await fixture(t), filename = path.join(repo.root, 'workspace.md');
+  const older = (await fs.readFile(filename, 'utf8')).replace('organization_version: 2\n', '');
+  await fs.writeFile(filename, older);
+  await assert.rejects(WorkspaceRepository.open(repo.root), /Unsupported workspace organization/);
+  assert.equal(await fs.readFile(filename, 'utf8'), older);
+  await assert.rejects(fs.access(path.join(repo.root, '.bento-local/pending.json')));
 });
 test('database membership follows metadata across mixed folders and new ordinary pages default to notes', async t => {
-  const repo = await fixture(t); await repo.upgrade(); await repo.createFolder('projects', 'Drainage');
+  const repo = await fixture(t); await repo.createFolder('projects', 'Drainage');
   const ordinary = model.createDocument(repo.workspace, { database: null, title: 'Musings', folder: 'projects/Drainage' });
   await repo.save(ordinary.workspace);
   assert.equal(repo.workspace.records[ordinary.documentId].database, undefined);
@@ -51,7 +47,7 @@ test('database membership follows metadata across mixed folders and new ordinary
   await assert.rejects(reopened.save(forged), /schema mapping|properties|field|transfer/i);
 });
 test('moving a page rewrites incoming, outgoing, reference and image links while preserving source and identity', async t => {
-  const repo = await fixture(t); await repo.upgrade(); await repo.createFolder('notes', 'Design (final)');
+  const repo = await fixture(t); await repo.createFolder('notes', 'Design (final)');
   const id = 'todo-review-comments', source = 'meeting-coordination', before = model.clone(repo.workspace.records[id]);
   let next = model.applyEdit(repo.workspace, id, '# Notes\n\n[Meeting](../meetings/meeting-coordination.md#actions "Context")\n\n`[literal](../meetings/meeting-coordination.md)`\n\n![Plan](../assets/plan.png)\n').workspace;
   await repo.save(next);
@@ -81,7 +77,7 @@ test('link rebasing changes only destinations, including nested labels, definiti
   assert.ok(next.endsWith('[External](https://example.com/task.md)'));
 });
 test('empty folders survive restart, remain untyped, and reject unsafe names and collisions', async t => {
-  const repo = await fixture(t); await repo.upgrade(); await repo.createFolder('notes', 'Empty'); await repo.createFolder('notes/Empty', 'Nested');
+  const repo = await fixture(t); await repo.createFolder('notes', 'Empty'); await repo.createFolder('notes/Empty', 'Nested');
   const reopened = await WorkspaceRepository.open(repo.root), tree = directoryTree(reopened.workspace);
   const notes = tree.folders.find(folder => folder.name === 'notes');
   assert.equal(notes.database, undefined); assert.equal(notes.folders[0].folders[0].name, 'Nested');
@@ -93,7 +89,7 @@ test('empty folders survive restart, remain untyped, and reject unsafe names and
   await assert.rejects(repo.moveDocument('todo-review-comments', 'missing'));
 });
 test('unknown schemas protect records wherever they live while ordinary neighbors remain editable', async t => {
-  const repo = await fixture(t); await repo.upgrade(); await repo.moveDocument('todo-review-comments', 'notes');
+  const repo = await fixture(t); await repo.moveDocument('todo-review-comments', 'notes');
   await fs.unlink(path.join(repo.root, 'databases/db-todos.md'));
   await repo.reload(); assert.ok(repo.workspace.readOnlyRecords.includes('todo-review-comments'));
   const created = model.createDocument(repo.workspace, { database: null, title: 'Still writable', folder: 'notes' });
@@ -101,27 +97,24 @@ test('unknown schemas protect records wherever they live while ordinary neighbor
   assert.match(await fs.readFile(path.join(repo.root, 'notes/todo-review-comments.md'), 'utf8'), /database: db-todos/);
 });
 test('external edits and folder changes prevent reorganization before changing files', async t => {
-  const repo = await fixture(t); await repo.upgrade();
+  const repo = await fixture(t);
   await fs.mkdir(path.join(repo.root, 'External'));
   await assert.rejects(repo.moveDocument('todo-review-comments', 'notes'), /changed on disk/);
   await fs.access(path.join(repo.root, 'todos/todo-review-comments.md'));
   await assert.rejects(fs.access(path.join(repo.root, 'notes/todo-review-comments.md')));
 });
-test('interrupted migration and moves recover once, retaining original files in journal history', async t => {
-  let writes = 0;
-  const repo = await fixture(t, { beforeWrite() { if (++writes === 3) throw new Error('Interrupted'); } });
-  await assert.rejects(repo.upgrade(), /Interrupted/);
-  const recovered = await WorkspaceRepository.open(repo.root); assert.equal(recovered.info.organization_version, 2); assert.equal(recovered.readOnly, false);
-  recovered.options.beforeWrite = entry => { if (entry.after === null) throw new Error('Interrupted delete'); };
-  await assert.rejects(recovered.moveDocument('todo-review-comments', 'notes'), /Interrupted delete/);
+test('interrupted page moves recover once, retaining the original in journal history', async t => {
+  const repo = await fixture(t, { beforeWrite(entry) { if (entry.after === null) throw new Error('Interrupted delete'); } });
+  await assert.rejects(repo.moveDocument('todo-review-comments', 'notes'), /Interrupted delete/);
   const moved = await WorkspaceRepository.open(repo.root);
   assert.equal(moved.workspace.paths['todo-review-comments'], 'notes/todo-review-comments.md'); assert.equal(moved.readOnly, false);
   await assert.rejects(fs.access(path.join(repo.root, 'todos/todo-review-comments.md')));
+  assert.ok((await fs.readdir(path.join(repo.root, '.bento-local/history'))).length);
 });
 test('new workspaces start with explicit memberships and dedicated schemas', async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-new-layout-')); t.after(() => fs.rm(root, { recursive: true, force: true }));
   const repo = await create(root);
-  assert.equal(repo.view().needsUpgrade, false); assert.ok(repo.workspace.folders.includes('notes'));
+  assert.equal(Object.hasOwn(repo.view(), 'needsUpgrade'), false); assert.ok(repo.workspace.folders.includes('notes'));
   assert.equal(repo.info.databases[0].definition, 'databases/db-todos.md');
   const next = model.createDocument(repo.workspace, { database: null, title: 'Notes first' }); await repo.save(next.workspace);
   assert.equal(repo.workspace.paths[next.documentId], `notes/${next.documentId}.md`);
@@ -132,16 +125,8 @@ test('multiline destinations in nested blockquotes retain their surrounding Mark
   const moved = new Map([['todos/task.md', 'notes/task.md']]);
   assert.equal(moveLinks(body, 'projects/a.md', 'projects/a.md', moved), body.replaceAll('../todos/task.md', '../notes/task.md'));
 });
-test('upgrade collisions leave content untouched, without a pending transaction', async t => {
-  const repo = await fixture(t), original = await fs.readFile(path.join(repo.root, 'workspace.md'), 'utf8');
-  await fs.mkdir(path.join(repo.root, 'Notes')); await repo.reload();
-  await assert.rejects(repo.upgrade(), /conflicts/);
-  assert.equal(await fs.readFile(path.join(repo.root, 'workspace.md'), 'utf8'), original);
-  await fs.access(path.join(repo.root, 'todos/database.md'));
-  await assert.rejects(fs.access(path.join(repo.root, '.bento-local/pending.json')));
-});
 test('divergent interrupted move retains both copies and stops recovery', async t => {
-  const repo = await fixture(t); await repo.upgrade();
+  const repo = await fixture(t);
   repo.options.beforeWrite = entry => { if (entry.after === null) throw new Error('Stop before deletion'); };
   await assert.rejects(repo.moveDocument('todo-review-comments', 'notes'), /Stop before deletion/);
   const source = path.join(repo.root, 'todos/todo-review-comments.md');
@@ -152,29 +137,13 @@ test('divergent interrupted move retains both copies and stops recovery', async 
   await fs.access(path.join(repo.root, 'notes/todo-review-comments.md'));
 });
 
-test('upgrade rebases authored schema descriptions and incoming schema links', async t => {
+test('managed schema folders report misplaced content without altering it', async t => {
   const repo = await fixture(t);
-  await fs.appendFile(path.join(repo.root, 'todos/database.md'), '\n[Example](todo-review-comments.md)\n');
-  await fs.appendFile(path.join(repo.root, 'workspace.md'), '\n[Todo schema](todos/database.md)\n');
-  await repo.reload(); await repo.upgrade();
-  assert.match(await fs.readFile(path.join(repo.root, 'databases/db-todos.md'), 'utf8'), /\[Example\]\(\.\.\/todos\/todo-review-comments.md\)/);
-  assert.match(await fs.readFile(path.join(repo.root, 'workspace.md'), 'utf8'), /\[Todo schema\]\(databases\/db-todos.md\)/);
-});
-
-test('reserved schema folders cannot silently absorb ordinary content during upgrade or reload', async t => {
-  const repo = await fixture(t);
-  await fs.mkdir(path.join(repo.root, 'databases'));
-  await fs.writeFile(path.join(repo.root, 'databases/ordinary.md'), '# Ordinary notes\n');
-  await repo.reload();
-  await assert.rejects(repo.upgrade(), /reserved databases folder/);
-  await fs.rename(path.join(repo.root, 'databases/ordinary.md'), path.join(repo.root, 'ordinary.md'));
-  await repo.reload(); await repo.upgrade();
   await fs.writeFile(path.join(repo.root, 'databases/external.md'), '# External notes\n');
   await repo.reload();
   assert.ok(repo.errors.some(error => error.path === 'databases/external.md' && /managed databases folder/.test(error.message)));
   assert.equal(await fs.readFile(path.join(repo.root, 'databases/external.md'), 'utf8'), '# External notes\n');
 });
-
 test('moving a page retains query-only references and directory destination semantics', () => {
   const body = '[Query](?view=notes) [Here](#part) [Assets](../assets/) [Directory](.)';
   const next = moveLinks(body, 'notes/a.md', 'projects/Design/a.md', new Map([['notes/a.md', 'projects/Design/a.md']]));

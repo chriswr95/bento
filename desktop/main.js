@@ -61,7 +61,6 @@ async function start() {
     return choose(true, mode === 'example');
   });
   register('workspace:reload', () => requireRepository().reload());
-  register('workspace:upgrade', () => requireRepository().upgrade());
   register('workspace:folder', (parent, name) => requireRepository().createFolder(parent, name));
   register('workspace:move', (id, folder) => requireRepository().moveDocument(id, folder));
   register('workspace:save', workspace => requireRepository().save(workspace));

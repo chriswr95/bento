@@ -29,7 +29,7 @@ test('open is read-only; capture writes a todo and relative link; status and not
   let reopened = await WorkspaceRepository.open(root);
   assert.equal(reopened.workspace.records[task.id].database, 'db-todos');
   const raw = await fs.readFile(path.join(root, `todos/${task.id}.md`), 'utf8');
-  assert.doesNotMatch(raw, /^database:/m);
+  assert.match(raw, /^database: db-todos$/m);
   next = model.applyEdit(reopened.workspace, task.id, '# My working notes\n\nKeep this detail.').workspace;
   next = model.updateTodo(next, task.id, { status: 'option-started', due: '2026-11-02' });
   assert.equal(model.taskInfo(next, next.records[task.id]).done, false);
@@ -50,7 +50,7 @@ test('external changes prevent the entire save and preserve the external file', 
   await fs.writeFile(filename, external);
   await assert.rejects(repo.save(edit(repo, '\n- [ ] Local action\n')), /changed on disk/);
   assert.equal(await fs.readFile(filename, 'utf8'), external);
-  assert.equal((await fs.readdir(path.join(root, 'todos'))).length, 2);
+  assert.equal((await fs.readdir(path.join(root, 'todos'))).length, 1);
 });
 
 test('interrupted multi-file save recovers allocated IDs once and preserves backups', async t => {
@@ -99,7 +99,7 @@ test('unknown metadata, comments, body syntax, and line endings survive a small 
   assert.equal(saved.replace(/\r\n/g, '').includes('\n'), false);
 });
 
-test('folders define membership, subfolders inherit it, and incompatible transfers preserve values', async t => {
+test('external folder moves retain explicit membership and preserve property values', async t => {
   const root = await fixture(t);
   await fs.mkdir(path.join(root, 'todos/Review'));
   await fs.rename(path.join(root, 'todos/todo-review-comments.md'), path.join(root, 'todos/Review/todo-review-comments.md'));
@@ -107,7 +107,7 @@ test('folders define membership, subfolders inherit it, and incompatible transfe
   assert.equal(repo.workspace.records['todo-review-comments'].database, 'db-todos');
   await fs.rename(path.join(root, 'todos/Review/todo-review-comments.md'), path.join(root, 'projects/todo-review-comments.md'));
   repo = await WorkspaceRepository.open(root);
-  assert.equal(repo.workspace.records['todo-review-comments'].database, 'db-projects');
+  assert.equal(repo.workspace.records['todo-review-comments'].database, 'db-todos');
   assert.equal(repo.workspace.records['todo-review-comments'].properties['field-task-status'], 'option-open');
   assert.ok(repo.errors.some(error => /Unresolved link/.test(error.message)));
 });
@@ -129,8 +129,8 @@ test('duplicate keys and identities are reported without rewriting files', async
 test('path traversal, symlinks, and case-colliding files are rejected', async t => {
   const root = await fixture(t);
   const manifestFile = path.join(root, 'workspace.md'), raw = await fs.readFile(manifestFile, 'utf8');
-  await fs.writeFile(manifestFile, raw.replace('path: todos', 'path: ../outside'));
-  await assert.rejects(WorkspaceRepository.open(root), /portable workspace path/);
+  await fs.writeFile(manifestFile, raw.replace('definition: databases/db-todos.md', 'definition: ../outside.md'));
+  await assert.rejects(WorkspaceRepository.open(root), /schema definition path/);
   await fs.writeFile(manifestFile, raw);
   const symlink = path.join(root, 'linked.md');
   try { await fs.symlink(manifestFile, symlink); }
@@ -165,7 +165,7 @@ test('database folder names with spaces, parentheses and Unicode produce portabl
   const root = await fixture(t), folder='My todos (工程)';
   await fs.rename(path.join(root,'todos'), path.join(root,folder));
   const file=path.join(root,'workspace.md');
-  await fs.writeFile(file,(await fs.readFile(file,'utf8')).replace('path: todos','path: '+folder));
+  await fs.writeFile(file,(await fs.readFile(file,'utf8')).replace('default_folder: todos','default_folder: '+folder));
   const repo=await WorkspaceRepository.open(root);
   const next=edit(repo,'\n- [ ] Action in renamed folder\n');
   const task=model.allTasks(next).find(task=>task.title==='Action in renamed folder');
@@ -271,11 +271,11 @@ test('workspace page cannot change structural metadata or overwrite external cha
   await fs.writeFile(filename, external);
   await assert.rejects(repo.save(next), /changed on disk/);
   assert.equal(await fs.readFile(filename, 'utf8'), external);
-  assert.equal((await fs.readdir(path.join(root, 'todos'))).length, 2);
+  assert.equal((await fs.readdir(path.join(root, 'todos'))).length, 1);
 });
 
 test('missing database definitions protect their pages while unrelated edits remain usable', async t => {
-  const root = await fixture(t), definition = path.join(root, 'todos/database.md');
+  const root = await fixture(t), definition = path.join(root, 'databases/db-todos.md');
   const original = await fs.readFile(definition, 'utf8'); await fs.unlink(definition);
   const repo = await WorkspaceRepository.open(root);
   assert.equal(repo.readOnly, false);
@@ -296,7 +296,7 @@ test('missing database definitions protect their pages while unrelated edits rem
 });
 
 test('broken capability bindings disable their role without rewriting schema or losing values', async t => {
-  const root = await fixture(t), filename = path.join(root, 'todos/database.md');
+  const root = await fixture(t), filename = path.join(root, 'databases/db-todos.md');
   const raw = (await fs.readFile(filename, 'utf8')).replace('field: field-task-status', 'field: field-missing');
   await fs.writeFile(filename, raw);
   const repo = await WorkspaceRepository.open(root);
@@ -311,7 +311,7 @@ test('broken capability bindings disable their role without rewriting schema or 
 
 test('unregistered database folders and missing relation targets preserve pages and values', async t => {
   const root = await fixture(t), filename = path.join(root, 'workspace.md');
-  await fs.writeFile(filename, (await fs.readFile(filename, 'utf8')).replace('  - {id: db-projects, path: projects}\n', ''));
+  await fs.writeFile(filename, (await fs.readFile(filename, 'utf8')).replace('  - { id: db-projects, definition: databases/db-projects.md, default_folder: projects }\n', ''));
   const repo = await WorkspaceRepository.open(root);
   assert.equal(repo.readOnly, false);
   assert.ok(repo.workspace.readOnlyRecords.includes('project-creekside'));
@@ -327,10 +327,14 @@ test('unregistered database folders and missing relation targets preserve pages 
 
 test('custom database identities and titles retain capability-driven checkbox capture', async t => {
   const root = await fixture(t);
-  for (const name of ['workspace.md', 'projects/database.md', 'todos/database.md', 'meetings/database.md']) {
-    const filename = path.join(root, name);
-    await fs.writeFile(filename, (await fs.readFile(filename, 'utf8')).replaceAll('db-todos', 'custom-actions').replaceAll('db-projects', 'custom-jobs').replaceAll('db-meetings', 'custom-notes').replace('title: Todos', 'title: Action register').replace('title: Meeting Notes', 'title: Field journal'));
+  const replacements = { 'db-todos': 'custom-actions', 'db-projects': 'custom-jobs', 'db-meetings': 'custom-notes' };
+  const files = ['workspace.md', 'databases/db-projects.md', 'databases/db-todos.md', 'databases/db-meetings.md', 'projects/project-creekside.md', 'todos/todo-review-comments.md', 'meetings/meeting-coordination.md'];
+  for (const name of files) {
+    const filename = path.join(root, name); let raw = await fs.readFile(filename, 'utf8');
+    for (const [before, after] of Object.entries(replacements)) raw = raw.replaceAll(before, after);
+    await fs.writeFile(filename, raw.replace('title: Todos', 'title: Action register').replace('title: Meeting Notes', 'title: Field journal'));
   }
+  for (const [before, after] of Object.entries(replacements)) await fs.rename(path.join(root, `databases/${before}.md`), path.join(root, `databases/${after}.md`));
   const repo = await WorkspaceRepository.open(root);
   assert.deepEqual(repo.errors, []);
   assert.equal(repo.workspace.defaultTaskDatabase, 'custom-actions');

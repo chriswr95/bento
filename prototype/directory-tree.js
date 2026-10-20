@@ -10,10 +10,6 @@ export function directoryTree(workspace) {
     folders.set(path, node);
     return node;
   }
-  for (const [id, path] of Object.entries(workspace.databasePaths || {})) {
-    const node = folder(path);
-    if (workspace.organizationVersion !== 2) node.database = workspace.databases[id];
-  }
   for (const path of workspace.folders || []) folder(path);
   for (const document of Object.values(workspace.records)) {
     if (document.id === workspace.home) continue;

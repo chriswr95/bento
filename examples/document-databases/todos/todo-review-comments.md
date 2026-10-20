@@ -3,11 +3,12 @@ bento_version: 1
 id: todo-review-comments
 schema_version: 1
 title: Review drainage comments
-tags: [review]
+tags: [ review ]
 properties:
   field-task-status: option-open
   field-task-due: "2026-10-24"
   field-task-project: project-creekside
+database: db-todos
 ---
 
 # Review drainage comments

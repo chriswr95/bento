@@ -10,6 +10,7 @@ import { WorkspaceRepository } from '../files/repository.js';
 function withPages() {
   let workspace = model.createWorkspace();
   workspace.paths = Object.fromEntries(Object.keys(workspace.records).map(id => [id, `${id}.md`]));
+  workspace.folders = ['notes', 'projects', 'todos', 'meetings']; workspace.defaultPageFolder = 'notes';
   workspace.databasePaths = { 'db-todos': 'todos', 'db-projects': 'projects', 'db-meetings': 'meetings' };
   const first = model.createDocument(workspace, { database: null, title: 'Calculations' });
   workspace = first.workspace;
@@ -27,7 +28,7 @@ test('standalone documents have no hierarchy and reject parenting operations ato
   assert.equal(workspace.records[first].database, undefined);
   assert.equal(workspace.records[first].schema_version, undefined);
   assert.equal(workspace.records[first].parent, undefined);
-  assert.equal(workspace.paths[first], `${first}.md`);
+  assert.equal(workspace.paths[first], `notes/${first}.md`);
   assert.throws(() => model.createDocument(workspace, { database: null, title: 'Nested', parent: first }), /Only database/);
   assert.throws(() => model.updateDocument(workspace, first, { parent: 'creek' }), /Only document/);
   assert.deepEqual(workspace, before);
@@ -38,7 +39,7 @@ test('standalone creation persists without changing existing files or database s
   const result = model.createDocument(repo.workspace, { database: null, title: 'Calculations' });
   await repo.save(result.workspace);
   const reopened = await WorkspaceRepository.open(folder);
-  assert.equal(reopened.workspace.paths[result.documentId], `${result.documentId}.md`);
+  assert.equal(reopened.workspace.paths[result.documentId], `notes/${result.documentId}.md`);
   assert.equal(reopened.workspace.records[result.documentId].parent, undefined);
   assert.equal(await fs.readFile(filename, 'utf8'), before);
 });
@@ -71,7 +72,7 @@ test('page links resolve real paths including Workspace; backlinks ignore code a
   workspace.records[second].body = `[Review](${href}) and [again](${href}).\n\n[Workspace](${model.linkFor(workspace, second, 'home')})\n`;
   workspace.records.coordination.body = `\`[Example](${href})\`\n\n\`\`\`md\n[Example](${href})\n\`\`\`\n`;
   assert.equal(resolvePageLink(workspace, second, href), first);
-  assert.equal(resolvePageLink(workspace, second, 'workspace.md'), 'home');
+  assert.equal(resolvePageLink(workspace, second, '../workspace.md'), 'home');
   assert.deepEqual(backlinks(workspace, first).map(page => page.id), [second]);
   assert.deepEqual(backlinks(workspace, 'home').map(page => page.id), [second]);
   const renamed = model.updateDocument(workspace, first, { title: 'Renamed' });

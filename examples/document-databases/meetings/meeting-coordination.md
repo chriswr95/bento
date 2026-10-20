@@ -3,14 +3,15 @@ bento_version: 1
 id: meeting-coordination
 schema_version: 1
 title: Weekly coordination
-tags: [coordination, review]
+tags: [ coordination, review ]
 properties:
   field-meeting-date: "2026-10-19"
-  field-meeting-projects: [project-creekside]
+  field-meeting-projects: [ project-creekside ]
 references:
   todo-review-comments:
     base_title: Review drainage comments
     base_completed: false
+database: db-meetings
 ---
 
 # Weekly coordination
