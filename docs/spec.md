@@ -264,3 +264,14 @@ Users can select a built-in theme or install a custom Bento color theme from a J
 ### Semantic colors
 
 Users can assign one of eight theme-aware colors to documents/projects and shared workspace tags. Assignments retain their identity across themes and light/dark modes. Automatic colors are stable, and users can reset overrides. Colors provide recognizable markers and tinted chips while labels remain readable; color is supplementary to text. Status and selection chips use the same palette.
+
+## Future ideas
+
+The [future-ideas backlog](design.md#11-future-ideas) tracks suggestions separately from committed product scope. Current ideas are:
+
+- **Clickable directory path:** show where the current page lives, with every path segment navigable.
+- **Page references:** reference any other page from the document using `[[...]]` or a similar writing interaction.
+- **Cute logo:** give Bento a friendly, recognizable visual identity.
+- **Cmd+P command picker:** quickly find and run commands from the keyboard.
+
+These are captured ideas, not scheduled requirements. Their interaction details and open design questions live in the backlog.

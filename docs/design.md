@@ -293,3 +293,16 @@ Document colors use optional record metadata; shared tag overrides use `workspac
 `shortcuts.js` defines app bindings plus the reference entries for editor/property shortcuts. A capture-phase controller handles workspace commands before editor keymaps, with platform-specific Cmd/Ctrl modifiers, Windows/Linux Alt-arrow aliases, and a three-second chord prefix for the shortcuts section. Formatting/history within the document remains in ProseMirror. `shortcut-reference.js` renders the searchable command/keybinding/context table in Settings. Bindings are fixed in this slice; user rebinding and conflict resolution remain future work.
 
 `navigation-history.js` stores up to 100 page locations and optional presentation state, without workspace/content snapshots. Navigation commits valid pending property edits before leaving, drops forward history after a branch, ignores duplicate locations, and skips unavailable targets. Back/forward restores compatible editor selections and scroll positions. Workspace activation and browser snapshot replacement reset the stack. Existing desktop last-page persistence remains independent. The document footer no longer displays linked-todo counts; unresolved-reference errors remain visible.
+
+## 11. Future ideas
+
+This is the shared idea backlog for Bento. **Captured** means worth exploring, not approved scope, a delivery promise, or a priority order. Keep new ideas here; promote agreed product behavior into the spec and concrete implementation decisions into the relevant design sections. When an idea ships, update its status and link the implementation.
+
+| ID | Idea | Status | Experience and design notes |
+| --- | --- | --- | --- |
+| IDEA-001 | Clickable directory path | Captured | Show the current workspace → database → subfolders → page path in the UI, with every segment clickable. Derive it from the actual repository path. Decide what clicking a workspace/database/folder segment opens or reveals, including documents outside a database. |
+| IDEA-002 | References between any pages | Captured | Let any page reference any other page while writing, using `[[...]]` or a similar command with page suggestions. Decide syntax, duplicate-title disambiguation, rename/move behavior, and portable Markdown representation. General page links must remain distinct from checkbox-to-todo references; consider backlinks as a follow-up. |
+| IDEA-003 | Cute Bento logo | Captured | Explore a friendly, food-inspired identity, potentially a bento box. Check readability at app-icon, sidebar, and favicon sizes, plus light/dark backgrounds. No visual direction is selected yet. |
+| IDEA-004 | Cmd+P quick-open commands | Captured | Provide a keyboard-first command picker through Cmd+P (Ctrl+P on Windows/Linux), with search and keyboard selection. The requested entry point is for commands; decide whether finding/opening documents shares this picker or uses another mode. Reuse the command/shortcut registry where practical. |
+
+These entries capture product ideas. They do not change the current shortcut bindings or claim that the features are implemented.
