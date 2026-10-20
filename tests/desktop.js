@@ -95,7 +95,7 @@ async function addTag(page, value) {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByLabel('First name', { exact: true }).fill('Maki');
   await page.getByRole('button', { name: 'Save profile', exact: true }).click();
-  await page.getByRole('heading', { name: 'Hello, Maki', exact: true }).waitFor();
+  await page.getByRole('heading', { name: /, Maki\??$/ }).waitFor();
   assert.match(await fs.readFile(settingsPath, 'utf8'), /first_name: Maki/);
   assert.equal((await fs.readdir(workspace)).includes('settings.md'), false);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -268,7 +268,7 @@ async function addTag(page, value) {
   assert.equal(await page.locator('aside [aria-current="page"]').getAttribute('data-record') !== null, true);
   await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'Weekly coordination', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
-  await page.getByRole('heading', { name: 'Hello, Maki', exact: true }).waitFor();
+  await page.getByRole('heading', { name: /, Maki\??$/ }).waitFor();
   assert.equal(await page.locator('#bento-workflow').getAttribute('data-color-theme'), 'desktop-custom');
   assert.equal(await page.locator('#bento-workflow').getAttribute('data-theme'), 'dark');
   assert.equal(await page.getByRole('button', { name: 'Dark mode', exact: true }).getAttribute('aria-pressed'), 'true');

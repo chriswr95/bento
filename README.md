@@ -89,3 +89,5 @@ Desktop tests create isolated temporary workspaces and stub only the native dire
 The [app assets](assets/README.md) include the transparent icon master, macOS/Windows icons, favicon, and header mark. Export regeneration is optional; normal packaging uses the checked-in files.
 
 See [Contributing](CONTRIBUTING.md) for linting, focused commits, CI checks, and dependency maintenance.
+
+The daily greeting varies by local time and changes hourly, with a stable phrase during each hour. Birthday greetings still take precedence.

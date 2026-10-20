@@ -68,7 +68,7 @@ This requirement covers workspace content and database definitions. Personal pro
 | Membership | Each document belongs to at most one database; views and relationships do not change membership. |
 | Follow-up | Make outstanding and completed actions easy to find across meetings and projects. |
 | Daily overview | Open to upcoming work across all projects and a summary for every active project. |
-| Personal profile | Save and edit first name, last name, and an optional birthday locally. Greet the user with “Hello, Makena” normally and “hbd Makena!” on her birthday, using her saved first name. |
+| Personal profile | Save and edit first name, last name, and an optional birthday locally. Use concise time-of-day greetings with her saved first name, and “hbd Makena!” on her birthday. |
 | Tags | Allow free-form string tags on notes, projects, and todos, including spaces and Unicode. |
 | Navigation | Provide search and useful project, todo, and tag views. |
 | Agent-assisted content | Let Makena use natural language to find, summarize, create, and update workspace content. |
@@ -167,7 +167,7 @@ Apply existing tags or create new ones directly. Search notes, projects, and tod
 
 ### Set up a personal profile
 
-Save a first name, last name, and optional birthday in personal settings. The first name personalizes the daily overview: “Hello, Makena” normally and “hbd Makena!” when the local calendar month/day matches her birthday. Updating the profile updates the greeting; clearing the birthday returns to the normal greeting. Profile changes persist across reopening.
+Save a first name, last name, and optional birthday in personal settings. The first name personalizes the daily overview with concise, professional greetings that vary by local time, such as “Good morning, Makena,” “Good afternoon, Makena,” and “A quiet moment, Makena.” Phrases rotate hourly and remain stable within the hour, including after reload. Use “hbd Makena!” throughout the day when the local calendar month/day matches her birthday. Updating the profile updates the greeting; clearing the birthday returns to time-of-day greetings. Profile changes persist across reopening.
 
 This is a local personal profile, not a shared-workspace identity or sign-in requirement. Unknown details stay blank; the sample uses Makena's first name without inventing her surname or birthday.
 

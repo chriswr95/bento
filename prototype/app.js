@@ -330,7 +330,7 @@ import BentoFileSession from './file-session.js';
 
     if (desktop && !Object.keys(workspace().records).length) {
       const projects = projectDatabase();
-      main.innerHTML = `<p class="b-eyebrow">Your workspace is ready</p><h1>${escape(BentoProfile.greeting(profile))}</h1>
+      main.innerHTML = `<p class="b-eyebrow">Your workspace is ready</p><h1 id="b-greeting">${escape(BentoProfile.greeting(profile))}</h1>
         <section class="b-onboarding"><h2>Create your first project</h2><p>Start with a project, then add meeting notes and turn checkboxes into todos.</p>
         ${projects ? `<button type="button" class="b-button b-primary" data-create="${projects.id}" ${files.view.readOnly ? 'disabled' : ''}>Create your first project</button>` : '<p>Add a page using a database in the sidebar.</p>'}</section>`;
       return;
@@ -412,9 +412,10 @@ import BentoFileSession from './file-session.js';
     main.querySelector('[data-apply]').hidden = !available;
   }
   function refreshGreeting() {
-    if (desktop && planDate !== BentoProfile.dateKey()) { planDate = BentoProfile.dateKey(); if (state.view === 'daily') renderDaily(); }
-    const heading = main.querySelector('#b-greeting');
-    if (heading && !state.project) heading.textContent = BentoProfile.greeting(profile);
+    const now = new Date();
+    if (desktop && planDate !== BentoProfile.dateKey(now)) { planDate = BentoProfile.dateKey(now); if (state.view === 'daily') render(); }
+    const heading = main.querySelector('#b-greeting'), greeting = BentoProfile.greeting(profile, now);
+    if (heading && !state.project && heading.textContent !== greeting) heading.textContent = greeting;
   }
   function renderProfile() {
     main.innerHTML = `${desktop && personalSettings ? `<p class="b-muted">Settings file: <code>${escape(personalSettings.path)}</code></p>${personalSettings.warning ? `<p class="b-issues" role="alert">${escape(personalSettings.warning)}</p>` : ''}<button type="button" class="b-button" data-reload-settings>Reload settings</button>` : ''}<p class="b-eyebrow">Personal settings</p><h1>Settings</h1><section id="b-theme-settings" aria-label="Appearance settings"></section><h2>Your profile</h2>
@@ -567,6 +568,7 @@ import BentoFileSession from './file-session.js';
     if (event.key === storageKey && event.newValue !== expectedStorage) { storageLocked = true; storageWarning = 'Another page changed the saved workspace; this session will not overwrite it.'; notify('Workspace changed elsewhere.'); }
   });
   document.addEventListener('visibilitychange', refreshGreeting);
+  window.addEventListener('focus', refreshGreeting);
   setInterval(refreshGreeting, 60_000);
   window.addEventListener('openai:set_globals', event => {
     const saved = event.detail?.globals?.widgetState?.privateContent;

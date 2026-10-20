@@ -32,7 +32,7 @@ export async function checkShortcuts(browser, url, screenshots) {
   await page.keyboard.press('ControlOrMeta+['); await editor.waitFor();
   await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
   await page.keyboard.press('ControlOrMeta+]');
-  await page.getByRole('heading', { name: 'Hello, Makena', exact: true }).waitFor();
+  await page.getByRole('heading', { name: /, Makena\??$/ }).waitFor();
   await page.keyboard.press('ControlOrMeta+['); await editor.waitFor();
   assert.match(await editor.innerText(), /Navigation keeps my work/);
   await page.keyboard.press('ControlOrMeta+s');

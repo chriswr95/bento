@@ -120,7 +120,7 @@ async function paste(editor, text, html = '') {
  await profilePage.getByRole('heading',{name:'hbd Makena!',exact:true}).waitFor();
  await profilePage.clock.setSystemTime(new Date('2026-10-20T19:00:00Z'));
  await profilePage.clock.runFor(60_001);
- await profilePage.getByRole('heading',{name:'Hello, Makena',exact:true}).waitFor();
+ await profilePage.getByRole('heading',{name:'Good to see you, Makena',exact:true}).waitFor();
  const dateCases=await profilePage.evaluate(async()=>{
   const {default: BentoProfile} = await import('./profile.js');
    const profile={version:1,firstName:'Sam',lastName:'',birthday:'2000-02-29'};
@@ -137,7 +137,30 @@ async function paste(editor, text, html = '') {
  await profilePage.getByLabel('First name',{exact:true}).fill('Maki');
  await profilePage.getByLabel('Birthday',{exact:true}).fill('');
  await profilePage.getByRole('button',{name:'Save profile',exact:true}).click();
- await profilePage.getByRole('heading',{name:'Hello, Maki',exact:true}).waitFor();
+ await profilePage.getByRole('heading',{name:'Good to see you, Maki',exact:true}).waitFor();
+ await profilePage.clock.setSystemTime(new Date('2026-10-20T11:58:00Z'));
+ await profilePage.clock.runFor(60_001);
+ await profilePage.getByRole('heading',{name:'A quiet moment, Maki',exact:true}).waitFor();
+ await profilePage.clock.setSystemTime(new Date('2026-10-20T12:05:00Z'));
+ await profilePage.clock.runFor(60_001);
+ await profilePage.getByRole('heading',{name:'A fresh start, Maki',exact:true}).waitFor();
+ await profilePage.clock.runFor(60_000);
+ await profilePage.getByRole('heading',{name:'A fresh start, Maki',exact:true}).waitFor();
+ await profilePage.getByRole('button',{name:'Meeting note',exact:true}).click();
+ const greetingEditor = profilePage.getByRole('textbox',{name:'Meeting Markdown',exact:true});
+ await greetingEditor.click(); await greetingEditor.press('ControlOrMeta+End');
+ await greetingEditor.press('Enter'); await greetingEditor.pressSequentially('Keep my writing position');
+ const beforeGreetingRefresh = await greetingEditor.evaluate(element => {
+   element.dataset.greetingIdentity = 'original';
+   return { text: getSelection().anchorNode.textContent, offset: getSelection().anchorOffset };
+ });
+ await profilePage.clock.setSystemTime(new Date('2026-10-20T13:00:00Z'));
+ await profilePage.clock.runFor(60_001);
+ assert.equal(await greetingEditor.getAttribute('data-greeting-identity'), 'original');
+ assert.deepEqual(await greetingEditor.evaluate(() => ({ text: getSelection().anchorNode.textContent, offset: getSelection().anchorOffset })), beforeGreetingRefresh);
+ await profilePage.getByRole('button',{name:'Daily overview',exact:true}).click();
+ await profilePage.getByRole('heading',{name:'Good morning, Maki',exact:true}).waitFor();
+
  await profilePage.getByRole('button',{name:'Settings',exact:true}).click();
  for(const width of [320,736,1024]){
    await profilePage.setViewportSize({width,height:900});
@@ -152,7 +175,7 @@ async function paste(editor, text, html = '') {
  await blocked.getByRole('button',{name:'Settings',exact:true}).click();
  await blocked.getByLabel('First name',{exact:true}).fill('Session user');
  await blocked.getByRole('button',{name:'Save profile',exact:true}).click();
- await blocked.getByRole('heading',{name:'Hello, Session user',exact:true}).waitFor();
+ await blocked.getByRole('heading',{name:/, Session user\??$/}).waitFor();
  assert.match(await blocked.locator('#b-status').innerText(),/storage is unavailable/);
  console.log('Passed profile persistence/clear/edit, birthday and normal greetings, local date change, leap-day handling, date validation, blocked-storage fallback, no profile in host snapshots, and profile responsive widths.');
  const corrupt=await browser.newPage();
