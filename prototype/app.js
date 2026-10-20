@@ -1,6 +1,7 @@
 import NavigationHistory, { sameLocation } from './navigation-history.js';
 import { ShortcutController, shortcuts, bindingsFor, keyLabel, isMac } from './shortcuts.js';
 import QuickOpen from './quick-open.js';
+import Motion from './motion.js';
 import Walkthrough from './walkthrough.js';
 import ShortcutReference from './shortcut-reference.js';
 import { recordColor } from './colors.js';
@@ -146,12 +147,13 @@ import BentoFileSession from './file-session.js';
       screen: state.view, project: state.project, openTodos: allTasks().filter(task => !task.done).length
     }, privateContent })?.catch(() => {});
   }
-  function change(operation, message) {
+  const motion = new Motion();
+  function change(operation, message, present = render) {
     const next = operation();
     previous = clone(state);
     state.workspace = next;
     editingSnapshot = null;
-    render(); persist(); notify(message);
+    present(); persist(); notify(message);
   }
   function rememberPresentation() {
     if (state.view !== 'create' && sameLocation(navigation.entries[navigation.index].location, location())) navigation.remember({ scrollY: window.scrollY, editor: liveEditor?.navigationState() || null });
@@ -162,7 +164,9 @@ import BentoFileSession from './file-session.js';
     if (view === 'document') directoryState?.reveal(workspace().paths?.[documentId]);
     if (isNote(workspace().records[documentId])) state.note = documentId;
     editingSnapshot = null; proposal = false;
-    render(); persist();
+    render();
+    if (view === 'document') motion.enter(main);
+    persist();
     if (desktop) desktop.rememberLocation({ view, project, document: documentId || null }).then(result => { if (!result.ok) notify('Your last page could not be saved. Workspace edits are unaffected.'); });
   }
   function navigate(view, project = null, documentId = state.document) {
@@ -319,7 +323,7 @@ import BentoFileSession from './file-session.js';
     const groups = [['Overdue', 'overdue'], ['Today', 'today'], ['Upcoming', 'upcoming'], ['Without a date', 'undated']];
     main.innerHTML = `<p class="b-eyebrow">Project review · ${escape(planDate)}</p><h1>${escape(review.project.title)}</h1>
       <p class="b-muted">${review.open} open action${review.open === 1 ? '' : 's'} · ${review.groups.completed.length} completed · ${review.notes.length} related note${review.notes.length === 1 ? '' : 's'}</p>
-      <div class="b-actions"><button type="button" class="b-button b-primary" data-record="${review.project.id}">Open project document</button><button type="button" class="b-button" data-view="daily">All projects</button></div>
+      <div class="b-actions"><button type="button" class="b-button b-primary" data-record="${review.project.id}">Open project document</button><button type="button" class="b-button" data-view="daily">All projects</button><button type="button" class="b-button" data-undo ${previous ? '' : 'disabled'}>Undo last change</button></div>
       <section aria-label="Related notes"><h2>Related notes <span class="b-muted">${review.notes.length}</span></h2>
       ${review.notes.length ? `<ul class="b-list">${review.notes.map(note => `<li class="b-review-note"><button type="button" class="b-document-link" data-record="${note.id}">${escape(note.title)}</button><span class="b-muted">${escape(workspace().databases[note.database]?.title || 'Notes')}</span></li>`).join('')}</ul>` : '<p class="b-muted">No related notes yet. Link a meeting note to this project through its Properties.</p>'}</section>
       ${groups.map(([title, key]) => `<section aria-label="${title}"><h2>${title} <span class="b-muted">${review.groups[key].length}</span></h2>${review.groups[key].length ? `<ul class="b-list">${review.groups[key].map(taskRow).join('')}</ul>` : '<p class="b-muted">No work in this group.</p>'}</section>`).join('')}
@@ -446,6 +450,7 @@ import BentoFileSession from './file-session.js';
     });
   }
   function render() {
+    motion.cancel();
     themePicker = null; shortcutReference = null;
     propertyEditor?.destroy(); propertyEditor = null;
     liveEditor?.destroy(); liveEditor = null;
@@ -542,9 +547,23 @@ import BentoFileSession from './file-session.js';
     const details = event.target;
     if (details.isConnected && details.matches('aside details[data-directory]')) directoryState?.set(details.dataset.directory, details.open);
   }, true);
+  function completeTask(checkbox) {
+    const row = checkbox.closest('.b-task'), done = checkbox.checked;
+    const checkboxes = [...main.querySelectorAll('[data-task]:not(:checked)')];
+    const next = checkboxes.find(input => row.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING)?.dataset.task;
+    const refresh = () => {
+      const focused = row.contains(document.activeElement);
+      render();
+      if (focused) ([...main.querySelectorAll('[data-task]')].find(input => input.dataset.task === next) || main.querySelector('[data-undo]'))?.focus({ preventScroll: true });
+    };
+    change(() => model.updateTodo(workspace(), checkbox.dataset.task, { done }), 'Todo completion updated.', () => {
+      main.querySelectorAll('[data-undo]').forEach(button => { button.disabled = false; });
+      if (!done || !motion.complete(row, refresh)) refresh();
+    });
+  }
   root.addEventListener('change', event => {
     try {
-      if (event.target.dataset.task) change(() => model.updateTodo(workspace(), event.target.dataset.task, { done: event.target.checked }), 'Todo completion updated.');
+      if (event.target.dataset.task) completeTask(event.target);
 
     } catch (error) { if (event.target.type === 'checkbox') event.target.checked = !event.target.checked; notify(error.message); }
   });

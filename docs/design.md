@@ -336,3 +336,11 @@ Protected pages remain visible as read-only document projections. Both rich edit
 Resolved checkbox labels are focusable links in the rich editor. Clicking the label or focusing it and pressing Enter opens the todo document; the checkbox independently changes completion. Alt-click places the caret for label editing, and selecting text does not navigate. Pending or unresolved checkboxes have no navigation link. These decorations preserve Markdown links, label formatting, stable identity, and clipboard metadata without a separate open icon.
 
 Project pages omit the Page title property. Editing the first top-level H1 updates the stored title, sidebar label, file-search entry, and document header through the shared edit operation. Empty, removed, or oversized headings retain the last valid title while editing. Other document types keep their existing title properties.
+
+### Workflow motion
+
+Document navigation fades in the new document over 140 ms after navigation and focus restoration begin. Quick open uses a 140 ms fade with a four-pixel entrance; focus, search, activation, and dismissal are immediate. These effects preserve layout and never animate the editor during typing.
+
+Overview and project-review completion apply and persist the domain change synchronously. The completed row dims, briefly lingers, and collapses over 180 ms before refreshing the projection. Undo remains available during that interval. Refreshing or navigating cancels outstanding presentation callbacks; those callbacks never mutate domain state. Keyboard focus moves to the next action or Undo when a focused row disappears. Document checkboxes keep their position and use a short text-color transition.
+
+System reduced motion disables entrances and completion animation. Switching the preference during completion cancels motion and immediately refreshes the projection with focus restoration. Headless interaction checks cover persistence before animation finishes, Undo, interruption by navigation, keyboard focus, and both initial and changed reduced-motion preferences.

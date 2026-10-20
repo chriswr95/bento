@@ -244,3 +244,18 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow [data-todo-link] {cursor:pointer;text-decoration:underline;text-decoration-color:var(--b-line);text-underline-offset:3px;width:fit-content;max-width:100%}
 #bento-workflow [data-todo-link]:hover {color:var(--b-accent);text-decoration-color:currentColor}
 #bento-workflow [data-todo-link]:focus-visible {outline:2px solid var(--b-accent);outline-offset:3px;border-radius:3px}
+
+/* Short entrances preserve layout and never gate focus, input, or navigation. */
+@keyframes bento-palette-enter {
+  from {opacity:0;transform:translate(-50%, -4px) scale(.99)}
+  to {opacity:1;transform:translate(-50%, 0) scale(1)}
+}
+@keyframes bento-backdrop-enter {from {opacity:0} to {opacity:1}}
+#bento-workflow .b-quick-open[open] {animation:bento-palette-enter 140ms ease-out}
+#bento-workflow .b-quick-open[open]::backdrop {animation:bento-backdrop-enter 140ms ease-out}
+#bento-workflow .b-task .b-task-title {transition:color 120ms ease-out}
+#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:color 120ms ease-out}
+@media(prefers-reduced-motion:reduce) {
+  #bento-workflow .b-quick-open[open],#bento-workflow .b-quick-open[open]::backdrop {animation:none}
+  #bento-workflow .b-task .b-task-title,#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:none}
+}
