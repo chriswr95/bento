@@ -281,7 +281,7 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-directory-tree>ul.b-tree-children {padding:0;margin:0;border:0}
 #bento-workflow .b-tree-create:disabled {cursor:default;opacity:.4}
 @media(min-width:651px) {
-  #bento-workflow[data-desktop] aside {position:sticky;top:0;align-self:start;display:flex;flex-direction:column;height:calc(100dvh - 80px);min-height:480px;max-height:100dvh;overflow:hidden}
+  #bento-workflow[data-desktop] aside {position:sticky;top:0;align-self:start;display:flex;flex-direction:column;height:calc(100dvh - 80px);min-height:0;max-height:100dvh;overflow:hidden}
   #bento-workflow[data-desktop] aside>.b-nav {flex:none}
   #bento-workflow[data-desktop] .b-directory-tree {overflow:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--b-line) transparent;padding-right:2px}
   #bento-workflow[data-desktop] .b-sidebar-settings {margin-top:14px}

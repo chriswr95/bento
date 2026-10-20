@@ -94,6 +94,8 @@ export async function checkPageWorkflow({ launch, stop, temporary, root }) {
     await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/sidebar.png') });
     await page.setViewportSize({ width: 600, height: 800 });
     assert.equal(await page.locator('.b-directory-tree').evaluate(tree => tree.clientHeight <= 240 && tree.scrollWidth <= tree.clientWidth + 1), true);
+    await page.setViewportSize({ width: 800, height: 500 });
+    assert.equal(await page.locator('aside [data-view="profile"]').evaluate(button => button.getBoundingClientRect().bottom <= innerHeight), true);
     console.log('Passed native nested page creation, unified file tree, parent editing, cycle-choice exclusion, portable links, backlinks and restart persistence.');
   } finally { await stop(app); }
 }
