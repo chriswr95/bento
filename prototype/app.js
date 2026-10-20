@@ -2,7 +2,7 @@ import NavigationHistory, { sameLocation } from './navigation-history.js';
 import { ShortcutController, shortcuts, bindingsFor, keyLabel, isMac } from './shortcuts.js';
 import QuickOpen from './quick-open.js';
 import Motion from './motion.js';
-import { pageTree, pagePath, ancestors } from './page-hierarchy.js';
+import { pagePath, ancestors } from './page-hierarchy.js';
 import { backlinks, resolvePageLink } from './page-links.js';
 import Walkthrough from './walkthrough.js';
 import ShortcutReference from './shortcut-reference.js';
@@ -114,7 +114,6 @@ import BentoFileSession from './file-session.js';
     return { version: 4, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', workspace: model.createWorkspace(documents) };
   }
   let files = null, directoryState = null, walkthrough = null;
-  let sidebarMode = 'pages';
   let state = desktop ? { version: 4, view: 'daily', project: null, document: null, note: null, workspace: { version: 4, databases: {}, records: {}, issues: [] } } : loadWorkspace();
   let profile = BentoProfile.read();
   const workspace = () => state.workspace;
@@ -164,7 +163,7 @@ import BentoFileSession from './file-session.js';
   function showLocation(destination) {
     const { view, project, document: documentId } = destination;
     state.view = view; state.project = project; state.document = documentId;
-    if (view === 'document') { directoryState?.reveal(workspace().paths?.[documentId]); for (const page of ancestors(workspace(), documentId)) directoryState?.set('page:' + page.id, true); }
+    if (view === 'document') directoryState?.reveal(workspace().paths?.[documentId]);
     if (isNote(workspace().records[documentId])) state.note = documentId;
     editingSnapshot = null; proposal = false;
     render();
@@ -278,31 +277,34 @@ import BentoFileSession from './file-session.js';
   }
   function directoryContents(node) {
     const folders = node.folders.map(directoryFolder).join('');
-    const documents = node.documents.map(doc => `<li><button type="button" class="b-tree-document" data-record="${escape(doc.id)}" title="${escape(doc.path)}" ${state.view === 'document' && state.document === doc.id ? 'aria-current="page"' : ''}><span class="b-record-marker" data-record-marker="${escape(doc.id)}" data-color="${recordColor(workspace().records[doc.id])}" aria-hidden="true">●</span><span>${escape(doc.title)}</span></button></li>`).join('');
+    const documents = node.documents.map(doc => `<li><button type="button" class="b-tree-document" data-record="${escape(doc.id)}" title="${escape(doc.path)}" ${state.view === 'document' && state.document === doc.id ? 'aria-current="page"' : ''}><span>${escape(doc.title)}</span></button></li>`).join('');
     return `<ul class="b-tree-children">${folders}${documents}${folders || documents ? '' : '<li class="b-tree-empty">No pages yet</li>'}</ul>`;
   }
   function directoryFolder(node) {
     const database = node.database;
-    const label = node.path ? database?.title || node.name : workspace().records[workspace().home]?.title || files.view.title;
-    const fallback = node.path === '' || (database ? !database.capabilities.task : !node.path.includes('/'));
+    const label = node.name;
+    const fallback = database ? !database.capabilities.task : !node.path.includes('/');
     return `<li class="b-tree-folder"><details data-directory="${escape(node.path)}" ${directoryState.expanded(node.path, fallback) ? 'open' : ''}>
       <summary title="${escape(node.path || files.view.folder)}"><span class="b-tree-chevron" aria-hidden="true"></span><span class="b-tree-folder-name">${escape(label)}</span></summary>
       ${directoryContents(node)}</details>
       ${database ? `<button type="button" class="b-tree-create" data-create="${escape(database.id)}" aria-label="${escape(creationLabel(database))}" title="${escape(creationLabel(database))}" ${files.view.readOnly ? 'disabled' : ''}>+</button>` : ''}</li>`;
   }
-  function pageNode(node) {
-    const page = node.page;
-    const button = `<button type="button" class="b-tree-document" data-record="${escape(page.id)}" ${state.view === 'document' && state.document === page.id ? 'aria-current="page"' : ''}><span class="b-record-marker" data-record-marker="${escape(page.id)}" data-color="${recordColor(page)}" aria-hidden="true">●</span><span>${escape(page.title)}</span></button>`;
-    if (!node.children.length) return `<li>${button}</li>`;
-    return `<li class="b-tree-folder b-page-folder"><details data-page-branch="${escape(page.id)}" ${directoryState.expanded('page:' + page.id, false) ? 'open' : ''}><summary aria-label="Subpages of ${escape(page.title)}"><span class="b-tree-chevron" aria-hidden="true"></span></summary><ul class="b-tree-children">${node.children.map(pageNode).join('')}</ul></details>${button}</li>`;
-  }
   function renderSidebar() {
     const sidebar = root.querySelector('aside');
     sidebar.hidden = !files?.view;
     if (sidebar.hidden) return;
+    const scroll = sidebar.querySelector('.b-directory-tree')?.scrollTop || 0;
     sidebar.innerHTML = `<nav class="b-nav" aria-label="Workspace">${workspace().home ? `<button type="button" data-record="${workspace().home}" ${state.view === 'document' && state.document === workspace().home ? 'aria-current="page"' : ''}>Workspace</button>` : ''}<button type="button" data-view="daily" ${state.view === 'daily' ? 'aria-current="page"' : ''}>Daily overview</button></nav>
-      <div class="b-tree-view-switch" role="group" aria-label="Sidebar view"><button type="button" data-sidebar-mode="pages" aria-pressed="${sidebarMode === 'pages'}">Pages</button><button type="button" data-sidebar-mode="files" aria-pressed="${sidebarMode === 'files'}">Files</button><button type="button" data-new-page aria-label="New page" ${files.view.readOnly ? 'disabled' : ''}>+</button></div><nav class="b-directory-tree" aria-label="${sidebarMode === 'pages' ? 'Workspace pages' : 'Workspace files'}"><ul>${sidebarMode === 'pages' ? pageTree(workspace()).map(pageNode).join('') : directoryFolder(directoryTree(workspace()))}</ul></nav>
+      <div class="b-sidebar-section"><span>Files</span><div class="b-sidebar-tools"><button type="button" data-collapse-folders aria-label="Collapse all folders" title="Collapse all folders"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m4 6 4-4 4 4M4 13l4-4 4 4"/></svg></button><button type="button" data-new-page aria-label="New page" title="New page" ${files.view.readOnly ? 'disabled' : ''}>+</button></div></div>
+      <nav class="b-directory-tree" aria-label="Workspace files">${directoryContents(directoryTree(workspace()))}</nav>
       <nav class="b-nav b-sidebar-settings" aria-label="Settings"><button type="button" data-view="profile" ${state.view === 'profile' ? 'aria-current="page"' : ''}>Settings</button></nav>`;
+    const tree = sidebar.querySelector('.b-directory-tree'); tree.scrollTop = scroll;
+    const selected = tree.querySelector('[aria-current="page"]');
+    if (selected?.getClientRects().length) {
+      const item = selected.getBoundingClientRect(), viewport = tree.getBoundingClientRect();
+      if (item.top < viewport.top) tree.scrollTop += item.top - viewport.top;
+      else if (item.bottom > viewport.bottom) tree.scrollTop += item.bottom - viewport.bottom;
+    }
   }
 
   function taskRow(task) {
@@ -413,13 +415,11 @@ import BentoFileSession from './file-session.js';
         });
         if (doc.id === workspace().home) {
           root.querySelector('[data-workspace-name]').textContent = record().title; document.title = record().title + ' · Bento';
-          const folderLabel = root.querySelector('aside details[data-directory=""] .b-tree-folder-name'); if (folderLabel) folderLabel.textContent = record().title;
         }
         const heading = main.querySelector('[data-todo-heading]'); if (heading) heading.textContent = record().title;
         main.querySelector('.b-document-header .b-eyebrow').innerHTML = `<span class="b-color-dot" data-document-color data-color="${recordColor(record())}" aria-hidden="true"></span> ${escape(databaseLabel)} / ${escape(record().title)}`;
-        root.querySelectorAll('[data-record-marker]').forEach(marker => { if (marker.dataset.recordMarker === doc.id) marker.dataset.color = recordColor(record()); });
         refreshDocument();
-        if (Object.hasOwn(patch, 'parent')) { for (const page of ancestors(workspace(), doc.id)) directoryState?.set('page:' + page.id, true); if (desktop) renderSidebar(); renderDocumentRelations(); }
+        if (Object.hasOwn(patch, 'parent')) renderDocumentRelations();
         persist(); notify('Properties saved.');
       }
     });
@@ -545,7 +545,11 @@ import BentoFileSession from './file-session.js';
   root.addEventListener('click', event => {
     const button = event.target.closest('button'); if (!button) return;
     try {
-      if (button.dataset.sidebarMode) { sidebarMode = button.dataset.sidebarMode; directoryState?.set('view:pages', sidebarMode === 'pages'); renderSidebar(); root.querySelector(`[data-sidebar-mode="${sidebarMode}"]`)?.focus({ preventScroll: true }); }
+      if (button.hasAttribute('data-collapse-folders')) {
+        const folders = [...root.querySelectorAll('aside details[data-directory]')];
+        directoryState.collapse(folders.map(folder => folder.dataset.directory));
+        folders.forEach(folder => { folder.open = false; });
+      }
       else if (button.hasAttribute('data-new-page')) showCreate(null);
       else if (button.hasAttribute('data-new-subpage')) showCreate(null, null, record().id);
       else if (button.hasAttribute('data-reload-settings')) loadPersonal().then(() => { render(); notify(personalSettings?.warning || 'Personal settings reloaded.'); });
@@ -578,7 +582,6 @@ import BentoFileSession from './file-session.js';
   });
   root.addEventListener('toggle', event => {
     const details = event.target;
-    if (details.isConnected && details.matches('aside details[data-page-branch]')) directoryState?.set('page:' + details.dataset.pageBranch, details.open);
     if (details.isConnected && details.matches('aside details[data-directory]')) directoryState?.set(details.dataset.directory, details.open);
   }, true);
   function completeTask(checkbox) {
@@ -619,7 +622,6 @@ import BentoFileSession from './file-session.js';
         }
         previous = null;
         state.workspace = result.workspace;
-        if (creation.parent && desktop) { sidebarMode = 'pages'; directoryState.set('view:pages', true); }
         creation = null;
         navigate('document', null, result.documentId);
         notify('Created a Markdown document.');
@@ -667,11 +669,11 @@ import BentoFileSession from './file-session.js';
         root.querySelector('[data-workspace-name]').textContent = view.title;
         document.title = view.title + ' · Bento';
         const treeKey = 'bento.sidebar.tree.v1:' + view.folder;
-        if (directoryState?.key !== treeKey) { directoryState = new DirectoryState(treeKey); sidebarMode = directoryState.expanded('view:pages', true) ? 'pages' : 'files'; }
+        if (directoryState?.key !== treeKey) directoryState = new DirectoryState(treeKey);
         state.workspace = view.workspace;
         state.view = view.location?.view || 'daily'; state.project = view.location?.project || null; creation = null;
         if (view.location?.document) state.document = view.location.document;
-        if (state.view === 'document') { directoryState.reveal(workspace().paths?.[state.document]); for (const page of ancestors(workspace(), state.document)) directoryState.set('page:' + page.id, true); }
+        if (state.view === 'document') directoryState.reveal(workspace().paths?.[state.document]);
         if ('resumeWarning' in view) { storageWarning = view.resumeWarning || ''; notify('Workspace ready.'); }
         state.document = Object.hasOwn(workspace().records, state.document) ? state.document : Object.keys(workspace().records)[0];
         state.note = Object.values(workspace().records).find(isNote)?.id;

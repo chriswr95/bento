@@ -58,3 +58,16 @@ test('malformed or unavailable settings never prevent navigation', () => {
   state.set('projects', false); state.reveal('projects/review.md');
   assert.equal(state.expanded('projects'), true);
 });
+
+
+test('collapse all persists every folder and reveal reopens only the selected path', () => {
+  const saved = storage(), state = new DirectoryState('workspace', saved);
+  const paths = ['projects', 'projects/Design', 'todos'];
+  state.collapse(paths);
+  const restored = new DirectoryState('workspace', saved);
+  for (const path of paths) assert.equal(restored.expanded(path), false);
+  restored.reveal('projects/Design/review.md');
+  assert.equal(restored.expanded('projects'), true);
+  assert.equal(restored.expanded('projects/Design'), true);
+  assert.equal(restored.expanded('todos'), false);
+});

@@ -96,7 +96,6 @@ async function addTag(page, value) {
   assert.equal(await page.getByRole('button', { name: 'Save files', exact: true }).isVisible(), true);
   await page.keyboard.press('Escape');
   console.log('Created workspace through the native dialog.');
-  await page.getByRole('button', { name: 'Files', exact: true }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByLabel('First name', { exact: true }).fill('Maki');
   await page.getByRole('button', { name: 'Save profile', exact: true }).click();
@@ -272,8 +271,9 @@ async function addTag(page, value) {
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/project-review.png') });
   await page.getByRole('region', { name: 'Related notes', exact: true }).getByRole('button', { name: 'Weekly coordination', exact: true }).click();
   await page.getByRole('article', { name: 'Editable Markdown document' }).waitFor();
-  await page.locator('aside details[data-directory="projects"]>summary').click();
-  await page.locator('aside details[data-directory="todos"]>summary').click();
+  await page.getByRole('button', { name: 'Collapse all folders', exact: true }).click();
+  assert.equal(await page.locator('aside details[open]').count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Collapse all folders', exact: true }).evaluate(button => document.activeElement === button), true);
   await page.waitForFunction(key => {
     const folders = JSON.parse(localStorage.getItem(key) || '{}');
     return folders.projects === false && folders.todos === false;

@@ -46,6 +46,10 @@ export class DirectoryState {
     this.preferences.set(path, expanded);
     this.persist();
   }
+  collapse(paths) {
+    for (const path of paths) this.preferences.set(path, false);
+    this.persist();
+  }
   reveal(documentPath) {
     if (!documentPath) return;
     const parts = documentPath.split('/'); parts.pop();

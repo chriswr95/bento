@@ -85,12 +85,12 @@
 #bento-workflow .b-workspace-menu>summary {list-style:none;display:flex;align-items:center;gap:8px;border-radius:6px;padding:7px 9px;color:var(--b-ink)}
 #bento-workflow .b-workspace-menu>div {position:absolute;z-index:5;top:100%;left:0;min-width:180px;padding:8px;display:grid;gap:6px;background:var(--b-paper);border:1px solid var(--b-line);border-radius:6px;box-shadow:0 8px 20px #0002}
 
-#bento-workflow .b-directory-tree {margin-top:24px;min-width:0}
+#bento-workflow .b-directory-tree {margin-top:0;min-width:0;min-height:0}
 #bento-workflow .b-directory-tree ul {list-style:none;margin:0;padding:0}
 #bento-workflow .b-directory-tree .b-tree-children {padding-left:12px;border-left:1px solid var(--b-line);margin-left:8px}
 #bento-workflow .b-tree-folder {position:relative;min-width:0}
 #bento-workflow .b-tree-folder>details {margin:0}
-#bento-workflow .b-tree-folder>details>summary {display:flex;align-items:center;gap:7px;list-style:none;padding:8px 28px 8px 4px;border-radius:5px;color:var(--b-ink);font-size:13px}
+#bento-workflow .b-tree-folder>details>summary {display:flex;align-items:center;gap:7px;list-style:none;padding:7px 28px 7px 5px;border-radius:5px;color:var(--b-ink);font-size:13px}
 #bento-workflow .b-tree-folder>details>summary::-webkit-details-marker {display:none}
 #bento-workflow .b-tree-folder>details>summary:hover,#bento-workflow .b-tree-document:hover {background:var(--b-wash)}
 #bento-workflow .b-tree-chevron {width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:5px solid var(--b-soft);flex:none;transition:transform 220ms ease-out}
@@ -98,10 +98,9 @@
 #bento-workflow .b-tree-folder-name {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 #bento-workflow .b-tree-create {position:absolute;top:3px;right:0;background:var(--b-side);border:0;border-radius:4px;padding:2px 7px;font-size:18px}
 #bento-workflow .b-tree-create:hover {background:var(--b-wash)}
-#bento-workflow .b-tree-document {display:flex;align-items:center;gap:7px;width:100%;background:none;border:0;border-radius:5px;padding:7px 5px;text-align:left;font-size:13px}
-#bento-workflow .b-tree-document>span:last-child {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#bento-workflow .b-tree-document>span:first-child {color:var(--b-soft);flex:none}
-#bento-workflow .b-tree-document[aria-current="page"] {background:var(--b-wash);color:var(--b-accent)}
+#bento-workflow .b-tree-document {display:flex;align-items:center;gap:7px;width:100%;background:none;border:0;border-radius:5px;padding:7px 5px 7px 17px;min-height:32px;text-align:left;font-size:13px}
+#bento-workflow .b-tree-document>span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bento-workflow .b-tree-document[aria-current="page"] {background:var(--b-wash);color:var(--b-accent);box-shadow:inset 2px 0 var(--b-accent)}
 #bento-workflow .b-tree-empty {padding:6px 5px;color:var(--b-soft);font-size:12px}
 @media(min-width:651px) {#bento-workflow[data-desktop] .b-shell:not(.b-welcome-shell) {grid-template-columns:260px minmax(0,1fr)}}
 
@@ -189,7 +188,6 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-property-chip[data-color],#bento-workflow .b-project-label[data-color] {color:var(--b-item-color);background:var(--b-item-wash);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--b-item-color) 20%,transparent)}
 #bento-workflow .b-project-label {display:inline-block;padding:0 5px;border-radius:4px}
 #bento-workflow .b-color-dot {display:inline-block;width:8px;height:8px;flex:none;border-radius:50%;background:var(--b-item-color);vertical-align:middle}
-#bento-workflow .b-record-marker {color:var(--b-item-color);font-size:12px}
 #bento-workflow .b-project[data-color] {border-top:3px solid var(--b-item-color)}
 #bento-workflow .b-color-picker {display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:8px 0}
 #bento-workflow .b-color-swatch {display:flex;align-items:center;justify-content:center;border:2px solid transparent;border-radius:50%;width:28px;height:28px;padding:0;background:var(--b-item-color);color:var(--b-item-wash);font-size:15px}
@@ -260,14 +258,6 @@ html {background:light-dark(#fffefa,#202127)}
   #bento-workflow .b-tree-chevron,#bento-workflow .b-task .b-task-title,#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:none}
 }
 
-#bento-workflow .b-tree-view-switch {display:flex;gap:4px;margin-top:20px}
-#bento-workflow .b-tree-view-switch button {background:none;border:0;border-radius:4px;padding:4px 8px;font-size:12px;color:var(--b-soft)}
-#bento-workflow .b-tree-view-switch button[aria-pressed=true] {background:var(--b-wash);color:var(--b-ink)}
-#bento-workflow .b-tree-view-switch button:last-child {margin-left:auto}
-#bento-workflow .b-tree-view-switch+.b-directory-tree {margin-top:8px}
-#bento-workflow .b-page-folder>details>summary {width:24px;padding:11px 6px;position:absolute;left:0;top:0;z-index:1}
-#bento-workflow .b-page-folder>.b-tree-document {position:absolute;top:0;left:22px;width:calc(100% - 22px)}
-#bento-workflow .b-page-folder>details {padding-top:35px}
 #bento-workflow .b-page-ancestors {display:flex;gap:6px;flex-wrap:wrap;font-size:12px;margin:10px 0;color:var(--b-soft)}
 #bento-workflow .b-page-ancestors button,#bento-workflow .b-page-list button {border:0;padding:0;background:none;text-align:left;text-decoration:underline;text-underline-offset:3px}
 #bento-workflow .b-page-list {list-style:none;padding:0;display:grid;gap:8px}
@@ -277,4 +267,26 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-page-link-picker [role=option] {padding:7px 9px;border-radius:4px;cursor:pointer;display:grid;gap:2px}
 #bento-workflow .b-page-link-picker [aria-selected=true] {background:var(--b-wash)}
 #bento-workflow .b-page-link-picker small {color:var(--b-soft);font-size:11px}
-#bento-workflow .b-tree-document[aria-current=page] {background:var(--b-wash);color:var(--b-accent)}
+
+@media(hover:hover) and (pointer:fine) {
+  #bento-workflow .b-tree-create {opacity:0}
+  #bento-workflow .b-tree-folder:has(>details>summary:hover)>.b-tree-create,#bento-workflow .b-tree-folder>.b-tree-create:hover,#bento-workflow .b-tree-folder:focus-within>.b-tree-create {opacity:1}
+}
+
+#bento-workflow .b-sidebar-section {display:flex;align-items:center;justify-content:space-between;margin:20px 4px 6px;font-size:12px;font-weight:600;color:var(--b-soft);flex:none}
+#bento-workflow .b-sidebar-tools {display:flex;gap:2px}
+#bento-workflow .b-sidebar-tools button {display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:3px;background:none;border:0;border-radius:4px;color:var(--b-soft)}
+#bento-workflow .b-sidebar-tools button:hover {background:var(--b-wash);color:var(--b-ink)}
+#bento-workflow .b-sidebar-tools [data-new-page] {font-size:19px}
+#bento-workflow .b-directory-tree>ul.b-tree-children {padding:0;margin:0;border:0}
+#bento-workflow .b-tree-create:disabled {cursor:default;opacity:.4}
+@media(min-width:651px) {
+  #bento-workflow[data-desktop] aside {position:sticky;top:0;align-self:start;display:flex;flex-direction:column;height:calc(100dvh - 80px);min-height:480px;max-height:100dvh;overflow:hidden}
+  #bento-workflow[data-desktop] aside>.b-nav {flex:none}
+  #bento-workflow[data-desktop] .b-directory-tree {overflow:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--b-line) transparent;padding-right:2px}
+  #bento-workflow[data-desktop] .b-sidebar-settings {margin-top:14px}
+}
+@media(max-width:650px) {
+  #bento-workflow[data-desktop] .b-directory-tree {max-height:240px;overflow:auto}
+  #bento-workflow[data-desktop] .b-sidebar-settings {margin-top:12px}
+}
