@@ -300,6 +300,14 @@ Cmd/Ctrl+P opens one modal for pages and workspace commands; `>` restricts resul
 
 `quick-open-search.js` ranks normalized, accent-insensitive title matches ahead of database/path/tag matches and fuzzy title matches. It returns at most 40 results in stable order. This is an in-memory metadata search, not full-text indexing. Paths disambiguate duplicate titles. `quick-open.js` owns the accessible dialog, combobox/listbox, keyboard selection, empty state, and cancellation. Opening and cancelling preserve editor focus, caret and scroll without rerendering the document. Running an action closes the modal first so navigation history captures the restored editor position. The picker uses existing theme tokens and filesystem operations; no new preload capabilities are needed.
 
+### Guided example workspace
+
+`files/example-workspace.js` populates the standard empty template using the normal document-creation and checkbox-capture commands. It creates two fictional projects, two meetings, and four todo documents; dates use local calendar arithmetic rather than a frozen fixture date. Supporting todo notes demonstrate that actions are documents. The repository saves seeded content through the existing transaction mechanism, then adds a versioned `walkthrough` descriptor to `workspace.md` containing the project and meeting IDs. A failed seed does not mark the workspace as ready for a guide. Normal opening never reseeds content or advances dates.
+
+The existing creation IPC accepts only the optional `example` mode. Both creation paths require an empty folder, preserve folder-picker cancellation, and use the same sandboxed bridge. Example creation opens its first project and persists that location through the existing session store; normal creation remains empty.
+
+`prototype/walkthrough.js` owns three nonmodal steps and validates referenced pages before rendering. Step progress/dismissal is local presentation state keyed by the example project ID, independently from shared content and personal profile settings. It survives restart, tolerates unavailable browser storage for the session, and supports replay. Navigation uses the existing app commands; the guide never edits documents, checks actions automatically, or locks the user into a required sequence. The workspace menu shows Replay walkthrough only for a recognized example. Desktop integration tests remain hidden according to the existing test policy.
+
 ## 11. Future ideas
 
 This is the shared idea backlog for Bento. **Captured** means worth exploring, not approved scope, a delivery promise, or a priority order. Keep new ideas here; promote agreed product behavior into the spec and concrete implementation decisions into the relevant design sections. When an idea ships, update its status and link the implementation.

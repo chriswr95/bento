@@ -257,6 +257,18 @@ Record usability observations and unresolved friction. Do not substitute a passi
 
 Technical decisions and their tradeoffs belong in the [design document](design.md). The [data-model walkthrough](data-model.md) works through document-backed databases and meeting-checkbox references; its serialization is proposed rather than frozen.
 
+### First-time walkthrough
+
+A first-time user can try a populated example, start an empty workspace, or open an existing one. The example uses fictional civil-engineering projects and a short, skippable walkthrough centered on Makena’s workflow:
+
+1. Explore a project and its editable notes.
+2. Write directly in a meeting note and turn a checkbox into a personal action with its own notes.
+3. Review upcoming work across projects, open a project’s review, and complete an action.
+
+The example lives in an empty folder chosen by the user and uses the same Markdown documents and autosave as everyday work. Two projects, two meetings, and four initial actions show work due today, upcoming work, undated work, and a completed action. Dates are relative to creation so a fresh example stays useful. Content is clearly fictional and freely editable. Example creation never adds sample records to an existing workspace or fills in personal profile details.
+
+The workspace menu also offers Try an example workspace for users who already have a workspace open. Walkthrough progress and dismissal are remembered on this computer, and the example’s workspace menu can replay it. Restarting preserves edits and the current page. Skipping or finishing hides the guide and keeps all documents. Empty workspaces retain the existing create-first-project flow.
+
 ### Theme installation
 
 Users can select a built-in theme or install a custom Bento color theme from a JSON file through Settings. Light, Dark, and Follow system modes are independent of the chosen theme. Users can export a template to customize/share, update an installed custom theme by ID, and remove it. Theme preferences are personal and apply across workspaces. Current built-ins include Bento adaptations of GitHub, One Dark, Darcula, Tokyo Night, and Catppuccin. Arbitrary editor extension packages are outside this implementation.

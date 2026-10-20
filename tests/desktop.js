@@ -1,3 +1,4 @@
+import { checkOnboarding } from './onboarding.js';
 import { builtinThemes } from '../prototype/themes.js';
 import electronPath from 'electron';
 import { fileURLToPath } from 'node:url';
@@ -72,7 +73,7 @@ async function addTag(page, value) {
   await fs.mkdir(workspace);
   let launched = await launch(null, userData); application = launched.app; let page = launched.page;
   const errors = []; page.on('pageerror', error => errors.push(error.message));
-  await page.getByRole('heading', { name: 'Your workspace, in Markdown.' }).waitFor();
+  await page.getByRole('heading', { name: 'Your projects, notes, and next steps.' }).waitFor();
   const settingsPath = path.join(await application.evaluate(({ app }) => app.getPath('userData')), 'settings.md');
   assert.match(await fs.readFile(settingsPath, 'utf8'), /kind: user-settings/);
 
@@ -308,13 +309,15 @@ async function addTag(page, value) {
   const movedWorkspace = path.join(temporary, 'Reconnected workspace');
   await fs.rename(workspace, movedWorkspace);
   launched = await launch(null, userData); application = launched.app; page = launched.page;
-  await page.getByRole('heading', { name: 'Your workspace, in Markdown.' }).waitFor();
+  await page.getByRole('heading', { name: 'Your projects, notes, and next steps.' }).waitFor();
   assert.match(await page.locator('#b-status').innerText(), /last workspace is unavailable/);
   await application.evaluate(({ dialog }, folder) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] }); }, movedWorkspace);
   await page.getByRole('button', { name: 'Open workspace', exact: true }).click();
   await saved(page);
   assert.doesNotMatch(await page.locator('#b-status').innerText(), /last workspace is unavailable/);
   console.log('Passed disconnected-workspace welcome fallback and recovery through another folder.');
+  await stop(application); application = null;
+  await checkOnboarding({ launch, stop, temporary, root });
 
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
   try {

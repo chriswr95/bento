@@ -1,6 +1,7 @@
 import NavigationHistory, { sameLocation } from './navigation-history.js';
 import { ShortcutController, shortcuts, bindingsFor, keyLabel, isMac } from './shortcuts.js';
 import QuickOpen from './quick-open.js';
+import Walkthrough from './walkthrough.js';
 import ShortcutReference from './shortcut-reference.js';
 import { recordColor } from './colors.js';
 import ThemePicker from './theme-picker.js';
@@ -109,7 +110,7 @@ import BentoFileSession from './file-session.js';
     }
     return { version: 4, savedAt: 0, view: 'daily', project: null, document: 'coordination', note: 'coordination', workspace: model.createWorkspace(documents) };
   }
-  let files = null, directoryState = null;
+  let files = null, directoryState = null, walkthrough = null;
   let state = desktop ? { version: 4, view: 'daily', project: null, document: null, note: null, workspace: { version: 4, databases: {}, records: {}, issues: [] } } : loadWorkspace();
   let profile = BentoProfile.read();
   const workspace = () => state.workspace;
@@ -444,9 +445,9 @@ import BentoFileSession from './file-session.js';
       root.querySelector('aside').hidden = true;
       root.querySelector('.b-shell').classList.add('b-welcome-shell');
       root.querySelector('.b-file-controls').hidden = true;
-      main.innerHTML = `<section class="b-welcome"><p class="b-eyebrow">Welcome to Bento</p><h1>Your workspace, in Markdown.</h1><p>Keep project notes, capture meetings, and follow through on your work.</p>
-        <div class="b-actions"><button type="button" class="b-button b-primary" data-files="create">New workspace</button><button type="button" class="b-button" data-files="open">Open workspace</button></div>
-        <p class="b-muted">Choose an empty folder for a new workspace. Your Markdown files stay in that folder.</p></section>`;
+      main.innerHTML = `<section class="b-welcome"><p class="b-eyebrow">Welcome to Bento</p><h1>Your projects, notes, and next steps.</h1><p>Take meeting notes, track your actions, and see what needs attention.</p>
+        <div class="b-actions"><button type="button" class="b-button b-primary" data-files="example">Try an example workspace</button><button type="button" class="b-button" data-files="create">New workspace</button><button type="button" class="b-button" data-files="open">Open workspace</button></div>
+        <p class="b-muted">Try two fictional projects, meeting notes, and a short walkthrough. Choose an empty folder for the example or a new workspace. Your Markdown files stay in that folder.</p></section>`;
       return;
     }
     if (desktop) { root.querySelector('.b-shell').classList.remove('b-welcome-shell'); root.querySelector('.b-file-controls').hidden = false; renderSidebar(); }
@@ -457,7 +458,24 @@ import BentoFileSession from './file-session.js';
     });
     if (!desktop) root.querySelector('#b-project-nav').innerHTML = model.activeProjects(workspace()).map(project => `<button type="button" class="cursor-interaction" data-project="${project.id}" ${state.project === project.id ? 'aria-current="page"' : ''}>${escape(project.title)}</button>`).join('');
     if (state.view === 'create') renderCreation(); else if (state.view === 'daily') renderDaily(); else if (state.view === 'profile') renderProfile(); else if (record()) renderDocument(); else renderDaily();
+    if (walkthrough?.active) main.insertAdjacentHTML('afterbegin', walkthrough.html());
     if (globalThis.lucide) lucide.createIcons({ attrs: { width: 16, height: 16 } });
+  }
+
+  function handleWalkthrough(action) {
+    if (!walkthrough?.valid || (propertyEditor && !propertyEditor.commit())) return;
+    root.querySelector('.b-workspace-menu').open = false;
+    if (action === 'dismiss') { walkthrough.dismiss(); main.querySelector('.b-walkthrough')?.remove(); return; }
+    rememberPresentation();
+    if (action === 'next') walkthrough.next();
+    if (action === 'replay') walkthrough.replay();
+    if (!walkthrough.active) { main.querySelector('.b-walkthrough')?.remove(); notify('You’re ready. Keep exploring, or create a new workspace from the workspace menu.'); return; }
+    const target = walkthrough.location();
+    navigate(target.view, null, target.document);
+    // Reopening the current location does not trigger navigation/render.
+    main.querySelector('.b-walkthrough')?.remove();
+    main.insertAdjacentHTML('afterbegin', walkthrough.html());
+    main.querySelector('.b-walkthrough h2 button')?.focus({ preventScroll: true });
   }
 
   function editDocument(body) {
@@ -477,6 +495,7 @@ import BentoFileSession from './file-session.js';
     try {
       if (button.hasAttribute('data-reload-settings')) loadPersonal().then(() => { render(); notify(personalSettings?.warning || 'Personal settings reloaded.'); });
       else if (button.hasAttribute('data-theme-toggle')) changeAppearance(nextTheme(appearance.theme, systemAppearance.matches)).then(() => themePicker?.render());
+      else if (button.dataset.walkthrough) handleWalkthrough(button.dataset.walkthrough);
       else if (button.hasAttribute('data-quick-open')) openQuickOpen();
       else if (button.dataset.create) showCreate(button.dataset.create, button.dataset.forProject || null);
       else if (button.hasAttribute('data-cancel-create')) { Object.assign(state, creation.previous); creation = null; render(); }
@@ -558,13 +577,15 @@ import BentoFileSession from './file-session.js';
     root.dataset.desktop = 'true';
     root.querySelector('.b-demo').textContent = 'Markdown workspace';
     root.querySelector('.b-demo').hidden = true;
-    root.querySelector('.b-theme-toggle').insertAdjacentHTML('beforebegin', `<div class="b-file-controls"><details class="b-workspace-menu"><summary aria-label="Workspace actions"><span data-workspace-name>Workspace</span><span aria-hidden="true">⌄</span></summary><div><button type="button" data-quick-open>Quick open…</button><button type="button" data-files="open">Open workspace</button><button type="button" data-files="create">New workspace</button><button type="button" data-files="reload" disabled>Reload files</button><button type="button" data-files="save" disabled>Save files</button><button type="button" data-files="restore" hidden>Restore draft</button><button type="button" data-files="draft" hidden>Download draft</button></div></details><button type="button" class="b-draft-notice" data-draft-notice hidden>Draft available</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
+    root.querySelector('.b-theme-toggle').insertAdjacentHTML('beforebegin', `<div class="b-file-controls"><details class="b-workspace-menu"><summary aria-label="Workspace actions"><span data-workspace-name>Workspace</span><span aria-hidden="true">⌄</span></summary><div><button type="button" data-quick-open>Quick open…</button><button type="button" data-walkthrough="replay" hidden>Replay walkthrough</button><button type="button" data-files="open">Open workspace</button><button type="button" data-files="create">New workspace</button><button type="button" data-files="example">Try an example workspace</button><button type="button" data-files="reload" disabled>Reload files</button><button type="button" data-files="save" disabled>Save files</button><button type="button" data-files="restore" hidden>Restore draft</button><button type="button" data-files="draft" hidden>Download draft</button></div></details><button type="button" class="b-draft-notice" data-draft-notice hidden>Draft available</button><span id="b-save-state" role="status" aria-live="polite"></span></div>`);
     root.querySelector('.b-shell').insertAdjacentHTML('beforebegin', '<p id="b-file-errors" class="b-issues" role="alert" hidden></p>');
 
     const errors = root.querySelector('#b-file-errors');
     files = new BentoFileSession(desktop, {
       workspace,
       activate(view) {
+        walkthrough = new Walkthrough(view);
+        root.querySelector('[data-walkthrough="replay"]').hidden = !walkthrough.valid;
         root.querySelector('[data-workspace-name]').textContent = view.title;
         document.title = view.title + ' · Bento';
         const treeKey = 'bento.sidebar.tree.v1:' + view.folder;
@@ -606,7 +627,8 @@ import BentoFileSession from './file-session.js';
       }
       const action = event.target.closest('[data-files]')?.dataset.files;
       if (action) root.querySelector('.b-workspace-menu').open = false;
-      if (action === 'open' || action === 'create' || action === 'reload') files.open(() => desktop[action]());
+      if (action === 'example') files.open(() => desktop.create('example'));
+      else if (action === 'open' || action === 'create' || action === 'reload') files.open(() => desktop[action]());
       else if (action === 'save') files.save();
       else if (action === 'restore') files.restore();
       else if (action === 'draft') files.downloadDraft();

@@ -8,6 +8,7 @@ import * as markdown from './markdown.js';
 import * as paths from './paths.js';
 import * as transaction from './transaction.js';
 import model from '../prototype/workspace.js';
+import { exampleWorkspace } from './example-workspace.js';
 import schema from '../prototype/schema.js';
 
 async function snapshot(root) {
@@ -113,7 +114,7 @@ class WorkspaceRepository {
     return this.view();
   }
   view() {
-    return { workspace: model.clone(this.workspace), title: this.info.title, folder: this.root, errors: this.errors, readOnly: this.readOnly };
+    return { workspace: model.clone(this.workspace), title: this.info.title, folder: this.root, walkthrough: this.info.walkthrough ?? null, errors: this.errors, readOnly: this.readOnly };
   }
   async verify() {
     const current = await snapshot(this.root);
@@ -165,7 +166,7 @@ async function copyTemplate(source, destination) {
     else throw new Error('Unexpected template entry.');
   }
 }
-async function create(directory, title = 'My workspace') {
+async function create(directory, title = 'My workspace', { example = false, today = new Date() } = {}) {
   const root = await fs.realpath(directory);
   if ((await fs.readdir(root)).length) throw new Error('Choose an empty folder to create a workspace.');
   const template = path.join(__dirname, '..', 'templates', 'workspace');
@@ -173,6 +174,13 @@ async function create(directory, title = 'My workspace') {
   const file = path.join(root, 'workspace.md'), raw = await fs.readFile(file, 'utf8');
   const parsed = markdown.parse(raw); parsed.document.set('id', `workspace-${randomUUID()}`); parsed.document.set('title', title);
   await fs.writeFile(file, '---\n' + parsed.document.toString() + '---\n' + parsed.body, 'utf8');
-  return WorkspaceRepository.open(root);
+  const repository = await WorkspaceRepository.open(root);
+  if (!example) return repository;
+  const seeded = exampleWorkspace(repository.workspace, today);
+  await repository.save(seeded.workspace);
+  parsed.document.set('walkthrough', seeded.walkthrough);
+  await transaction.commit(root, [{ path: 'workspace.md', before: repository.files.get('workspace.md'), after: '---\n' + parsed.document.toString() + '---\n' + parsed.body }], () => repository.verify());
+  await repository.reload();
+  return repository;
 }
 export { WorkspaceRepository, create, snapshot };

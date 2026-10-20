@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('bentoDesktop', Object.freeze({
   rememberLocation: location => ipcRenderer.invoke('workspace:location', location),
   initial: () => ipcRenderer.invoke('workspace:initial'),
   open: () => ipcRenderer.invoke('workspace:open'),
-  create: () => ipcRenderer.invoke('workspace:create'),
+  create: mode => ipcRenderer.invoke('workspace:create', mode),
   reload: () => ipcRenderer.invoke('workspace:reload'),
   save: workspace => ipcRenderer.invoke('workspace:save', workspace)
 }));

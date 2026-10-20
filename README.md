@@ -14,7 +14,9 @@ pnpm setup:desktop
 pnpm start
 ```
 
-`setup:desktop` downloads the pinned Electron runtime. No server, account, or model service is required. First startup shows Open workspace and New workspace. Later launches reopen the last workspace and page automatically. If its folder is unavailable, Bento returns to the welcome screen with a message; if only the page is missing, it opens the workspace overview. Choose an empty folder for a new workspace; it receives editable starter definitions and starts with no content records. To explore existing data, open `examples/document-databases` (copy it first if you want to keep the example unchanged).
+`setup:desktop` downloads the pinned Electron runtime. No server, account, or model service is required. First startup offers Try an example workspace, New workspace, and Open workspace. The example creates two fictional civil-engineering projects, meeting notes, and linked todos in an empty folder you choose. A skippable three-step walkthrough introduces project notes, meeting actions, and daily review. Dates are relative to the creation day; all content is editable Markdown. Replay walkthrough is available from the workspace menu for that example. Later launches reopen the last workspace and page automatically. If its folder is unavailable, Bento returns to the welcome screen with a message; if only the page is missing, it opens the workspace overview. Choose an empty folder for a new workspace; it receives editable starter definitions and starts with no content records. The welcome-screen example is the easiest first demo. A separate static fixture remains under `examples/document-databases`.
+
+For a guided first visit, choose **Try an example workspace** and an empty folder. If Bento already opens a workspace, find the same action in the workspace-name menu. To start with your own work:
 
 1. Choose New workspace, then an empty folder. Create your first project by entering its title.
 2. Bento opens the project’s Markdown document immediately. Write notes, or choose New meeting note to create a note linked to that project.

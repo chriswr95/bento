@@ -235,3 +235,12 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-quick-open kbd {flex:none;font:inherit;font-size:11px;border:1px solid var(--b-line);border-radius:4px;padding:2px 5px;color:var(--b-soft)}
 #bento-workflow .b-quick-status {margin:0;border-top:1px solid var(--b-line);padding:8px 12px;font-size:11px;color:var(--b-soft)}
 @media(max-width:450px) {#bento-workflow .b-quick-open {top:16px} #bento-workflow .b-quick-results [role=option] {gap:8px} #bento-workflow .b-quick-kind {display:none}}
+
+#bento-workflow .b-walkthrough {display:flex;align-items:center;gap:24px;padding:18px 20px;margin-bottom:28px;border:1px solid var(--b-line);border-radius:12px;background:var(--b-wash)}
+#bento-workflow .b-walkthrough h2 {font-size:18px;margin:4px 0 8px}
+#bento-workflow .b-walkthrough h2 button {font:inherit;color:inherit;text-align:left;background:none;border:0;padding:0;cursor:pointer}
+#bento-workflow .b-walkthrough p {font-size:14px;margin:4px 0;max-width:65ch}
+#bento-workflow .b-walkthrough-actions {display:flex;flex-direction:column;align-items:flex-start;gap:10px;flex-shrink:0}
+#bento-workflow .b-walkthrough-actions>button:last-child {color:var(--b-soft);font:inherit;font-size:13px;background:none;border:0;padding:0;cursor:pointer}
+#bento-workflow .b-walkthrough h2 button:hover,#bento-workflow .b-walkthrough-actions>button:last-child:hover {text-decoration:underline}
+@media(max-width:650px) {#bento-workflow .b-walkthrough {flex-direction:column;align-items:flex-start;gap:14px} #bento-workflow .b-walkthrough-actions {flex-direction:row;align-items:center;flex-wrap:wrap}}

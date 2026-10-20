@@ -27,15 +27,15 @@ function requireRepository() {
   if (!repository) throw new Error('Open a workspace first.');
   return repository;
 }
-async function choose(makeNew) {
-  const result = await dialog.showOpenDialog(window, { title: makeNew ? 'Choose an empty folder for your new workspace' : 'Open Bento workspace folder', properties: ['openDirectory', 'createDirectory'] });
+async function choose(makeNew, example = false) {
+  const result = await dialog.showOpenDialog(window, { title: example ? 'Choose an empty folder for your example workspace' : makeNew ? 'Choose an empty folder for your new workspace' : 'Open Bento workspace folder', properties: ['openDirectory', 'createDirectory'] });
   if (result.canceled) return null;
-  const next = makeNew ? await create(result.filePaths[0], path.basename(result.filePaths[0])) : await WorkspaceRepository.open(result.filePaths[0]);
+  const next = makeNew ? await create(result.filePaths[0], example ? 'Bento example' : path.basename(result.filePaths[0]), { example }) : await WorkspaceRepository.open(result.filePaths[0]);
   repository = next;
-  startupWarning = ''; startupLocation = null;
-  try { await lastSession.remember(next.root, { view: 'daily', document: null, project: null }); }
+  startupWarning = ''; startupLocation = example ? { view: 'document', document: next.info.walkthrough.project, project: null } : null;
+  try { await lastSession.remember(next.root, startupLocation || { view: 'daily', document: null, project: null }); }
   catch { startupWarning = 'Workspace opened, but the last session could not be saved.'; }
-  return { ...next.view(), resumeWarning: startupWarning };
+  return { ...next.view(), location: startupLocation, resumeWarning: startupWarning };
 }
 async function start() {
   await fs.mkdir(app.getPath('userData'), { recursive: true });
@@ -54,7 +54,10 @@ async function start() {
   register('workspace:initial', () => repository ? { ...repository.view(), location: startupLocation, resumeWarning: startupWarning } : { unavailable: true, resumeWarning: startupWarning });
   register('workspace:location', async location => { await lastSession.remember(requireRepository().root, location); startupLocation = location; return true; });
   register('workspace:open', () => choose(false));
-  register('workspace:create', () => choose(true));
+  register('workspace:create', mode => {
+    if (mode !== undefined && mode !== 'example') throw new Error('Unknown workspace template.');
+    return choose(true, mode === 'example');
+  });
   register('workspace:reload', () => requireRepository().reload());
   register('workspace:save', workspace => requireRepository().save(workspace));
   if (!app.isPackaged && process.env.BENTO_TEST_MODE === '1' && process.env.BENTO_TEST_WORKSPACE) { repository = await WorkspaceRepository.open(process.env.BENTO_TEST_WORKSPACE); startupLocation = null; startupWarning = ''; }
