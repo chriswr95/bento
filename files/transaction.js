@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
 import * as paths from './paths.js';
+import { isTrashPath, trashDirectory } from './trash-paths.js';
 const hash = text => text === null ? null : createHash('sha256').update(text).digest('hex');
 
 async function read(root, name) {
@@ -52,12 +53,12 @@ async function finish(root, journal, hook = () => {}) {
   // Validate all destinations before resuming any interrupted operation.
   for (const entry of journal.entries) {
     paths.relative(entry.path);
-    if (!entry.path.endsWith('.md') || entry.path.startsWith('.')) throw new Error('Invalid journal destination.');
+    if (!entry.path.toLowerCase().endsWith('.md') || entry.path.startsWith('.') && !isTrashPath(entry.path)) throw new Error('Invalid journal destination.');
     if ((entry.after !== null && typeof entry.after !== 'string') || (entry.before !== null && typeof entry.before !== 'string')) throw new Error('Invalid journal content.');
     const current = await read(root, entry.path);
     if (current !== entry.after && current !== entry.before) throw new Error(`Recovery conflict in ${entry.path}. Both versions remain in .bento-local/pending.json; no conflicting file was overwritten.`);
   }
-  for (const name of journal.directories || []) { paths.relative(name); if (name.startsWith('.')) throw new Error('Invalid journal folder.'); }
+  for (const name of journal.directories || []) { paths.relative(name); if (name.startsWith('.') && name !== trashDirectory) throw new Error('Invalid journal folder.'); }
   for (const name of journal.directories || []) await paths.mkdir(root, name);
   for (const entry of journal.entries) {
     await hook(entry);

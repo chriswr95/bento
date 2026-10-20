@@ -173,11 +173,11 @@ Database removal must detach documents while preserving values and sufficient sc
 1. Mutate and validate a cloned in-memory model.
 2. Keep a local renderer draft and show Pending/Saving/Saved/Failed states.
 3. Before save, compare the visible folder inventory, Markdown file set, and exact original contents, including definitions and workspace configuration. Any external change stops the save.
-4. Acquire a local writer lock and journal all changed file contents, including before/after versions, allocated todo IDs, and planned directories. A null after value represents deletion during a move or schema relocation.
+4. Acquire a local writer lock and journal all changed file contents, including before/after versions, allocated todo IDs, and planned directories. A null after value represents deletion during a move, trash operation, or restoration.
 5. Replace each file through a synced temporary file in its directory. New todo files precede source-link updates.
 6. Retain completed journals in `.bento-local/history/` and replay unfinished operations on reopen. A divergent file halts recovery without overwriting it; both planned versions remain in the journal.
 
-An interrupted operation is recoverable, not an atomic filesystem-wide transaction. Other programs do not honor Bento's lock; there remains a narrow race between the last comparison and replacement. Network shares/cloud-sync conflict coordination, power-loss guarantees across directory metadata, journal retention/pruning, and a recovery-resolution UI require further work. This slice must not be described as production multi-device synchronization or a backup system.
+An interrupted operation is recoverable, not an atomic filesystem-wide transaction. Other programs do not honor Bento's lock; there remains a narrow race between the last comparison and replacement or unlink. Network shares/cloud-sync conflict coordination, power-loss guarantees across directory metadata, journal retention/pruning, and a recovery-resolution UI require further work. This slice must not be described as production multi-device synchronization or a backup system.
 
 The YAML document API retains unknown values and comments where possible, and updates changed metadata keys rather than intentionally reformatting the entire file. Serialization can normalize YAML layout; Markdown body content and original LF/CRLF style are retained.
 
@@ -202,3 +202,11 @@ The filesystem is the only page hierarchy. Standalone pages created in Bento are
 Existing top-level `parent` metadata is preserved as unknown legacy metadata. It is ignored when reading, validating, editing, and navigating pages. New documents do not receive it, and document property commands cannot set it. Removing this feature requires no destructive workspace migration: files, paths, database memberships, and authored links remain intact.
 
 The `[[` insertion interaction stores `[label](relative/path.md)`. Links resolve against actual repository paths, including the Workspace document whose filename differs from its ID. Backlinks are derived from Markdown link tokens, deduplicated by source page; code blocks and inline code do not contribute. Relative traversal beyond the workspace and external URL schemes are excluded from page resolution. External file moves can require link repair. Labels remain authored text when a target is renamed. Links can be edited or removed freely; no parent metadata or automatic child-link projection restores them.
+
+## Content deletion and restoration
+
+Content files have dedicated delete/restore operations; snapshot saves continue rejecting deletions. Workspace home and schema files are protected, as are records in unavailable databases. Deletion journals an exact copy of the original file inside `.bento-local/trash/<uuid>.md` before removing its visible path. The archive envelope records the original document ID, relative path, database, title and deletion time; its body is the original file unchanged. Hidden trash entries are not workspace records and do not affect the visible folder inventory.
+
+Restoration creates the original path and then removes its archive. It rejects invalid tokens, hidden/traversal paths, workspace/schema targets, unavailable original folders/databases, path or identity collisions, and records incompatible with the current schema. Newer content is never overwritten. Archives and completed journals remain available after a conflict. The latest valid deletion receipt survives restart and enables Restore last deleted file; restoring it reveals the next remaining receipt.
+
+Deletion retains incoming Markdown links, source checkboxes, reconciliation checkpoints and relation IDs. Missing targets are surfaced through existing link/relation behavior. A missing linked todo is never recaptured as a new todo, and removing a source note retains its separate todos. Undo restores the same identity and file bytes, reconnecting those references. Permanent erasure, trash browsing/retention and bulk/folder deletion are not implemented.

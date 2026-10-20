@@ -13,6 +13,7 @@ import schema from '../prototype/schema.js';
 import { publicFolder, folderPlan, movePlan, vacant } from './organization.js';
 import { loadDefinitions, definitionPath } from './database-definitions.js';
 import { folderDatabase, folderAvailable } from '../prototype/folders.js';
+import { deletePlan, restorePlan, latestDeletion } from './trash.js';
 
 async function snapshot(root, folders = []) {
   const names = await paths.walk(root, '', [], folders);
@@ -148,10 +149,12 @@ class WorkspaceRepository {
     try { model.assertWorkspace(workspace); }
     catch (error) { this.readOnly = true; errors.push({ path: 'workspace.md', message: error.message }); }
     this.folders = folders; this.files = files; this.workspace = workspace; this.info = info; this.errors = errors;
+    try { this.lastDeletion = await latestDeletion(this.root); }
+    catch (error) { this.lastDeletion = null; this.errors.push({ path: '.bento-local/trash', message: 'Deleted files could not be read: ' + error.message }); }
     return this.view();
   }
   view() {
-    return { workspace: model.clone(this.workspace), title: this.info.title, folder: this.root, walkthrough: this.info.walkthrough ?? null, errors: this.errors, readOnly: this.readOnly };
+    return { workspace: model.clone(this.workspace), title: this.info.title, folder: this.root, walkthrough: this.info.walkthrough ?? null, errors: this.errors, readOnly: this.readOnly, lastDeletion: this.lastDeletion || null };
   }
   async verify() {
     const folders = [], current = await snapshot(this.root, folders);
@@ -207,7 +210,8 @@ class WorkspaceRepository {
     try {
       const plan = await operation();
       await transaction.commit(this.root, plan.entries, () => this.verify(), this.options.beforeWrite, plan.directories);
-      return await this.reload();
+      const view = await this.reload();
+      return { ...view, ...(plan.deletion ? { deletion: plan.deletion } : {}), ...(plan.restored ? { restored: plan.restored } : {}) };
     } finally { this.busy = false; }
   }
   createFolder(parent, name) {
@@ -215,6 +219,17 @@ class WorkspaceRepository {
   }
   moveDocument(id, folder) {
     return this.organize(() => movePlan(this, id, folder));
+  }
+  deleteDocument(id) { return this.organize(() => deletePlan(this, id)); }
+  restoreDocument(token) { return this.organize(() => restorePlan(this, token)); }
+  validateRestored(filename, raw, id, database) {
+    const parsed = markdown.parse(raw);
+    if (parsed.metadata.database !== undefined) throw new Error('The deleted file contains redundant membership metadata. Nothing was restored.');
+    const record = contentRecord(filename, parsed, database || undefined, this.workspace.databases);
+    if (record.id !== id) throw new Error('The deleted file’s identity changed. Nothing was restored.');
+    const next = { ...this.workspace, records: { ...this.workspace.records, [id]: record } };
+    model.assertWorkspace(next);
+    if (database) schema.properties(next.databases[database], record, next.records);
   }
 
 }
