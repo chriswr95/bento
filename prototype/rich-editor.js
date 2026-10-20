@@ -1,5 +1,5 @@
 import { EditorState, TextSelection, Selection } from 'prosemirror-state';
-import { EditorView } from 'prosemirror-view';
+import { EditorView, Decoration, DecorationSet } from 'prosemirror-view';
 import { baseKeymap, toggleMark, chainCommands, exitCode } from 'prosemirror-commands';
 import { keymap } from 'prosemirror-keymap';
 import { history, undo, redo, closeHistory } from 'prosemirror-history';
@@ -69,9 +69,7 @@ class ListItemView {
     this.checkbox = document.createElement('input'); this.checkbox.type = 'checkbox'; this.checkbox.contentEditable = 'false';
     this.checkbox.addEventListener('change', event => { event.stopPropagation(); const current = view.state.doc.nodeAt(getPos()); view.dispatch(view.state.tr.setNodeMarkup(getPos(), null, { ...current.attrs, checked: this.checkbox.checked })); });
     this.contentDOM = document.createElement('div'); this.contentDOM.className = 'b-rich-item-content';
-    this.open = document.createElement('button'); this.open.type = 'button'; this.open.textContent = '↗'; this.open.contentEditable = 'false'; this.open.className = 'b-open-todo';
-    this.open.addEventListener('click', event => { event.stopPropagation(); owner.options.openRecord?.(this.node.attrs.todoId); });
-    this.dom.append(this.checkbox, this.contentDOM, this.open); this.update(node);
+    this.dom.append(this.checkbox, this.contentDOM); this.update(node);
   }
   update(node) {
     if (node.type !== schema.nodes.list_item) return false;
@@ -81,12 +79,10 @@ class ListItemView {
     const resolved = !!node.attrs.todoId && !!this.owner.options.validTask?.(node.attrs.todoId, node.attrs.href);
     this.checkbox.disabled = !!this.owner.options.readOnly || !!node.attrs.href && !resolved;
     this.checkbox.setAttribute('aria-label', `Complete ${node.firstChild.textContent}`);
-    this.open.hidden = !task || !node.attrs.todoId || !resolved;
-    this.open.setAttribute('aria-label', `Open ${node.firstChild.textContent}`);
     return true;
   }
-  stopEvent(event) { return event.target === this.checkbox || event.target === this.open; }
-  ignoreMutation(mutation) { return mutation.type !== 'selection' && (mutation.target === this.dom || mutation.target === this.checkbox || mutation.target === this.open); }
+  stopEvent(event) { return event.target === this.checkbox; }
+  ignoreMutation(mutation) { return mutation.type !== 'selection' && (mutation.target === this.dom || mutation.target === this.checkbox); }
 }
 function safePaste(html) {
   const template = document.createElement('template'); template.innerHTML = html;
@@ -104,11 +100,19 @@ export default class RichEditor {
       editable: () => !options.readOnly,
       attributes: { 'aria-readonly': String(!!options.readOnly), class: 'b-rich-document', role: 'textbox', 'aria-label': options.label, 'aria-multiline': 'true', spellcheck: 'true' },
       dispatchTransaction: tr => this.dispatch(tr),
+      decorations: state => DecorationSet.create(state.doc, taskPositions(state.doc).filter(({ node }) => node.attrs.todoId && options.validTask?.(node.attrs.todoId, node.attrs.href)).map(({ node, position }) => Decoration.node(position + 1, position + 1 + node.firstChild.nodeSize, { role: 'link', tabindex: '0', 'data-todo-link': node.attrs.todoId, 'aria-label': node.firstChild.textContent, title: 'Open todo · Alt-click to edit text' }))),
+      handleKeyDown: (_view, event) => {
+        const link = event.target.closest('[data-todo-link]');
+        if (link && event.target === link && event.key === 'Enter') { event.preventDefault(); options.openRecord?.(link.dataset.todoLink); return true; }
+        return false;
+      },
       nodeViews: { list_item: (node, view, getPos) => new ListItemView(node, view, getPos, this) },
       clipboardTextParser: text => Slice.maxOpen(new MarkdownBridge(text).doc.content),
       transformPastedHTML: safePaste,
       handleDOMEvents: { compositionend: () => { setTimeout(() => { if (!this.destroyed) this.publish(); }, 0); return false; } },
       handleClick: (_view, _pos, event) => {
+        const todo = event.target.closest('[data-todo-link]');
+        if (todo && !event.altKey && event.detail < 2 && this.view.state.selection.empty) { event.preventDefault(); options.openRecord?.(todo.dataset.todoLink); return true; }
         const link = event.target.closest('a'); if (!link) return false;
         event.preventDefault();
         if (event.metaKey || event.ctrlKey) this.options.openLink?.(link.getAttribute('href'));

@@ -70,8 +70,6 @@
 #bento-workflow .b-reading li:has(>input[type=checkbox]) > p:first-of-type {display:inline;margin:0}
 #bento-workflow #b-todo-properties .b-form {grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
 
-#bento-workflow .b-open-todo {flex:none;background:none;border:0;color:var(--b-soft);padding:2px 6px;border-radius:4px}
-#bento-workflow .b-open-todo:hover {background:var(--b-wash);color:var(--b-accent)}
 
 #bento-workflow .b-file-controls {display:flex;align-items:center;gap:12px;flex:1;min-width:0}
 #bento-workflow #b-save-state {color:var(--b-soft);font-size:12px;margin-left:auto}
@@ -132,8 +130,6 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-rich-document li {position:relative}
 #bento-workflow .b-rich-document .b-rich-task {list-style:none}
 #bento-workflow .b-rich-document .b-rich-task>input {position:absolute;left:-24px;top:3px;margin:0}
-#bento-workflow .b-rich-document .b-rich-task>button {position:absolute;right:0;top:0}
-#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {padding-right:28px}
 #bento-workflow .b-rich-document .ProseMirror-selectednode {outline:2px solid var(--b-accent)}
 #bento-workflow .b-rich-document .selectedCell:after {background:var(--b-wash);content:"";position:absolute;inset:0;pointer-events:none;opacity:.5}
 #bento-workflow .b-rich-document td,#bento-workflow .b-rich-document th {position:relative;vertical-align:top}
@@ -244,3 +240,7 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-walkthrough-actions>button:last-child {color:var(--b-soft);font:inherit;font-size:13px;background:none;border:0;padding:0;cursor:pointer}
 #bento-workflow .b-walkthrough h2 button:hover,#bento-workflow .b-walkthrough-actions>button:last-child:hover {text-decoration:underline}
 @media(max-width:650px) {#bento-workflow .b-walkthrough {flex-direction:column;align-items:flex-start;gap:14px} #bento-workflow .b-walkthrough-actions {flex-direction:row;align-items:center;flex-wrap:wrap}}
+
+#bento-workflow [data-todo-link] {cursor:pointer;text-decoration:underline;text-decoration-color:var(--b-line);text-underline-offset:3px;width:fit-content;max-width:100%}
+#bento-workflow [data-todo-link]:hover {color:var(--b-accent);text-decoration-color:currentColor}
+#bento-workflow [data-todo-link]:focus-visible {outline:2px solid var(--b-accent);outline-offset:3px;border-radius:3px}

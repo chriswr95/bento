@@ -253,7 +253,16 @@ function reconcileAll(workspace, captureId = null) {
 function applyEdit(workspace, documentId, body) {
   const next = clone(workspace);
   if (!next.records[documentId]) throw new Error('Document not found.');
-  next.records[documentId].body = body.replace(/\r\n?/g, '\n');
+  const record = next.records[documentId];
+  record.body = body.replace(/\r\n?/g, '\n');
+  if (capability(next, record, 'project')) {
+    const heading = source => marked.lexer(source).find(token => token.type === 'heading' && token.depth === 1);
+    const before = heading(workspace.records[documentId].body), after = heading(record.body);
+    if (after?.type === 'heading' && after.depth === 1 && after.raw !== before?.raw) {
+      const title = labelText(after.text).trim();
+      if (title && title.length <= 200) record.title = title;
+    }
+  }
   const edits = reconcileAll(next, documentId);
   assertWorkspace(next);
   return { workspace: next, edits };

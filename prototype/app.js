@@ -381,7 +381,7 @@ import BentoFileSession from './file-session.js';
         <section id="b-proposal" class="b-proposal" hidden><h3>Sample agent suggestion</h3><p id="b-suggestion-text"></p><p class="b-muted">From this note · no due date specified · simulated assistance</p>
           <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
     if (desktop || task) propertyEditor = new InlineProperties(main.querySelector('#b-document-properties'), {
-      workspace, record, readOnly: readOnly(doc),
+      workspace, record, readOnly: readOnly(doc), hideTitle: !!isProject,
       tagColor(tag, color) {
         const next = model.updateTagColor(workspace(), tag, color); previous = clone(state); state.workspace = next; persist(); notify('Tag color saved across this workspace.');
       },
@@ -489,7 +489,15 @@ import BentoFileSession from './file-session.js';
   function editDocument(body) {
     if (readOnly(record())) return;
     if (!editingSnapshot) { editingSnapshot = clone(state); previous = editingSnapshot; }
+    const previousTitle = record().title;
     state.workspace = model.applyEdit(workspace(), state.document, body).workspace;
+    if (record().title !== previousTitle) {
+      root.querySelectorAll('aside [data-record]').forEach(button => {
+        if (button.dataset.record === record().id && button.querySelector('span:last-child')) button.querySelector('span:last-child').textContent = record().title;
+      });
+      const database = workspace().databases[record().database];
+      main.querySelector('.b-document-header .b-eyebrow').innerHTML = `<span class="b-color-dot" data-document-color data-color="${recordColor(record())}" aria-hidden="true"></span> ${escape(database?.title || 'Documents')} / ${escape(record().title)}`;
+    }
     refreshDocument();
     persist(); notify(desktop ? 'Draft updated.' : 'Document saved.');
   }

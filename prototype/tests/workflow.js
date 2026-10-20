@@ -73,7 +73,11 @@ async function paste(editor, text, html = '') {
   await editor.press('ControlOrMeta+End'); await editor.press('Enter'); await editor.press('Enter');
   await paste(editor, clipboard.text, clipboard.html);
   assert.equal(Object.values((await stored()).workspace.records).filter(record=>record.id===task.id).length,1);
-  const opens = page.getByRole('button', { name: 'Open Rich action revised', exact: true }); await opens.first().click();
+  const opens = page.getByRole('link', { name: 'Rich action revised', exact: true });
+  assert.equal(await page.locator('.b-open-todo').count(), 0);
+  await opens.first().click({ modifiers: ['Alt'] });
+  assert.equal(await editor.isVisible(), true);
+  await opens.first().focus(); await opens.first().press('Enter');
   const todoEditor = page.getByRole('textbox', { name: 'Todo Markdown', exact: true });
   await todoEditor.click(); await todoEditor.press('ControlOrMeta+a'); await paste(todoEditor, '# Supporting notes\n\nRich context with **important details**.\n');
   await todoEditor.locator('strong').filter({ hasText: 'important details' }).waitFor();
@@ -83,7 +87,7 @@ async function paste(editor, text, html = '') {
   await page.getByRole('checkbox', { name: 'Complete Rich action revised', exact: true }).first().click();
   assert.equal(findTask(await stored(), 'Rich action revised').properties['field-task-status'], 'option-open');
   await page.reload();
-  await page.getByRole('button', { name: 'Open Rich action revised', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Rich action revised', exact: true }).first().click();
   assert.match(await page.locator('#b-reading').innerText(), /important details/);
   await page.locator('summary[aria-label="Document actions"]').click();
   const downloadPromise = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download Markdown', exact: true }).click();
@@ -220,7 +224,7 @@ async function paste(editor, text, html = '') {
   return {saved,id:task.id};
  });
  await migration.reload();
- await migration.getByRole('button',{name:'Open Legacy action',exact:true}).click();
+ await migration.getByRole('link',{name:'Legacy action',exact:true}).click();
  assert.match(await migration.locator('#b-reading').innerText(),/Legacy supporting notes/);
  const migrated=await migration.evaluate(()=>({current:JSON.parse(localStorage.getItem('bento.prototype.workspace.v4')),old:localStorage.getItem('bento.prototype.workspace.v3')}));
  assert.equal(migrated.old,legacy.saved);

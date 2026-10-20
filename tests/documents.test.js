@@ -47,3 +47,20 @@ test('standalone todos initialize completion without duplicating their title in 
   assert.equal(model.taskInfo(result.workspace, result.workspace.records[result.documentId]).done, false);
   assert.equal(result.workspace.records[result.documentId].body, '');
 });
+
+
+test('editing a project heading updates its title while preserving identity and other pages', () => {
+  const workspace = model.createWorkspace({ coordination: '# Meeting\n', drainage: '# Drainage\n' });
+  const project = Object.values(workspace.records).find(doc => model.capability(workspace, doc, 'project'));
+  const original = JSON.stringify(workspace);
+  const next = model.applyEdit(workspace, project.id, '# **Renamed** project\n\nNotes.\n').workspace;
+  assert.equal(next.records[project.id].title, 'Renamed project');
+  assert.equal(next.records[project.id].id, project.id);
+  assert.equal(JSON.stringify(workspace), original);
+  const edited = model.applyEdit(next, project.id, '# **Renamed** project\n\nOther notes.\n').workspace;
+  assert.equal(edited.records[project.id].title, 'Renamed project');
+  const empty = model.applyEdit(next, project.id, '# \n\nNotes.\n').workspace;
+  assert.equal(empty.records[project.id].title, 'Renamed project');
+  const note = model.applyEdit(next, 'coordination', '# Meeting changed\n').workspace;
+  assert.equal(note.records.coordination.title, next.records.coordination.title);
+});

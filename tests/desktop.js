@@ -149,13 +149,14 @@ async function addTag(page, value) {
   const projectId = projectFiles[0].slice(0, -3);
   assert.match(await fs.readFile(path.join(workspace, 'projects', projectFiles[0]), 'utf8'), /title: My first project/);
   assert.match(await fs.readFile(path.join(workspace, 'projects', projectFiles[0]), 'utf8'), /color: purple/);
-  await editProperty(page, 'Page title');
-  await page.getByRole('textbox', { name: 'Page title', exact: true }).fill('Temporary project title');
+  assert.equal(await page.getByRole('button', { name: 'Edit Page title', exact: true }).count(), 0);
+  const projectHeading = page.getByRole('textbox', { name: 'Project Markdown', exact: true }).locator('h1').first();
+  await projectHeading.click(); await page.keyboard.press('Home');
+  await page.keyboard.press('Shift+End'); await page.keyboard.insertText('Temporary project title');
   await page.keyboard.press('ControlOrMeta+s'); await saved(page);
   assert.match(await fs.readFile(path.join(workspace, 'projects', projectFiles[0]), 'utf8'), /title: Temporary project title/);
-  await editProperty(page, 'Page title');
-  await page.getByRole('textbox', { name: 'Page title', exact: true }).fill('My first project');
-  await page.keyboard.press('Enter'); await saved(page);
+  await page.keyboard.press('Home'); await page.keyboard.press('Shift+End'); await page.keyboard.insertText('My first project');
+  await page.keyboard.press('ControlOrMeta+s'); await saved(page);
   assert.match(await fs.readFile(path.join(workspace, 'workspace.md'), 'utf8'), /Civil engineering: teal/);
   await page.keyboard.press('ControlOrMeta+p');
   const quickDialog = page.getByRole('dialog', { name: 'Quick open', exact: true });
@@ -234,7 +235,7 @@ async function addTag(page, value) {
   assert.ok(filename, 'Typed checkbox creates a real Markdown todo file');
   console.log('Captured a checkbox into its Markdown todo file.');
   assert.match(await fs.readFile(path.join(workspace, 'meetings', meetingFile), 'utf8'), new RegExp('../todos/' + filename));
-  await page.getByRole('button', { name: 'Open Desktop action', exact: true }).click();
+  await page.getByRole('link', { name: 'Desktop action', exact: true }).click();
 
   const todoEditor = page.getByRole('textbox', { name: 'Todo Markdown', exact: true });
   await todoEditor.click(); await todoEditor.press('ControlOrMeta+a');

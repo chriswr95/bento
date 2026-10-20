@@ -30,7 +30,7 @@ export default class InlineProperties {
   }
   fields() {
     const record = this.options.record();
-    return [ { id: '$title', name: 'Page title', type: 'text', required: true, value: record.title },
+    return [ ...(this.options.hideTitle ? [] : [{ id: '$title', name: 'Page title', type: 'text', required: true, value: record.title }]),
       { id: '$color', name: 'Color', type: 'color', value: record.color || 'automatic' },
       ...(this.options.workspace().databases[record.database]?.fields || []).map(field => ({ ...field, value: record.properties[field.id] })),
       { id: '$tags', name: 'Tags', type: 'tags', value: record.tags } ];
