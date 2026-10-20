@@ -55,6 +55,10 @@ Unit tests cover standalone creation without hierarchy, rejected Parent creation
 
 Unit tests validate block structures, one-step undo, and invalid commands. Browser checks exercise slash headings, tracked todos, database creation choices, absent subpages, and unknown/cancelled commands. Page creation is available through the sidebar, database slash actions and command palette.
 
+### Daily-review focus coverage
+
+Browser workflows verify count filters with mouse and keyboard, unchanged storage on filtering, independent project/source navigation, project-status labels, focus after rescheduling into a hidden group, completion of the last visible action, empty states, Undo, and responsive layouts. Hidden Electron coverage follows meeting capture through restart and next-day review, filters overdue work, reschedules it, checks focus and empty states, and verifies saved dates and preserved source Markdown. Run it independently with `pnpm test:desktop:daily`, or target `BENTO_PACKAGED_EXECUTABLE` for packaged verification. Unit coverage checks custom status mappings and labels alongside grouping, recent notes, and calendar rollover.
+
 ### Micro-syntax entry coverage
 
 `pnpm test:desktop:micro` runs a hidden Electron workflow for checkbox `@` date/project/status assignment and slash/palette creation in a custom Permits database. It checks visible confirmed tokens, Enter finalization, revising entry tokens, required text/date values, numeric zero, boolean false, multiple choices, tags with commas, color, invalid input, cancellation, clean titles, stable task identity, no files before submission and persistence after restart. Browser coverage also checks token positions after surrounding text changes, revisions without duplicates, continued typing, and finalization on editor blur. It is included in `pnpm test:desktop` and can target `BENTO_PACKAGED_EXECUTABLE` for packaged smoke checks.

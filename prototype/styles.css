@@ -333,8 +333,18 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-text-action:disabled {opacity:.5;cursor:default}
 #bento-workflow .b-daily-columns {display:grid;grid-template-columns:minmax(0,1.6fr) minmax(220px,1fr);gap:32px;align-items:start}
 #bento-workflow .b-daily-columns>section {min-width:0}
-#bento-workflow .b-my-work>section {margin-top:26px}
-#bento-workflow .b-my-work>section>h3 {font-weight:600;color:var(--b-soft);font-size:13px}
+#bento-workflow #b-work-groups>section {margin-top:26px}
+#bento-workflow #b-work-groups>section>h3 {font-weight:600;color:var(--b-soft);font-size:13px}
+#bento-workflow .b-review-filters {display:flex;flex-wrap:wrap;gap:6px;margin:18px 0 4px}
+#bento-workflow .b-review-filters button {display:inline-flex;align-items:center;gap:8px;background:none;border:1px solid transparent;border-radius:6px;padding:5px 9px;font-size:12px;color:var(--b-soft)}
+#bento-workflow .b-review-filters button span {font-variant-numeric:tabular-nums}
+#bento-workflow .b-review-filters button:hover {background:var(--b-side)}
+#bento-workflow .b-review-filters button[aria-pressed=true] {color:var(--b-accent);background:var(--b-wash);border-color:var(--b-line)}
+#bento-workflow .b-task-context {display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:3px;color:var(--b-soft);font-size:12px}
+#bento-workflow .b-task-context .b-source {display:inline;padding:0}
+#bento-workflow .b-task-context .b-project-label {border:0;font-size:12px;text-align:left}
+#bento-workflow .b-project-heading {display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+#bento-workflow .b-project-status {font-size:11px;color:var(--b-soft)}
 #bento-workflow .b-project-summaries {display:grid;gap:12px}
 #bento-workflow .b-project .b-project-attention {color:var(--b-ink)}
 #bento-workflow .b-project .b-next-deadline {font-size:12px;font-weight:400}

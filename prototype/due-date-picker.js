@@ -34,7 +34,8 @@ export default class DueDatePicker {
   close() {
     this.dialog.close();
     const button = [...this.dialog.parentElement.querySelectorAll('[data-reschedule]')].find(button => button.dataset.reschedule === this.task);
-    button?.focus({ preventScroll: true });
+    if (button) button.focus({ preventScroll: true });
+    else this.options.restoreFocus?.();
   }
   save(value, validateInput = false) {
     if (validateInput && !this.input.checkValidity() || value && !model.validDate(value)) { this.error.textContent = 'Enter a valid date.'; this.error.hidden = false; return; }

@@ -52,6 +52,19 @@ test('recent notes use one unambiguous date field and exclude future notes', () 
   workspace.databases['db-meetings'].fields.push({ id: 'another-date', name: 'Another date', type: 'date' });
   assert.equal(dailyReview(workspace, '2026-10-19').projects.find(summary => summary.project.id === 'creek').recentNotes.length, 0);
 });
+test('project summaries use the mapped status and customized option labels', () => {
+  const workspace = fixture(), database = workspace.databases['db-projects'];
+  const field = database.fields[0]; field.id = 'phase'; field.name = 'Project phase';
+  field.options[0].name = 'In design';
+  database.capabilities.project.active.field = 'phase';
+  for (const project of Object.values(workspace.records).filter(record => record.database === database.id)) {
+    project.properties.phase = project.properties['field-project-status']; delete project.properties['field-project-status'];
+  }
+  model.assertWorkspace(workspace);
+  const before = structuredClone(workspace), review = dailyReview(workspace, '2026-10-19');
+  assert.ok(review.projects.every(project => project.status === 'In design'));
+  assert.deepEqual(workspace, before);
+});
 test('calendar rollover moves today to overdue without moving completed or undated work', () => {
   const workspace = fixture(), review = dailyReview(workspace, '2026-10-20');
   assert.deepEqual(review.groups.overdue.map(task => task.title), ['Past', 'Today']);

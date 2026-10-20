@@ -28,13 +28,16 @@ function groupTasks(tasks, today) {
 }
 function summarize(workspace, entry, today) {
   const groups = groupTasks(entry.tasks, today);
+  const active = model.capability(workspace, entry.project, 'project').active;
+  const field = workspace.databases[entry.project.database].fields.find(field => field.id === active.field);
+  const status = field.options.find(option => option.id === entry.project.properties[field.id])?.name || 'Not set';
   const notes = entry.notes.sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
   const recentNotes = notes.flatMap(document => {
     const dates = (workspace.databases[document.database]?.fields || []).filter(field => field.type === 'date' && !field.unavailable);
     const date = dates.length === 1 ? document.properties[dates[0].id] : null;
     return model.validDate(date) && date <= today ? [{ document, date }] : [];
   }).sort((a, b) => b.date.localeCompare(a.date) || a.document.title.localeCompare(b.document.title)).slice(0, 2);
-  return { project: entry.project, notes, recentNotes, groups, open: entry.tasks.length - groups.completed.length, nextDue: groups.today[0] || groups.upcoming[0] || null };
+  return { project: entry.project, status, notes, recentNotes, groups, open: entry.tasks.length - groups.completed.length, nextDue: groups.today[0] || groups.upcoming[0] || null };
 }
 export function projectReview(workspace, projectId, today) {
   if (!model.capability(workspace, workspace.records[projectId], 'project')) throw new Error('Project not found.');

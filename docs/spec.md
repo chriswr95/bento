@@ -328,7 +328,9 @@ The explorer remembers folder disclosure state per workspace and reveals the cur
 
 Daily overview puts My work first, grouping all open todos into Overdue, Today, Upcoming, and Without a date, with completed work collapsed. Upcoming includes every future due date. Unassigned work and work on inactive projects remain visible. Task titles open the todo Markdown document, and source-note links return to the meeting context.
 
-Every active project has a summary, including projects with no open work. Summaries show open/completed counts, overdue and today counts, the next deadline from today onward, undated work, and links to recent notes. Projects needing attention appear first. Counts reflect recorded work rather than inferred project progress.
+Workload counts also act as keyboard-accessible focus filters. All work is the default; selecting one date group narrows My work while leaving every active-project summary available. Counts reflect all personal work, including groups outside the current filter. Empty groups explain how to return to All work. Rescheduling and completion retain the selected filter and restore useful keyboard focus; navigating away and returning resets to All work. Filters do not modify workspace data. Project labels on todos open project review separately from the source-note link.
+
+Every active project has a summary, including projects with no open work. Summaries show the recorded status, open/completed counts, overdue and today counts, the next deadline from today onward, undated work, and links to recent notes. Projects needing attention appear first. Counts reflect recorded work rather than inferred project progress.
 
 Select a task's date to choose Today, Tomorrow, a calendar date, or No date. Cancel/Escape leaves the todo unchanged; successful changes regroup work and update summaries immediately, retain keyboard focus, support Undo, and use the existing autosave/conflict protection. Protected workspaces and unavailable records remain read-only. Required due-date fields cannot be cleared.
 

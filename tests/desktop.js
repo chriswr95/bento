@@ -82,6 +82,7 @@ async function addTag(page, value) {
   if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--properties')) { await checkPropertyLayout({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--micro')) { await checkMicroSyntax({ launch, stop, temporary, root }); return; }
+  if (process.argv.includes('--daily')) { await checkDailyWorkflow({ launch, stop, temporary, root }); return; }
   const workspace = path.join(temporary, 'Workspace'), userData = path.join(temporary, 'UserData');
   await fs.mkdir(workspace);
   let launched = await launch(null, userData); application = launched.app; let page = launched.page;
