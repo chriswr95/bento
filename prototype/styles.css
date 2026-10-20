@@ -321,6 +321,11 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-folder-icon {flex:none;vertical-align:middle;color:var(--b-soft)}
 #bento-workflow .b-database-icon {color:var(--b-accent)}
 #bento-workflow .b-database-table {max-width:100%;overflow-x:auto;margin-top:20px}
+#bento-workflow .b-database-heading {display:flex;align-items:center;gap:12px;margin-bottom:10px}
+#bento-workflow .b-database-heading h1 {margin:0;min-width:0}
+#bento-workflow .b-database-create {display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:6px;border:0;border-radius:5px;background:none;color:var(--b-soft)}
+#bento-workflow .b-database-create:not(:disabled):hover {background:var(--b-wash);color:var(--b-accent)}
+#bento-workflow .b-database-create:disabled {opacity:.4;cursor:default}
 #bento-workflow .b-database-table table {width:100%;border-collapse:collapse;font-size:13px;text-align:left}
 #bento-workflow .b-database-table th,#bento-workflow .b-database-table td {padding:10px 12px;border-bottom:1px solid var(--b-line);min-width:120px;max-width:300px;overflow-wrap:anywhere;vertical-align:top}
 #bento-workflow .b-database-table thead th {color:var(--b-soft);font-weight:500}

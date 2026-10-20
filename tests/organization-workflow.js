@@ -91,7 +91,14 @@ export async function checkOrganizationWorkflow({ launch, stop, temporary, root 
     const meetingTable = page.getByRole('table', { name: 'Meeting Notes records', exact: true });
     await meetingTable.getByRole('columnheader', { name: 'Meeting date', exact: true }).waitFor();
     assert.match(await meetingTable.innerText(), /Creekside improvements/);
+    assert.equal(await main().getByRole('button', { name: 'New folder', exact: true }).count(), 0);
+    const newRecord = main().getByRole('button', { name: 'New page', exact: true });
+    assert.equal(await newRecord.innerText(), '');
     await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/database-browser.png') });
+    await newRecord.focus(); await newRecord.press('Enter');
+    assert.equal(await page.getByRole('combobox', { name: 'Database', exact: true }).inputValue(), 'db-meetings');
+    assert.equal(await page.getByRole('combobox', { name: 'Folder', exact: true }).inputValue(), 'meetings');
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     await meetingTable.getByRole('button', { name: 'Design coordination', exact: true }).click();
     await page.getByRole('textbox', { name: 'Page Markdown', exact: true }).getByRole('link', { name: 'Drainage musings', exact: true }).click();
     await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'Drainage musings', exact: true }).waitFor();
