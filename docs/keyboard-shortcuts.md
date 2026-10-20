@@ -4,7 +4,8 @@ Open **Settings → Keyboard shortcuts**, or press **Cmd+K, then Cmd+S** on macO
 
 | Command | macOS | Windows/Linux |
 | --- | --- | --- |
-| Quick Open / Commands | Cmd+P | Ctrl+P |
+| Quick Open File | Cmd+P | Ctrl+P |
+| Show Commands | Cmd+Shift+P | Ctrl+Shift+P |
 | Go Back | Cmd+[ | Ctrl+[ or Alt+Left |
 | Go Forward | Cmd+] | Ctrl+] or Alt+Right |
 | Open Settings | Cmd+, | Ctrl+, |
@@ -27,4 +28,4 @@ Back/forward history tracks page locations and document caret/scroll positions s
 
 A two-step chord waits up to three seconds for its second key; Escape cancels it. Input-method composition is left alone. The canonical registry is `prototype/shortcuts.js`; the Settings reference and app shortcut dispatcher use it.
 
-Quick open searches pages and commands together. Type `>` for commands only, use ↑/↓ to select, and Enter to open/run. Escape or Cmd/Ctrl+P closes it and restores the editor caret. Search matches page titles, paths, database names and tags; document bodies are not searched. Cmd/Ctrl+P is reserved for this picker rather than printing.
+Quick open searches workspace files by default. Cmd/Ctrl+Shift+P opens the same picker with `>` prefilled for commands. The leading `>` is the only mode selector: add or remove it to switch. Switching shortcuts while open preserves the search text and changes the prefix; repeating the shortcut for the current mode closes the picker. Use ↑/↓ to select and Enter to open/run. Escape closes it and restores the editor caret. Search matches page titles, paths, database names and tags; document bodies are not searched. Cmd/Ctrl+P is reserved for this picker rather than printing.

@@ -1,4 +1,4 @@
-import { searchQuickOpen } from './quick-open-search.js';
+import { searchQuickOpen, isCommandQuery } from './quick-open-search.js';
 import { escapeProperty as escape } from './property-editor.js';
 import { validColor } from './colors.js';
 export default class QuickOpen {
@@ -25,10 +25,17 @@ export default class QuickOpen {
     this.list.addEventListener('mousedown', event => { if (event.target.closest('[role=option]')) event.preventDefault(); });
   }
   get open() { return this.dialog.open; }
-  toggle() { if (this.open) this.close(); else this.show(); }
-  show() {
+  toggle(commands = false) {
+    if (!this.open) { this.show(commands ? '> ' : ''); return; }
+    if (isCommandQuery(this.input.value) === commands) { this.close(); return; }
+    const query = this.input.value.trimStart();
+    this.input.value = commands ? '> ' + query : query.slice(1).trimStart();
+    this.composing = false; this.update(); this.input.focus();
+    this.input.setSelectionRange(this.input.value.length, this.input.value.length);
+  }
+  show(query = '') {
     this.entries = this.options.entries(); this.restore = this.options.capture?.();
-    this.input.value = ''; this.composing = false; this.update();
+    this.input.value = query; this.composing = false; this.update();
     this.input.setAttribute('aria-expanded', 'true'); this.dialog.showModal(); this.input.focus();
   }
   close() {
@@ -37,9 +44,11 @@ export default class QuickOpen {
     const restore = this.restore; this.restore = null; restore?.();
   }
   update() {
+    const commands = isCommandQuery(this.input.value);
+    this.input.placeholder = commands ? 'Search commands…' : 'Search files…';
     this.results = searchQuickOpen(this.entries, this.input.value); this.index = this.results.length ? 0 : -1;
     this.list.innerHTML = this.results.map((entry, index) => `<div id="b-quick-option-${index}" role="option" data-quick-option="${index}" data-quick-kind="${entry.kind}" aria-selected="false"><span class="b-quick-icon ${entry.kind === 'page' ? 'b-color-dot' : ''}" ${validColor(entry.color) ? `data-color="${entry.color}"` : ''} aria-hidden="true">${entry.kind === 'command' ? '›' : ''}</span><span class="b-quick-label"><span class="b-quick-title">${escape(entry.title)}</span><span class="b-quick-detail">${escape(entry.detail || '')}</span></span>${entry.shortcut ? `<kbd>${escape(entry.shortcut)}</kbd>` : `<span class="b-quick-kind">${escape(entry.kind === 'command' ? 'Command' : entry.type || 'Page')}</span>`}</div>`).join('');
-    this.status.textContent = this.results.length ? '↑ ↓ to move · Enter to open · Escape to close · > commands' : 'No matching pages or commands.';
+    this.status.textContent = this.results.length ? `↑ ↓ to move · Enter to ${commands ? 'run' : 'open'} · Escape to close · ${commands ? 'Remove > for files' : '> commands'}` : commands ? 'No matching commands.' : 'No matching files.';
     this.select(this.index);
   }
   select(index) {
@@ -52,6 +61,7 @@ export default class QuickOpen {
   }
   keydown(event) {
     if (event.isComposing || this.composing) return;
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.close(); return; }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); this.select(this.index + (event.key === 'ArrowDown' ? 1 : -1)); }
     if (event.key === 'Enter' && event.target === this.input) { event.preventDefault(); this.activate(this.index); }
   }

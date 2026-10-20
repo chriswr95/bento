@@ -23,3 +23,13 @@ test('cancelled, unavailable and IME-composing shortcuts do not execute commands
   assert.equal(controller.handle(event(',', { metaKey: true, isComposing: true })), false); assert.equal(calls, 0);
   controller.available = () => false; assert.equal(controller.handle(event(',', { metaKey: true })), false); controller.clear();
 });
+
+test('file and command search have separate macOS and Windows shortcuts', () => {
+  for (const mac of [true, false]) {
+    const actions = [], controller = new ShortcutController({ 'quick-open': () => actions.push('files'), 'command-search': () => actions.push('commands') }, { mac });
+    const modifier = mac ? { metaKey: true } : { ctrlKey: true };
+    controller.handle(event('p', modifier)); controller.handle(event('P', { ...modifier, shiftKey: true }));
+    assert.deepEqual(actions, ['files', 'commands']);
+    assert.equal(controller.handle(event('P', { ...modifier, shiftKey: true, altKey: true })), false);
+  }
+});

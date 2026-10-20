@@ -1,6 +1,7 @@
 export const isMac = platform => /Mac|iPhone|iPad/.test(platform ?? globalThis.navigator?.platform ?? '');
 export const shortcuts = Object.freeze([
-  { id: 'quick-open', command: 'Quick Open / Commands', bindings: [['Mod+p']], context: 'Workspace', app: true },
+  { id: 'quick-open', command: 'Quick Open File', bindings: [['Mod+p']], context: 'Workspace', app: true },
+  { id: 'command-search', command: 'Show Commands', bindings: [['Mod+Shift+p']], context: 'Workspace', app: true },
   { id: 'back', command: 'Go Back', bindings: [['Mod+[']], windows: [['Alt+ArrowLeft']], context: 'Workspace', app: true },
   { id: 'forward', command: 'Go Forward', bindings: [['Mod+]']], windows: [['Alt+ArrowRight']], context: 'Workspace', app: true },
   { id: 'settings', command: 'Open Settings', bindings: [['Mod+,']], context: 'Workspace', app: true },

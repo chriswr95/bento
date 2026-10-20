@@ -183,13 +183,13 @@ import BentoFileSession from './file-session.js';
     if (entry.presentation.editor) liveEditor?.restoreNavigationState(entry.presentation.editor);
     window.scrollTo(0, entry.presentation.scrollY || 0);
   }
-  function openQuickOpen() {
+  function openQuickOpen(commands = false) {
     if (!quickOpen.open && propertyEditor && !propertyEditor.commit()) return;
     root.querySelectorAll('.b-workspace-menu[open], .b-document-actions[open]').forEach(menu => { menu.open = false; });
-    quickOpen.toggle();
+    quickOpen.toggle(commands);
   }
   const commandHandlers = {
-    'quick-open': openQuickOpen,
+    'quick-open': openQuickOpen, 'command-search': () => openQuickOpen(true),
     back: () => travel(-1), forward: () => travel(1), settings: () => navigate('profile'),
     shortcuts: () => { navigate('profile'); shortcutReference?.focus(); },
     save: () => { if (propertyEditor && !propertyEditor.commit()) return; if (desktop) files?.save(); else { persist(); notify('Changes saved in this browser.'); } },
@@ -198,7 +198,7 @@ import BentoFileSession from './file-session.js';
     'toggle-mode': () => changeAppearance(nextTheme(appearance.theme, systemAppearance.matches)).then(() => themePicker?.render())
   };
   function paletteCommands() {
-    const commands = shortcuts.filter(shortcut => shortcut.app && shortcut.id !== 'quick-open')
+    const commands = shortcuts.filter(shortcut => shortcut.app && !['quick-open', 'command-search'].includes(shortcut.id))
       .filter(shortcut => shortcut.id !== 'back' || navigation.index > 0 || creation)
       .filter(shortcut => shortcut.id !== 'forward' || navigation.index < navigation.entries.length - 1)
       .map(shortcut => ({ id: shortcut.id, title: shortcut.command, detail: 'Command', kind: 'command', shortcut: keyLabel(bindingsFor(shortcut, isMac())[0], isMac()), run: commandHandlers[shortcut.id] }));
@@ -230,7 +230,7 @@ import BentoFileSession from './file-session.js';
       else return paletteCommands().find(command => command.id === entry.id)?.run();
     }, error: notify
   });
-  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (id !== 'quick-open') quickOpen.close(); run(); }])), { available: () => !desktop || !!files?.view });
+  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => !desktop || !!files?.view });
   document.addEventListener('keydown', event => shortcutController.handle(event), true);
   window.addEventListener('blur', () => shortcutController.clear());
   function openRecord(documentId) {

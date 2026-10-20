@@ -12,9 +12,11 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const root = path.resolve(__dirname, '..');
 let application, temporary;
+const processes = new WeakMap();
 async function stop(app) {
   if (!app) return;
-  const child = app.process();
+  const child = processes.get(app);
+  if (!child) return;
   if (child.exitCode !== null || child.signalCode !== null) return;
   const exited = new Promise(resolve => child.once('exit', resolve));
   // Playwright launches through cmd.exe on Windows; terminate its owned process tree.
@@ -29,7 +31,7 @@ const watchdog = setTimeout(() => {
 async function launch(workspace, userData) {
   const packaged = process.env.BENTO_PACKAGED_EXECUTABLE;
   const app = await electron.launch({ executablePath: packaged || electronPath, args: packaged ? ['--user-data-dir=' + userData] : [root], env: { ...process.env, BENTO_TEST_MODE: '1', BENTO_TEST_USER_DATA: userData, ...(workspace ? { BENTO_TEST_WORKSPACE: workspace } : {}) } });
-  application = app;
+  application = app; processes.set(app, app.process());
   const page = await app.firstWindow(); page.setDefaultTimeout(12000);
   page.on('dialog', dialog => dialog.accept().catch(() => {}));
   await page.waitForLoadState('domcontentloaded');
@@ -157,10 +159,14 @@ async function addTag(page, value) {
   await page.keyboard.press('ControlOrMeta+p');
   const quickDialog = page.getByRole('dialog', { name: 'Quick open', exact: true });
   const quickSearch = quickDialog.getByRole('combobox', { name: 'Search pages and commands', exact: true });
+  assert.equal(await quickSearch.inputValue(), '');
+  assert.equal(await quickDialog.locator('[data-quick-kind=command]').count(), 0);
   await quickSearch.fill('>new meeting'); await quickSearch.press('Enter');
   assert.equal(await page.getByRole('combobox', { name: 'Project', exact: true }).inputValue(), projectId);
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.keyboard.press('ControlOrMeta+p'); await quickSearch.fill('>settings'); await quickSearch.press('Enter');
+  await page.keyboard.press('ControlOrMeta+Shift+p');
+  assert.equal(await quickSearch.inputValue(), '> ');
+  await quickSearch.fill('>settings'); await quickSearch.press('Enter');
   await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
   await page.keyboard.press('ControlOrMeta+p'); await quickSearch.fill('My first project'); await quickSearch.press('Enter');
   await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();

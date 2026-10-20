@@ -279,7 +279,7 @@ Users can assign one of eight theme-aware colors to documents/projects and share
 
 ### Quick-open navigation and commands
 
-Cmd+P on macOS (Ctrl+P on Windows/Linux), or Quick open in the workspace menu, opens a searchable picker for pages and commands. Users can search page titles, paths, database names and tags; paths help distinguish pages with the same title. Prefix a query with `>` to show commands only. Arrow keys move selection, Enter opens/runs it, and Escape restores the previous editing position. Search covers metadata rather than document bodies.
+Cmd+P on macOS (Ctrl+P on Windows/Linux), or Quick open in the workspace menu, opens file search. Cmd+Shift+P (Ctrl+Shift+P on Windows/Linux) opens command search in the same picker with `>` prefilled. Users can search page titles, paths, database names and tags; paths help distinguish pages with the same title. A leading `>` selects command results; without it, results contain only workspace pages/files. Adding or removing the prefix switches modes immediately. Using the other shortcut while the picker is open changes the prefix and preserves the search text. Arrow keys move selection, Enter opens/runs it, and Escape restores the previous editing position. Search covers metadata rather than document bodies.
 
 Commands include navigation, Settings, appearance and saving. Desktop workspaces also offer workspace actions and creation in each database; new meetings and todos inherit the current project context. Read-only workspaces omit creation commands. Existing autosave and navigation history apply when opening a page.
 

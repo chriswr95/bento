@@ -10,15 +10,30 @@ export async function checkQuickOpen(browser, url, screenshots) {
   await page.keyboard.press('ControlOrMeta+p');
   const dialog = page.getByRole('dialog', { name: 'Quick open', exact: true }), search = dialog.getByRole('combobox', { name: 'Search pages and commands', exact: true });
   await dialog.waitFor(); assert.equal(await search.evaluate(element => document.activeElement === element), true);
+  assert.equal(await search.inputValue(), '');
+  assert.equal(await dialog.locator('[data-quick-kind=command]').count(), 0);
+  assert.ok(await dialog.locator('[data-quick-kind=page]').count() > 0);
+  await page.keyboard.press('ControlOrMeta+Shift+p');
+  assert.equal(await search.inputValue(), '> ');
+  assert.equal(await dialog.locator('[data-quick-kind=page]').count(), 0);
+  await search.pressSequentially('settings');
+  await page.keyboard.press('ControlOrMeta+p');
+  assert.equal(await search.inputValue(), 'settings'); assert.equal(await dialog.isVisible(), true);
+  assert.equal(await dialog.locator('[data-quick-kind=command]').count(), 0);
+  await page.keyboard.press('ControlOrMeta+Shift+p');
+  assert.equal(await search.inputValue(), '> settings'); assert.equal(await dialog.isVisible(), true);
+  await search.fill('settings'); assert.equal(await dialog.getByRole('option').count(), 0);
+  await search.fill('> settings'); assert.ok(await dialog.getByRole('option').count() > 0);
   await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'hidden' });
   assert.deepEqual(await selection(), before); assert.match(await editor.innerText(), /Quick-open keeps my work/);
-  await page.keyboard.press('ControlOrMeta+p'); await search.fill('>');
+  await page.keyboard.press('ControlOrMeta+Shift+p');
+  assert.equal(await search.inputValue(), '> ');
   assert.equal(await dialog.locator('[data-quick-kind=page]').count(), 0);
   await search.fill('> settings'); await search.press('Enter');
   await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
   await page.keyboard.press('ControlOrMeta+['); await editor.waitFor(); assert.deepEqual(await selection(), before);
   await page.keyboard.press('ControlOrMeta+p'); await search.fill('no such zzzzzzz');
-  await dialog.getByText('No matching pages or commands.', { exact: true }).waitFor();
+  await dialog.getByText('No matching files.', { exact: true }).waitFor();
   assert.equal(await search.getAttribute('aria-activedescendant'), null);
   await search.press('Enter'); assert.equal(await dialog.isVisible(), true);
   await search.fill('drainage');
@@ -29,14 +44,14 @@ export async function checkQuickOpen(browser, url, screenshots) {
   await search.press('Enter'); await dialog.waitFor({ state: 'hidden' });
   await page.getByRole('article', { name: 'Editable Markdown document' }).waitFor();
   await page.keyboard.press('ControlOrMeta+['); await editor.waitFor(); assert.match(await editor.innerText(), /Quick-open keeps my work/);
-  await page.keyboard.press('ControlOrMeta+p'); await search.fill('>');
+  await page.keyboard.press('ControlOrMeta+Shift+p');
   await page.locator('#bento-workflow').screenshot({ path: path.join(screenshots, 'quick-open-commands.png') });
   for (const width of [320, 736, 1024]) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Quick-open overflow ' + width);
     assert.equal(await dialog.evaluate(element => { const rect = element.getBoundingClientRect(); return rect.left >= 0 && rect.right <= innerWidth; }), true);
   }
-  await page.keyboard.press('ControlOrMeta+p'); assert.equal(await dialog.isVisible(), false);
+  await page.keyboard.press('ControlOrMeta+Shift+p'); assert.equal(await dialog.isVisible(), false);
   await page.close();
-  console.log('Passed Cmd/Ctrl+P page/command search, command-only mode, keyboard selection, empty results, cancel/caret restoration, history, retained edits and responsive dialog.');
+  console.log('Passed separate Cmd/Ctrl+P file and Cmd/Ctrl+Shift+P command search, editable-prefix switching, query preservation, keyboard selection, empty results, cancel/caret restoration, history, retained edits and responsive dialog.');
 }

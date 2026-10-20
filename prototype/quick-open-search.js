@@ -28,10 +28,11 @@ function score(entry, query) {
   }
   return total;
 }
+export const isCommandQuery = input => input.trimStart().startsWith('>');
 export function searchQuickOpen(entries, input, limit = 40) {
-  const commandsOnly = input.trimStart().startsWith('>');
+  const commandsOnly = isCommandQuery(input);
   const query = normalize(commandsOnly ? input.trimStart().slice(1) : input).trim();
-  return entries.filter(entry => entry.enabled !== false && (!commandsOnly || entry.kind === 'command'))
+  return entries.filter(entry => entry.enabled !== false && entry.kind === (commandsOnly ? 'command' : 'page'))
     .map((entry, index) => ({ entry, index, score: score(entry, query) })).filter(match => match.score !== null)
     .sort((a, b) => a.score - b.score || a.index - b.index).slice(0, limit).map(match => match.entry);
 }
