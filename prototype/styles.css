@@ -157,7 +157,15 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-draft-notice {border:0;background:var(--b-wash);color:var(--b-accent);border-radius:5px;padding:4px 8px;font-size:12px}
 @media(max-width:650px) {#bento-workflow[data-desktop] .b-chrome {padding:12px;gap:8px} #bento-workflow [data-workspace-name] {max-width:90px} #bento-workflow .b-file-controls {flex-wrap:wrap;gap:6px} #bento-workflow #b-save-state {font-size:11px}}
 
-#bento-workflow .b-inline-properties {margin:12px 0 24px;max-width:680px;font-size:13px}
+#bento-workflow .b-properties-disclosure {margin:12px 0 0}
+#bento-workflow .b-properties-disclosure>summary {display:flex;align-items:center;gap:7px;width:fit-content;list-style:none;font-size:12px;padding:5px 0}
+#bento-workflow .b-properties-disclosure>summary::-webkit-details-marker {display:none}
+#bento-workflow .b-properties-disclosure>summary:hover {color:var(--b-ink)}
+#bento-workflow .b-properties-chevron {width:0;height:0;border-top:3px solid transparent;border-bottom:3px solid transparent;border-left:4px solid currentColor;transition:transform 220ms ease-out}
+#bento-workflow .b-properties-disclosure[open]>summary>.b-properties-chevron {transform:rotate(90deg)}
+#bento-workflow .b-properties-disclosure:not([open])>[data-properties-content] {display:none}
+#bento-workflow .b-inline-properties {margin:8px 0 12px;max-width:680px;font-size:13px}
+#bento-workflow #b-reading {border-top:1px solid color-mix(in srgb,var(--b-line) 60%,transparent);margin-top:16px;padding-top:20px}
 #bento-workflow .b-inline-property {display:grid;grid-template-columns:140px minmax(0,1fr);gap:12px;align-items:start;min-height:34px;padding:3px 0}
 #bento-workflow .b-property-label {padding:5px 0;color:var(--b-soft)}
 #bento-workflow .b-property-value>button {border:0;background:none;border-radius:5px;text-align:left;padding:5px 7px;min-height:30px;max-width:100%;display:flex;gap:5px;flex-wrap:wrap}
@@ -254,7 +262,7 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:color 180ms ease-out}
 @media(prefers-reduced-motion:reduce) {
   #bento-workflow .b-quick-open[open],#bento-workflow .b-quick-open[open]::backdrop {animation:none}
-  #bento-workflow .b-tree-chevron,#bento-workflow .b-task .b-task-title,#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:none}
+  #bento-workflow .b-tree-chevron,#bento-workflow .b-properties-chevron,#bento-workflow .b-task .b-task-title,#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:none}
 }
 
 #bento-workflow .b-page-list button {border:0;padding:0;background:none;text-align:left;text-decoration:underline;text-underline-offset:3px}

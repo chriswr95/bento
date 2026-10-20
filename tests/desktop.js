@@ -306,6 +306,15 @@ async function addTag(page, value) {
   assert.equal(await page.getByRole('button', { name: 'Edit Tags', exact: true }).innerText(), 'Follow up');
   await addTag(page, 'Civil engineering');
   assert.equal(await page.getByRole('button', { name: 'Edit Tags', exact: true }).locator('[data-color="teal"]').count(), 1);
+  const propertiesSummary = page.locator('[data-properties-disclosure]>summary');
+  await propertiesSummary.focus(); await propertiesSummary.press('Enter');
+  await page.getByRole('button', { name: 'Edit Tags', exact: true }).waitFor({ state: 'hidden' });
+  await page.getByRole('textbox', { name: 'Page Markdown', exact: true }).waitFor();
+  await page.screenshot({ path: path.join(root, 'work/qa/properties-collapsed.png') });
+  await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'Weekly coordination', exact: true }).click();
+  assert.equal(await page.locator('[data-properties-disclosure]').getAttribute('open'), null);
+  await propertiesSummary.click();
   await editProperty(page, 'Related projects');
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-meeting-properties.png') });
   assert.equal(await page.getByRole('group', { name: 'Related projects', exact: true }).getByRole('checkbox', { name: 'My first project', exact: true }).isChecked(), true);

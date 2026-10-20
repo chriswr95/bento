@@ -42,6 +42,7 @@ Bento has three layers: the application, user-managed database definitions, and 
 - Projects and Todos are customizable, removable default databases, rather than mandatory application entity types. Meeting Notes is a candidate starter database in the worked example.
 - Database definitions describe the schema; each record's metadata supplies its values. Views present records without owning another copy of their data.
 - Opening a todo opens its own Markdown document, where Makena can keep notes, context, references, and progress details.
+- Document properties expand and collapse independently of the Markdown body, with disclosure remembered per database on the current device. A subtle divider marks the start of the body.
 - Schema changes and database removal must offer recoverable behavior that preserves documents and existing values by default.
 
 This requirement covers workspace content and database definitions. Personal profile settings, credentials, caches, and operational state remain separate from workspace records.

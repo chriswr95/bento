@@ -13,6 +13,7 @@ export async function checkProperties(browser, url) {
     );
     window.propertyFixture = { get workspace() { return workspace; }, id, changes: 0 };
     window.propertyFixture.editor = new InlineProperties(document.querySelector('#test-properties'), {
+      disclosureKey: 'bento.test.properties.expanded',
       record: () => workspace.records[id], workspace: () => workspace,
       change(patch) { workspace = model.updateDocument(workspace, id, patch); window.propertyFixture.changes++; }
     });
@@ -33,6 +34,11 @@ export async function checkProperties(browser, url) {
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('[data-inline-error]:visible').count(), 1);
   assert.equal((await record()).title, original.title);
+  const disclosure = page.locator('[data-properties-disclosure]');
+  const summary = disclosure.locator(':scope>summary');
+  await summary.click();
+  assert.equal(await disclosure.getAttribute('open'), '');
+  assert.equal(await page.locator('[data-inline-error]:visible').count(), 1);
   await page.keyboard.press('Escape');
   await edit('Page title'); await page.getByRole('textbox', { name: 'Page title', exact: true }).fill('Keyboard title');
   await page.keyboard.press('Tab');
@@ -64,8 +70,24 @@ export async function checkProperties(browser, url) {
   await page.getByRole('searchbox', { name: 'Search Related', exact: true }).press('Enter');
   assert.deepEqual((await record()).properties.related, ['elm']);
   assert.equal((await record()).body, original.body);
+  await edit('Tags'); await tags.fill('Committed on collapse');
+  await summary.click();
+  await page.getByRole('button', { name: 'Edit Page title', exact: true }).waitFor({ state: 'hidden' });
+  assert.ok((await record()).tags.includes('Committed on collapse'));
+  await page.waitForFunction(() => localStorage.getItem('bento.test.properties.expanded') === 'false');
+  await page.evaluate(() => {
+    const fixture = window.propertyFixture, previous = fixture.editor;
+    previous.destroy();
+    const section = document.createElement('section'); section.id = 'test-properties';
+    document.querySelector('#test-properties').replaceWith(section);
+    fixture.editor = new previous.constructor(section, previous.options);
+  });
+  assert.equal(await disclosure.getAttribute('open'), null);
+  await summary.focus(); await summary.press('Enter');
+  await page.getByRole('button', { name: 'Edit Page title', exact: true }).waitFor();
   await page.evaluate(() => { const fixture = window.propertyFixture; fixture.editor.options.readOnly = true; fixture.editor.render(); });
   assert.equal(await page.getByRole('button', { name: 'Edit Page title', exact: true }).isDisabled(), true);
+  await summary.click(); assert.equal(await disclosure.getAttribute('open'), null);
   await page.close();
   console.log('Passed inline properties: cancel, validation, zero/false, blur save, tag chips, relation search/cancel/apply, unchanged Markdown, and read-only mode.');
 }

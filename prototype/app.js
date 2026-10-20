@@ -487,6 +487,7 @@ import BentoFileSession from './file-session.js';
           <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
     propertyEditor = new InlineProperties(main.querySelector('#b-document-properties'), {
       workspace, record, readOnly: readOnly(doc), hideTitle: !!isProject,
+      disclosureKey: 'bento.properties.expanded.v1:' + JSON.stringify([files?.view?.folder || 'demo', doc.database || null]),
       tagColor(tag, color) {
         const next = model.updateTagColor(workspace(), tag, color); previous = clone(state); state.workspace = next; persist(); notify('Tag color saved across this workspace.');
       },
