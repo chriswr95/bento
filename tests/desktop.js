@@ -33,7 +33,7 @@ async function launch(workspace, userData) {
   page.on('dialog', dialog => dialog.accept().catch(() => {}));
   await page.waitForLoadState('domcontentloaded');
   if (process.env.BENTO_TEST_SHOW_WINDOW !== '1') {
-    assert.deepEqual(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(window => ({ visible: window.isVisible(), focused: window.isFocused() }))), [{ visible: false, focused: false }], 'Desktop tests must not show or focus an OS window.');
+    assert.deepEqual(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(window => ({ visible: window.isVisible(), focused: window.isFocused(), offscreen: window.webContents.isOffscreen() }))), [{ visible: false, focused: false, offscreen: true }], 'Desktop tests must not show or focus an OS window.');
   }
   if (packaged && workspace) {
     await app.evaluate(({ dialog }, folder) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] }); }, workspace);
