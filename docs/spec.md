@@ -302,3 +302,11 @@ Daily overview and Workspace are separate destinations. Workspace opens the Mark
 Creation commands use current database titles, including renamed or custom databases. Project pages offer creation actions for ordinary page databases with a relation to that project's database. Todo tracking and project review depend on explicit capability mappings, not starter database identities.
 
 Missing definitions or invalid capability mappings show explanatory notices. Affected capabilities are unavailable, existing values are retained, and pages belonging to an unavailable database are readable but protected from edits. Other valid pages remain usable. Safe database deletion, field/type migration, and moving retained pages out of a deleted database remain future work.
+
+### Subpages and page references
+
+Any ordinary page may have one optional parent page, independently of its zero-or-one database membership. Users can create a standalone subpage from a document's actions, edit or clear Parent through properties, open ancestors, and navigate child pages. Parenting cannot form cycles. Reparenting preserves the document, its database values, and its file location. The Workspace page is a root and cannot be parented.
+
+The sidebar offers Pages for the logical hierarchy and Files for actual workspace folders. It remembers the chosen view and disclosure state. New subpages open immediately and reveal their ancestry. Pages whose parent is missing remain accessible at the top level for repair.
+
+Typing `[[` in prose opens searchable page suggestions. Titles, parent paths, and filenames distinguish matching pages. Arrow keys and Enter select a target; Escape leaves the literal input intact. The selected reference is a regular Markdown link, with no duplicate reference identity. References open their target on click; Alt-click allows editing the link text. Linked from lists incoming links once per source document, excluding code examples. Raw pasted wiki syntax is retained literally; this release provides an insertion interaction rather than a second stored link syntax.

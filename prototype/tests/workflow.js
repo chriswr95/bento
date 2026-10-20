@@ -1,3 +1,4 @@
+import { checkPages } from './pages.js';
 import { checkMotion } from './motion.js';
 import { checkQuickOpen } from './quick-open.js';
 import { checkShortcuts } from './shortcuts.js';
@@ -240,5 +241,6 @@ async function paste(editor, text, html = '') {
  await checkShortcuts(browser, url, screenshots);
  await checkQuickOpen(browser, url, screenshots);
  await checkMotion(browser, url, screenshots);
+ await checkPages(browser, url);
 
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close(); await server.close();});

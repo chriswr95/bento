@@ -259,3 +259,22 @@ html {background:light-dark(#fffefa,#202127)}
   #bento-workflow .b-quick-open[open],#bento-workflow .b-quick-open[open]::backdrop {animation:none}
   #bento-workflow .b-tree-chevron,#bento-workflow .b-task .b-task-title,#bento-workflow .b-rich-task>.b-rich-item-content>p:first-child {transition:none}
 }
+
+#bento-workflow .b-tree-view-switch {display:flex;gap:4px;margin-top:20px}
+#bento-workflow .b-tree-view-switch button {background:none;border:0;border-radius:4px;padding:4px 8px;font-size:12px;color:var(--b-soft)}
+#bento-workflow .b-tree-view-switch button[aria-pressed=true] {background:var(--b-wash);color:var(--b-ink)}
+#bento-workflow .b-tree-view-switch button:last-child {margin-left:auto}
+#bento-workflow .b-tree-view-switch+.b-directory-tree {margin-top:8px}
+#bento-workflow .b-page-folder>details>summary {width:24px;padding:11px 6px;position:absolute;left:0;top:0;z-index:1}
+#bento-workflow .b-page-folder>.b-tree-document {position:absolute;top:0;left:22px;width:calc(100% - 22px)}
+#bento-workflow .b-page-folder>details {padding-top:35px}
+#bento-workflow .b-page-ancestors {display:flex;gap:6px;flex-wrap:wrap;font-size:12px;margin:10px 0;color:var(--b-soft)}
+#bento-workflow .b-page-ancestors button,#bento-workflow .b-page-list button {border:0;padding:0;background:none;text-align:left;text-decoration:underline;text-underline-offset:3px}
+#bento-workflow .b-page-list {list-style:none;padding:0;display:grid;gap:8px}
+#bento-workflow .b-page-list li {display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+#bento-workflow .b-page-list .b-muted {font-size:12px}
+#bento-workflow .b-page-link-picker {position:fixed;z-index:20;width:min(360px,calc(100vw - 16px));max-height:240px;overflow:auto;border:1px solid var(--b-line);background:var(--b-paper);box-shadow:0 8px 25px #0003;border-radius:8px;padding:5px}
+#bento-workflow .b-page-link-picker [role=option] {padding:7px 9px;border-radius:4px;cursor:pointer;display:grid;gap:2px}
+#bento-workflow .b-page-link-picker [aria-selected=true] {background:var(--b-wash)}
+#bento-workflow .b-page-link-picker small {color:var(--b-soft);font-size:11px}
+#bento-workflow .b-tree-document[aria-current=page] {background:var(--b-wash);color:var(--b-accent)}

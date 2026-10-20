@@ -1,3 +1,4 @@
+import { checkPageWorkflow } from './page-workflow.js';
 import { checkWorkspaceCustomization } from './workspace-customization.js';
 import { checkOnboarding } from './onboarding.js';
 import { builtinThemes } from '../prototype/themes.js';
@@ -334,6 +335,7 @@ async function addTag(page, value) {
   await stop(application); application = null;
   await checkOnboarding({ launch, stop, temporary, root });
   await checkWorkspaceCustomization({ launch, stop, temporary, root });
+  await checkPageWorkflow({ launch, stop, temporary, root });
 
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
   try {

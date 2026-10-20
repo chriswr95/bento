@@ -43,3 +43,7 @@ Add regression coverage at the layer owning each behavior. Use storage tests for
 ### Workspace page and database customization regressions
 
 Repository unit tests cover workspace body/title edits, checkbox capture with root-relative links, combined manifest/tag-color saves, preserved metadata/comments, forged configuration rejection, external-change protection, missing definitions, broken capability mappings, unregistered folders, retained relation values, and recovery after definition restoration. Native tests cover Workspace navigation/editing/capture, persisted title, commands using renamed database titles, and read-only editor/properties after database removal. These tests use disposable workspaces and keep native windows hidden.
+
+### Subpage and link coverage
+
+Unit tests cover standalone creation, independent database membership, stable paths, cycle/self/multiple-parent rejection, missing-parent recovery, external-cycle protection, hierarchy projection, parent clearing, relative link resolution, Workspace links, preserved links after title changes, backlink deduplication, and excluded code/external paths. Browser checks cover New subpage, ancestor/child navigation, `[[` keyboard insertion, standard Markdown persistence, backlinks, empty suggestions, cancellation, and reload. Native checks add nested page trees, Parent selection, descendant exclusion, no file moves, restart restoration, and switching back to Files. Native windows remain hidden.

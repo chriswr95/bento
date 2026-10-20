@@ -9,6 +9,7 @@ import { tableEditing, goToNextCell } from 'prosemirror-tables';
 import { Slice } from 'prosemirror-model';
 import { editorSchema as schema, MarkdownBridge, taskPositions } from './rich-markdown.js';
 import model from './workspace.js';
+import PageLinkPicker from './page-link-picker.js';
 
 function taskRule(state, match, start, end) {
   const $from = state.doc.resolve(start); if ($from.parent.type !== schema.nodes.paragraph) return null;
@@ -102,6 +103,7 @@ export default class RichEditor {
       dispatchTransaction: tr => this.dispatch(tr),
       decorations: state => DecorationSet.create(state.doc, taskPositions(state.doc).filter(({ node }) => node.attrs.todoId && options.validTask?.(node.attrs.todoId, node.attrs.href)).map(({ node, position }) => Decoration.node(position + 1, position + 1 + node.firstChild.nodeSize, { role: 'link', tabindex: '0', 'data-todo-link': node.attrs.todoId, 'aria-label': node.firstChild.textContent, title: 'Open todo · Alt-click to edit text' }))),
       handleKeyDown: (_view, event) => {
+        if (this.pagePicker?.keydown(event)) return true;
         const link = event.target.closest('[data-todo-link]');
         if (link && event.target === link && event.key === 'Enter') { event.preventDefault(); options.openRecord?.(link.dataset.todoLink); return true; }
         return false;
@@ -109,17 +111,18 @@ export default class RichEditor {
       nodeViews: { list_item: (node, view, getPos) => new ListItemView(node, view, getPos, this) },
       clipboardTextParser: text => Slice.maxOpen(new MarkdownBridge(text).doc.content),
       transformPastedHTML: safePaste,
-      handleDOMEvents: { compositionend: () => { setTimeout(() => { if (!this.destroyed) this.publish(); }, 0); return false; } },
+      handleDOMEvents: { compositionend: () => { setTimeout(() => { if (!this.destroyed) { this.publish(); this.pagePicker?.update(); } }, 0); return false; } },
       handleClick: (_view, _pos, event) => {
         const todo = event.target.closest('[data-todo-link]');
         if (todo && !event.altKey && event.detail < 2 && this.view.state.selection.empty) { event.preventDefault(); options.openRecord?.(todo.dataset.todoLink); return true; }
         const link = event.target.closest('a'); if (!link) return false;
         event.preventDefault();
+        if (!event.altKey && this.options.isPageLink?.(link.getAttribute('href'))) { this.options.openLink?.(link.getAttribute('href')); return true; }
         if (event.metaKey || event.ctrlKey) this.options.openLink?.(link.getAttribute('href'));
         return false;
       }
     });
-    this.syncTasks();
+    this.syncTasks(); this.pagePicker = new PageLinkPicker(this, options);
   }
   dispatch(tr) {
     if (this.options.readOnly && tr.docChanged) return;
@@ -127,6 +130,7 @@ export default class RichEditor {
     if (tr.docChanged && !previous.selection.empty) tr = closeHistory(tr);
     this.view.updateState(previous.apply(tr));
     if (tr.docChanged && !this.view.composing) this.publish(previous);
+    this.pagePicker?.update();
   }
   publish(previous) {
     try {
@@ -158,5 +162,5 @@ export default class RichEditor {
     if (value.focused) this.view.focus();
   }
   focus() { this.view.focus(); }
-  destroy() { this.destroyed = true; this.view.destroy(); }
+  destroy() { this.destroyed = true; this.pagePicker?.destroy(); this.view.destroy(); }
 }
