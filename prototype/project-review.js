@@ -1,24 +1,50 @@
 import model from './workspace.js';
 
-function related(workspace, document, project) {
-  return (workspace.databases[document.database]?.fields || []).some(field => {
-    if (field.type !== 'relation' || field.target_database !== project.database) return false;
-    const value = document.properties[field.id];
-    return Array.isArray(value) ? value.includes(project.id) : value === project.id;
-  });
+function reviewIndex(workspace) {
+  const tasks = model.allTasks(workspace).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+  const projects = new Map(Object.values(workspace.records).filter(record => model.capability(workspace, record, 'project')).map(project => [project.id, { project, tasks: [], notes: [] }]));
+  for (const task of tasks) projects.get(task.project)?.tasks.push(task);
+  for (const document of Object.values(workspace.records)) {
+    if (model.capability(workspace, document, 'project') || model.taskInfo(workspace, document)) continue;
+    const related = new Set();
+    for (const field of workspace.databases[document.database]?.fields || []) {
+      if (field.type !== 'relation' || field.unavailable) continue;
+      const value = document.properties[field.id];
+      for (const id of Array.isArray(value) ? value : value ? [value] : []) {
+        if (projects.get(id)?.project.database === field.target_database) related.add(id);
+      }
+    }
+    for (const id of related) projects.get(id).notes.push(document);
+  }
+  return { tasks, projects };
 }
-export function projectReview(workspace, projectId, today) {
-  const project = workspace.records[projectId];
-  if (!model.capability(workspace, project, 'project')) throw new Error('Project not found.');
-  if (!model.validDate(today)) throw new Error('Invalid review date.');
-  const tasks = model.allTasks(workspace).filter(task => task.project === projectId)
-    .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || a.title.localeCompare(b.title));
+function groupTasks(tasks, today) {
   const groups = { overdue: [], today: [], upcoming: [], undated: [], completed: [] };
   for (const task of tasks) {
     const group = task.done ? 'completed' : !task.due ? 'undated' : task.due < today ? 'overdue' : task.due === today ? 'today' : 'upcoming';
     groups[group].push(task);
   }
-  const notes = Object.values(workspace.records).filter(document => !model.capability(workspace, document, 'project') && !model.taskInfo(workspace, document) && related(workspace, document, project))
-    .sort((a, b) => a.title.localeCompare(b.title));
-  return { project, notes, groups, open: tasks.length - groups.completed.length };
+  return groups;
+}
+function summarize(workspace, entry, today) {
+  const groups = groupTasks(entry.tasks, today);
+  const notes = entry.notes.sort((a, b) => a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+  const recentNotes = notes.flatMap(document => {
+    const dates = (workspace.databases[document.database]?.fields || []).filter(field => field.type === 'date' && !field.unavailable);
+    const date = dates.length === 1 ? document.properties[dates[0].id] : null;
+    return model.validDate(date) && date <= today ? [{ document, date }] : [];
+  }).sort((a, b) => b.date.localeCompare(a.date) || a.document.title.localeCompare(b.document.title)).slice(0, 2);
+  return { project: entry.project, notes, recentNotes, groups, open: entry.tasks.length - groups.completed.length, nextDue: groups.today[0] || groups.upcoming[0] || null };
+}
+export function projectReview(workspace, projectId, today) {
+  if (!model.capability(workspace, workspace.records[projectId], 'project')) throw new Error('Project not found.');
+  if (!model.validDate(today)) throw new Error('Invalid review date.');
+  return summarize(workspace, reviewIndex(workspace).projects.get(projectId), today);
+}
+export function dailyReview(workspace, today) {
+  if (!model.validDate(today)) throw new Error('Invalid review date.');
+  const index = reviewIndex(workspace), groups = groupTasks(index.tasks, today);
+  const projects = model.activeProjects(workspace).map(project => summarize(workspace, index.projects.get(project.id), today))
+    .sort((a, b) => b.groups.overdue.length - a.groups.overdue.length || b.groups.today.length - a.groups.today.length || (a.nextDue?.due || '9999').localeCompare(b.nextDue?.due || '9999') || a.project.title.localeCompare(b.project.title));
+  return { groups, projects, open: index.tasks.length - groups.completed.length };
 }

@@ -320,3 +320,13 @@ Existing files and links are preserved. Legacy `parent` metadata is retained as 
 ### Sidebar navigation
 
 The explorer remembers folder disclosure state per workspace, offers Collapse all folders, and reveals the current document’s physical ancestors when opened. Selected pages have a quiet accent highlight; decorative page dots are omitted. Database creation actions appear on folder hover or keyboard focus and remain visible on touch devices. Long lists scroll inside the sidebar, keeping Workspace, Daily overview, and Settings available.
+
+### Daily review of personal work
+
+Daily overview puts My work first, grouping all open todos into Overdue, Today, Upcoming, and Without a date, with completed work collapsed. Upcoming includes every future due date. Unassigned work and work on inactive projects remain visible. Task titles open the todo Markdown document, and source-note links return to the meeting context.
+
+Every active project has a summary, including projects with no open work. Summaries show open/completed counts, overdue and today counts, the next deadline from today onward, undated work, and links to recent notes. Projects needing attention appear first. Counts reflect recorded work rather than inferred project progress.
+
+Select a task's date to choose Today, Tomorrow, a calendar date, or No date. Cancel/Escape leaves the todo unchanged; successful changes regroup work and update summaries immediately, retain keyboard focus, support Undo, and use the existing autosave/conflict protection. Protected workspaces and unavailable records remain read-only. Required due-date fields cannot be cleared.
+
+Recent notes use a note database's single date field (Meeting date in the starter workspace), showing the two latest dates up to today. Multiple date fields are ambiguous and are not guessed. Where no dated notes qualify, summaries show ordinary related-note links. This is recorded note chronology, not an inferred edit history.

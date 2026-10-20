@@ -8,7 +8,8 @@ import ShortcutReference from './shortcut-reference.js';
 import { recordColor } from './colors.js';
 import ThemePicker from './theme-picker.js';
 import { applyColorTheme, validateThemePreferences, readThemePreferences, saveThemePreferences, themePreferencesKey } from './themes.js';
-import { projectReview } from './project-review.js';
+import { projectReview, dailyReview } from './project-review.js';
+import DueDatePicker from './due-date-picker.js';
 import { legacyPreferences } from './personal-settings.js';
 import { appearanceKey, readTheme, saveTheme, isDark, nextTheme } from './appearance.js';
 import InlineProperties from './inline-properties.js';
@@ -156,6 +157,15 @@ import BentoFileSession from './file-session.js';
     editingSnapshot = null;
     present(); persist(); notify(message);
   }
+  const duePicker = new DueDatePicker(root, {
+    today: () => planDate,
+    change(id, due) {
+      const task = model.taskInfo(workspace(), workspace().records[id]);
+      if (!task || readOnly(workspace().records[id])) throw new Error('This todo is unavailable for editing.');
+      if (task.due === due) return;
+      change(() => model.updateTodo(workspace(), id, { due }), due ? 'Due date updated.' : 'Due date cleared.');
+    }
+  });
   function rememberPresentation() {
     if (state.view !== 'create' && sameLocation(navigation.entries[navigation.index].location, location())) navigation.remember({ scrollY: window.scrollY, editor: liveEditor?.navigationState() || null });
   }
@@ -236,7 +246,7 @@ import BentoFileSession from './file-session.js';
       else return paletteCommands().find(command => command.id === entry.id)?.run();
     }, error: notify
   });
-  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => !desktop || !!files?.view });
+  const shortcutController = new ShortcutController(Object.fromEntries(Object.entries(commandHandlers).map(([id, run]) => [id, () => { if (!['quick-open', 'command-search'].includes(id)) quickOpen.close(); run(); }])), { available: () => (!desktop || !!files?.view) && !duePicker.dialog.open });
   document.addEventListener('keydown', event => shortcutController.handle(event), true);
   window.addEventListener('blur', () => shortcutController.clear());
   function openRecord(documentId) {
@@ -311,22 +321,24 @@ import BentoFileSession from './file-session.js';
       <input class="cursor-interaction" type="checkbox" data-task="${task.id}" aria-label="Complete ${escape(task.title)}" ${task.done ? 'checked' : ''} ${readOnly(workspace().records[task.id]) ? 'disabled' : ''}>
       <div><button class="b-task-title b-document-link cursor-interaction" type="button" data-record="${task.id}">${escape(task.title)}</button>
         ${source ? `<button class="b-source cursor-interaction" data-record="${source.id}" type="button"><span class="b-project-label" ${project ? `data-color="${recordColor(project)}"` : ''}>${escape(project?.title || 'Unassigned')}</span> · ${escape(source.title)} ↗</button>` : `<span class="b-source"><span class="b-project-label" ${project ? `data-color="${recordColor(project)}"` : ''}>${escape(project?.title || 'Unassigned')}</span> · No source reference</span>`}
-      </div><span class="b-date ${!task.done && task.due && task.due < planDate ? 'b-overdue' : ''}">${dueLabel(task.due)}</span>
+      </div><button type="button" class="b-date b-due-button ${!task.done && task.due && task.due < planDate ? 'b-overdue' : ''}" data-reschedule="${task.id}" aria-label="Due date for ${escape(task.title)}: ${escape(dueLabel(task.due))}" title="Reschedule" ${readOnly(workspace().records[task.id]) ? 'disabled' : ''}>${dueLabel(task.due)}</button>
     </li>`;
   }
-  function projectCard(project) {
-    const tasks = allTasks().filter(task => task.project === project.id), open = tasks.filter(task => !task.done);
-    const next = open.filter(task => task.due).sort((a, b) => a.due.localeCompare(b.due))[0];
-    return `<section class="b-project" data-color="${recordColor(project)}"><button type="button" class="cursor-interaction" ${desktop ? `data-record="${project.id}"` : `data-project="${project.id}"`}>${escape(project.title)}</button>
-      <p><button type="button" data-project="${project.id}">Review work</button></p><p>Active · ${open.length} open · ${tasks.length - open.length} complete</p>
-      <p>${next ? 'Next due: ' + dueLabel(next.due) : open.length ? 'No dated work' : 'No outstanding work'}</p></section>`;
+  function projectCard(review) {
+    const { project, groups, open, nextDue, recentNotes, notes } = review;
+    const dated = recentNotes.length > 0;
+    const entries = dated ? recentNotes : notes.slice(0, 2).map(document => ({ document, date: null }));
+    return `<section class="b-project b-daily-project" data-color="${recordColor(project)}" aria-label="Project summary: ${escape(project.title)}"><button type="button" data-record="${project.id}">${escape(project.title)}</button>
+      <p>${open} open · ${groups.completed.length} complete</p>
+      <p class="b-project-attention"><span class="${groups.overdue.length ? 'b-overdue' : ''}">${groups.overdue.length} overdue</span> · ${groups.today.length} due today</p>
+      <p>${nextDue ? `<button type="button" class="b-next-deadline" data-record="${nextDue.id}">${dueLabel(nextDue.due)} · ${escape(nextDue.title)}</button>` : open ? 'No upcoming deadlines' : 'No outstanding work'}${groups.undated.length ? `<span class="b-undated-count">${groups.undated.length} without a date</span>` : ''}</p>
+      ${entries.length ? `<div class="b-project-notes"><h3>${dated ? 'Recent notes' : 'Related notes'}</h3><ul>${entries.map(({ document, date }) => `<li><button type="button" data-record="${document.id}">${escape(document.title)}</button>${date ? `<time datetime="${date}">${dueLabel(date)}</time>` : ''}</li>`).join('')}</ul></div>` : '<p>No related notes yet</p>'}
+      <button type="button" class="b-review-project" data-project="${project.id}">Review work →</button></section>`;
   }
-  function renderTaskGroups(open) {
-    const groups = [['Overdue', task => task.due && task.due < planDate], ['Today', task => task.due === planDate],
-      ['Upcoming', task => task.due > planDate], ['Without a date', task => !task.due]];
-    return groups.map(([title, test]) => {
-      const tasks = open.filter(test);
-      return tasks.length ? `<section><h2>${title} <span class="b-muted">${tasks.length}</span></h2><ul class="b-list">${tasks.map(taskRow).join('')}</ul></section>` : '';
+  function renderTaskGroups(groups) {
+    return [['Overdue', 'overdue'], ['Today', 'today'], ['Upcoming', 'upcoming'], ['Without a date', 'undated']].map(([title, key]) => {
+      const tasks = groups[key];
+      return tasks.length || key === 'today' ? `<section aria-label="${title}"><h3>${title} <span class="b-muted">${tasks.length}</span></h3>${tasks.length ? `<ul class="b-list">${tasks.map(taskRow).join('')}</ul>` : '<p class="b-muted">Nothing due today.</p>'}</section>` : '';
     }).join('');
   }
   function renderProjectReview() {
@@ -350,21 +362,17 @@ import BentoFileSession from './file-session.js';
         ${first ? `<button type="button" class="b-button b-primary" data-create="${first.id}" ${files.view.readOnly ? 'disabled' : ''}>Start your first page</button>` : '<p>No databases are configured. You can still edit the Workspace page.</p>'}</section>`;
       return;
     }
-    const tasks = allTasks().filter(task => !state.project || task.project === state.project);
-    const open = tasks.filter(task => !task.done).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-    const selected = getProject(state.project);
-    const meeting = Object.values(workspace().records).find(doc => isNote(doc) && (!selected || model.projectOf(workspace(), doc) === selected.id));
-    main.innerHTML = `<p class="b-eyebrow">${desktop ? escape(new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })) : 'Sample plan · Monday, October 19'} · ${selected ? 'Project overview' : 'All projects'}</p>
-      <h1 id="b-greeting">${selected ? escape(selected.title) : escape(BentoProfile.greeting(profile))}</h1>
-      <p class="b-muted">${open.length} open actions${selected ? ' in this project' : ' across your workspace'}.</p>
-      <div class="b-actions">
-        ${meeting ? `<button type="button" class="b-button b-primary cursor-interaction" data-record="${meeting.id}">Open ${escape(meeting.title)}</button>` : ''}
-        ${selected ? `<button type="button" class="b-button cursor-interaction" data-record="${selected.id}">Open project document</button><button type="button" class="b-button cursor-interaction" data-view="daily">All projects</button>` : ''}
-        <button type="button" class="b-button cursor-interaction" data-undo ${previous ? '' : 'disabled'}>Undo last change</button>
-      </div><h2>${selected ? 'Project summary' : 'Active projects'}</h2>
-      <div class="b-summary-grid">${model.activeProjects(workspace()).filter(project => !selected || project.id === selected.id).map(projectCard).join('')}</div>
-      ${Object.values(workspace().databases).some(db => db.capabilities.task) ? '' : '<p class="b-muted">Todo tracking is unavailable. Configure a database with a task capability to enable it.</p>'}${projectDatabase() ? '' : '<p class="b-muted">Project review is unavailable. Configure a database with a project capability to enable it.</p>'}${renderTaskGroups(open)}${open.length ? '' : '<p class="b-muted">No outstanding work. Your project notes are still here.</p>'}
-      <details><summary>Completed (${tasks.length - open.length})</summary><ul class="b-list">${tasks.filter(task => task.done).map(taskRow).join('')}</ul></details>`;
+    const review = dailyReview(workspace(), planDate);
+    main.innerHTML = `<p class="b-eyebrow">${desktop ? escape(new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })) : 'Sample plan · Monday, October 19'} · Daily overview</p>
+      <div class="b-daily-heading"><h1 id="b-greeting">${escape(BentoProfile.greeting(profile))}</h1><button type="button" class="b-text-action" data-undo ${previous ? '' : 'disabled'}>Undo last change</button></div>
+      <p class="b-muted">${review.groups.overdue.length} overdue · ${review.groups.today.length} due today · ${review.groups.upcoming.length} upcoming</p>
+      <div class="b-daily-columns"><section class="b-my-work" aria-label="My work"><h2>My work <span class="b-muted">${review.open}</span></h2>
+      <p class="b-muted">Across all projects. Select a date to reschedule.</p>
+      ${Object.values(workspace().databases).some(db => db.capabilities.task) ? '' : '<p class="b-muted">Todo tracking is unavailable. Configure a database with a task capability to enable it.</p>'}
+      ${review.open ? renderTaskGroups(review.groups) : '<p class="b-muted">No outstanding work. Your project notes are still here.</p>'}
+      <details class="b-review-completed"><summary>Completed (${review.groups.completed.length})</summary><ul class="b-list">${review.groups.completed.map(taskRow).join('')}</ul></details></section>
+      <section aria-label="Active projects"><h2>Active projects</h2><div class="b-project-summaries">${review.projects.map(projectCard).join('')}</div>
+      ${review.projects.length ? '' : `<p class="b-muted">${projectDatabase() ? 'No active projects. Your work is still listed here.' : 'Project review is unavailable. Configure a database with a project capability to enable it.'}</p>`}</section></div>`;
   }
 
   function refreshDocument() {
@@ -549,6 +557,10 @@ import BentoFileSession from './file-session.js';
       else if (button.hasAttribute('data-cancel-create')) { Object.assign(state, creation.previous); creation = null; render(); }
       else if (button.dataset.view === 'meeting') openRecord(state.note);
       else if (button.dataset.view) navigate(button.dataset.view);
+      else if (button.dataset.reschedule) {
+        const task = model.taskInfo(workspace(), workspace().records[button.dataset.reschedule]);
+        if (task && !readOnly(workspace().records[task.id])) duePicker.show(task);
+      }
       else if (button.dataset.record) openRecord(button.dataset.record);
       else if (button.dataset.project) navigate('daily', button.dataset.project);
       else if (button.hasAttribute('data-undo') && previous) {

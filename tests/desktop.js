@@ -1,3 +1,4 @@
+import { checkDailyWorkflow } from './daily-workflow.js';
 import { checkPageWorkflow } from './page-workflow.js';
 import { checkWorkspaceCustomization } from './workspace-customization.js';
 import { checkOnboarding } from './onboarding.js';
@@ -337,6 +338,7 @@ async function addTag(page, value) {
   await checkOnboarding({ launch, stop, temporary, root });
   await checkWorkspaceCustomization({ launch, stop, temporary, root });
   await checkPageWorkflow({ launch, stop, temporary, root });
+  await checkDailyWorkflow({ launch, stop, temporary, root });
 
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
   try {

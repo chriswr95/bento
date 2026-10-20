@@ -90,7 +90,7 @@ Provide database creation, field creation/editing/retirement, record property ed
 
 ### Daily overview and project summaries
 
-Query the applied workspace index for documents from databases with valid task capabilities, including unassigned tasks. Use mapped fields rather than database or field display names. Propose overdue, today, upcoming, and undated groups; the upcoming horizon and exact grouping remain open. Show project and source-note context on each task.
+Query the applied workspace index for documents from databases with valid task capabilities, including unassigned tasks. Use mapped fields rather than database or field display names. Group open work into overdue, today, all future dates, and undated; completed work stays collapsed. Work on inactive projects remains visible. Show project and source-note context on each task.
 
 Use project capability mappings to create a summary for every active project, including those without upcoming work. If no compatible database is configured, show the relevant configuration state rather than inventing records. Initially derive summaries from recorded project status, open/completed task counts, and next due dates, with links to details. Empty and undated states should be explicit. Counts describe recorded work rather than inferred engineering progress. These summaries do not require an agent; optional narrative summaries can be added with source references and refresh timestamps.
 
@@ -364,3 +364,13 @@ Legacy `parent` metadata is preserved like other unknown metadata, without valid
 ### Unified file explorer
 
 The tree omits the duplicate Workspace page and structural database definitions, as before. Relative paths are available in document tooltips. Folder creation commands still use database titles and capability mappings, independently of folder labels. Collapse all persists folder states together. Navigation reveals physical ancestors and scrolls only the explorer to expose the selection. Renders preserve explorer scroll. The desktop sidebar stays within the viewport with a scrollable tree and fixed navigation; narrow layouts cap tree height. Creation actions use hover/focus disclosure with a visible touch fallback. Native disclosure controls retain keyboard behavior and rotating chevrons.
+
+### Personal daily review and rescheduling
+
+`dailyReview` and `projectReview` share an indexed projection of mapped task capabilities and direct project relations. Tasks are sorted by date, title, and stable identity; relation targets are deduplicated before notes are assigned to projects. The daily projection includes all personal work and a summary for every active project. Cards sort by overdue count, today count, next deadline, then title. The next deadline excludes already-overdue work, which has its own count. No per-project scan of the full task list is needed.
+
+Recent-note entries use exactly one available date field in the note's database. The two latest valid dates no later than the local review date are shown. Databases without an unambiguous date use related-note links instead. No filesystem modification time, agent inference, new metadata, or database-specific field name is required.
+
+`DueDatePicker` opens a small native HTML dialog from a date button in daily or project review. Today and Tomorrow use the current local review date, with Tomorrow advancing a calendar day rather than a fixed number of hours. Set date/Enter validates the date input; Cancel/Escape restores focus without a write. Application navigation shortcuts are suspended while this dialog is open. Clearing a required mapped date reports the schema error and leaves the dialog open. Unchanged dates create no Undo entry.
+
+Successful rescheduling calls the existing `updateTodo` command with the mapped due field, then rerenders the projection, restores date-button focus, and uses the same autosave/draft/conflict path as document edits. The existing Undo snapshot restores the prior workspace. Todo Markdown bodies, source-note checkboxes, project assignments, and database membership are preserved. The dialog lives outside the changing main view so date rollover or regrouping does not destroy its input. Desktop focus/visibility/minute refreshes continue to update review groups when the local date changes.

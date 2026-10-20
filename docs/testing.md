@@ -51,3 +51,9 @@ Unit tests cover standalone creation without hierarchy, rejected Parent creation
 ### Slash-command coverage
 
 Unit tests validate block structures, one-step undo, and invalid commands. Browser checks exercise slash headings, tracked todos, literal `/page`, and unknown/cancelled commands. Page creation remains available through the sidebar and command palette.
+
+### Daily review and next-morning workflow
+
+Unit tests cover all-work grouping including unassigned/inactive projects, active-project urgency and empty cards, deduplicated related notes, dated-note ordering/future exclusion/ambiguous dates, calendar rollover, leap days and daylight-saving boundaries, and invalid dates. A repository test captures a meeting checkbox, adds a due date and supporting todo notes, reopens on the next day, reschedules and clears the date, and verifies the original meeting and todo details remain intact.
+
+Browser checks cover Today/Tomorrow/custom/clear dates, cancellation, keyboard focus, unchanged-date Undo preservation, source navigation, reload persistence, suspended modal navigation shortcuts, read-only date controls, and responsive overview/dialog layouts. Native checks type a meeting checkbox, schedule Today, add todo details, quit, reopen with the next morning's local date, confirm overdue/project summaries, choose Tomorrow, follow the source-note link, and verify persisted Markdown across another restart. Native windows remain hidden.
