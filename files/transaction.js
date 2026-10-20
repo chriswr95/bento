@@ -48,21 +48,24 @@ async function lock(root, operation) {
   } finally { await handle.close(); await fs.unlink(await paths.inside(root, filename)); }
 }
 async function finish(root, journal, hook = () => {}) {
-  if (journal.version !== 1 || !/^[\w-]+$/.test(journal.id) || !Array.isArray(journal.entries)) throw new Error('Invalid recovery journal.');
+  if (journal.version !== 1 || !/^[\w-]+$/.test(journal.id) || !Array.isArray(journal.entries) || journal.directories !== undefined && !Array.isArray(journal.directories)) throw new Error('Invalid recovery journal.');
   // Validate all destinations before resuming any interrupted operation.
   for (const entry of journal.entries) {
     paths.relative(entry.path);
     if (!entry.path.endsWith('.md') || entry.path.startsWith('.')) throw new Error('Invalid journal destination.');
-    if (typeof entry.after !== 'string' || (entry.before !== null && typeof entry.before !== 'string')) throw new Error('Invalid journal content.');
+    if ((entry.after !== null && typeof entry.after !== 'string') || (entry.before !== null && typeof entry.before !== 'string')) throw new Error('Invalid journal content.');
     const current = await read(root, entry.path);
     if (current !== entry.after && current !== entry.before) throw new Error(`Recovery conflict in ${entry.path}. Both versions remain in .bento-local/pending.json; no conflicting file was overwritten.`);
   }
+  for (const name of journal.directories || []) { paths.relative(name); if (name.startsWith('.')) throw new Error('Invalid journal folder.'); }
+  for (const name of journal.directories || []) await paths.mkdir(root, name);
   for (const entry of journal.entries) {
     await hook(entry);
     const current = await read(root, entry.path);
     if (current === entry.after) continue;
     if (current !== entry.before) throw new Error(`External change in ${entry.path}; save stopped. Recovery journal retained.`);
-    await replace(root, entry.path, entry.after);
+    if (entry.after === null) await fs.unlink(await paths.inside(root, entry.path));
+    else await replace(root, entry.path, entry.after);
   }
   await directory(root, '.bento-local/history');
   await fs.rename(await paths.inside(root, '.bento-local/pending.json'), await paths.inside(root, `.bento-local/history/${journal.id}.json`, true));
@@ -72,12 +75,12 @@ async function recover(root) {
   if (raw === null) return false;
   return lock(root, async () => { await finish(root, JSON.parse(raw)); return true; });
 }
-async function commit(root, entries, verify, hook) {
-  if (!entries.length) return;
+async function commit(root, entries, verify, hook, directories = []) {
+  if (!entries.length && !directories.length) return;
   return lock(root, async () => {
     if (await read(root, '.bento-local/pending.json') !== null) throw new Error('An earlier save needs recovery. Reload the workspace before saving.');
     await verify();
-    const journal = { version: 1, id: randomUUID(), entries };
+    const journal = { version: 1, id: randomUUID(), entries, directories };
     await replace(root, '.bento-local/pending.json', JSON.stringify(journal, null, 2));
     await finish(root, journal, hook);
   });

@@ -2,21 +2,24 @@ import path from 'node:path';
 import * as markdown from './markdown.js';
 import schema from '../prototype/schema.js';
 
+export const definitionPath = entry => entry.definition || `${entry.path}/database.md`;
+export const defaultFolder = entry => entry.default_folder || entry.path || 'notes';
+
 // Runtime availability is derived; authored schema files are never repaired on load.
 export function loadDefinitions(files, info) {
   const databases = {}, databasePaths = {}, unavailableFolders = new Set(), errors = [];
   function unavailable(entry, error) {
-    delete databases[entry.id]; unavailableFolders.add(entry.path);
-    errors.push({ path: `${entry.path}/database.md`, message: `Database unavailable: ${error.message}. Its pages are protected until the definition is restored or migrated.` });
+    delete databases[entry.id]; unavailableFolders.add(entry.path || '');
+    errors.push({ path: definitionPath(entry), message: `Database unavailable: ${error.message}. Its pages are protected until the definition is restored or migrated.` });
   }
   for (const entry of info.databases) {
     try {
-      const file = files.get(`${entry.path}/database.md`);
+      const file = files.get(definitionPath(entry));
       if (file === undefined) throw new Error('Missing database definition');
       const data = markdown.parse(file).metadata;
       if (data.kind !== 'database-definition' || data.bento_version !== 1 || data.id !== entry.id) throw new Error('Invalid database identity or definition');
       databases[entry.id] = { ...data, capabilities: schema.object(data.capabilities) ? data.capabilities : {} };
-      databasePaths[entry.id] = entry.path;
+      databasePaths[entry.id] = defaultFolder(entry);
     } catch (error) { unavailable(entry, error); }
   }
   let removed;
@@ -32,7 +35,7 @@ export function loadDefinitions(files, info) {
     }
   } while (removed);
   for (const database of Object.values(databases)) {
-    const file = `${databasePaths[database.id]}/database.md`;
+    const file = definitionPath(info.databases.find(entry => entry.id === database.id));
     for (const field of database.fields) if (field.unavailable) errors.push({ path: file, message: `${field.name} is unavailable because its target database is missing. Existing values are preserved.` });
     for (const role of ['task', 'project']) {
       if (!database.capabilities[role]) continue;
@@ -43,7 +46,7 @@ export function loadDefinitions(files, info) {
       }
     }
   }
-  const controls = new Set(info.databases.map(entry => `${entry.path}/database.md`));
+  const controls = new Set(info.databases.map(entry => definitionPath(entry)));
   for (const [name, raw] of files) {
     if (!name.endsWith('/database.md') || controls.has(name)) continue;
     try {
@@ -52,5 +55,5 @@ export function loadDefinitions(files, info) {
       errors.push({ path: name, message: 'This database is not registered in workspace.md. Its pages are protected until it is restored or migrated.' });
     } catch { /* The scanner reports malformed unregistered files separately. */ }
   }
-  return { databases, databasePaths, unavailableFolders: [...unavailableFolders], errors };
+  return { databases, databasePaths, unavailableFolders: [...unavailableFolders].filter(Boolean), errors };
 }

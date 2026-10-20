@@ -9,8 +9,15 @@ import os from 'node:os';
 const root = path.resolve(__dirname, '..');
 
 async function copyDependency(name, from, into) {
-  const manifest = require.resolve(name + '/package.json', { paths: [from] });
-  const source = path.dirname(manifest), destination = path.join(into, 'node_modules', name);
+  let entry;
+  try { entry = require.resolve(name + '/package.json', { paths: [from] }); }
+  catch { entry = require.resolve(name, { paths: [from] }); }
+  let source = path.dirname(entry);
+  while (true) {
+    try { if (JSON.parse(await fs.readFile(path.join(source, 'package.json'), 'utf8')).name === name) break; } catch { /* Keep looking for the package root. */ }
+    const parent = path.dirname(source); if (parent === source) throw new Error('Cannot locate runtime dependency ' + name); source = parent;
+  }
+  const manifest = path.join(source, 'package.json'), destination = path.join(into, 'node_modules', name);
   await fs.cp(source, destination, { recursive: true, dereference: true });
   const info = JSON.parse(await fs.readFile(manifest, 'utf8'));
   for (const dependency of Object.keys(info.dependencies || {})) await copyDependency(dependency, source, destination);

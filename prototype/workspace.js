@@ -121,8 +121,8 @@ function makeRecord(recordId, database, title, body, properties = {}) {
   return { bento_version: 1, id: recordId, database, schema_version: 1, title, tags: [], properties, references: {}, body };
 }
 function createDocument(workspace, options) {
-  if (Object.keys(options).some(key => !['database', 'title', 'properties'].includes(key))) throw new Error('Only database, title and properties can be set when creating a document.');
-  const { database, title, properties = {} } = options;
+  if (Object.keys(options).some(key => !['database', 'title', 'properties', 'folder'].includes(key))) throw new Error('Only database, title, properties and folder can be set when creating a document.');
+  const { database, title, properties = {}, folder } = options;
   assertWorkspace(workspace);
   const definition = Object.hasOwn(workspace.databases, database) ? workspace.databases[database] : undefined;
   if (!definition && database !== null) throw new Error('Choose an existing database.');
@@ -137,7 +137,11 @@ function createDocument(workspace, options) {
   if (definition) record.schema_version = definition.schema_version;
   else { delete record.database; delete record.schema_version; }
   next.records[documentId] = record;
-  if (next.paths) next.paths[documentId] = definition ? `${next.databasePaths[database]}/${documentId}.md` : `${documentId}.md`;
+  if (next.paths) {
+    const destination = next.organizationVersion === 2 ? folder ?? (definition ? next.databasePaths[database] : next.defaultPageFolder) : definition ? next.databasePaths[database] : '';
+    if (next.organizationVersion === 2 && destination !== '' && !next.folders.includes(destination)) throw new Error('Choose an existing folder.');
+    next.paths[documentId] = (destination ? destination + '/' : '') + documentId + '.md';
+  }
   assertWorkspace(next);
   return { workspace: next, documentId };
 }

@@ -10,10 +10,11 @@ import * as transaction from './transaction.js';
 import model from '../prototype/workspace.js';
 import { exampleWorkspace } from './example-workspace.js';
 import schema from '../prototype/schema.js';
-import { loadDefinitions } from './database-definitions.js';
+import { publicFolder, upgradePlan, folderPlan, movePlan, vacant } from './organization.js';
+import { loadDefinitions, definitionPath, defaultFolder } from './database-definitions.js';
 
-async function snapshot(root) {
-  const names = await paths.walk(root);
+async function snapshot(root, folders = []) {
+  const names = await paths.walk(root, '', [], folders);
   const folded = new Set();
   const result = new Map();
   for (const name of names) {
@@ -34,10 +35,17 @@ function manifest(files) {
   const parsed = parseFile(files, 'workspace.md', 'workspace-definition');
   const data = parsed.metadata;
   if (!schema.identity(data.id) || typeof data.title !== 'string' || !Array.isArray(data.databases)) throw new Error('Invalid workspace.md definition.');
+  if (data.organization_version !== undefined && data.organization_version !== 2) throw new Error('Unsupported workspace organization version.');
   const ids = new Set(), folders = [];
+  if (data.organization_version === 2) publicFolder(data.default_page_folder || 'notes');
   for (const entry of data.databases) {
     if (!schema.identity(entry.id) || ids.has(entry.id)) throw new Error('Duplicate or invalid database identity.');
-    ids.add(entry.id); paths.relative(entry.path);
+    ids.add(entry.id);
+    if (data.organization_version === 2) {
+      if (entry.definition !== `databases/${entry.id}.md`) throw new Error('Invalid schema definition path.');
+      publicFolder(defaultFolder(entry)); continue;
+    }
+    paths.relative(entry.path);
     if (entry.path.startsWith('.') || folders.some(folder => folder.toLowerCase() === entry.path.toLowerCase() || folder.startsWith(entry.path + '/') || entry.path.startsWith(folder + '/'))) throw new Error('Database folders must be distinct and must not nest.');
     folders.push(entry.path);
   }
@@ -46,10 +54,10 @@ function manifest(files) {
 function membership(name, definitions) {
   return definitions.find(entry => name.startsWith(entry.path + '/'))?.id;
 }
-function contentRecord(name, parsed, database, definitions, protectedPage = false) {
+function contentRecord(name, parsed, database, definitions, protectedPage = false, explicit = false) {
   const meta = parsed.metadata;
   if (meta.kind) throw new Error(`Unregistered control document: ${name}.`);
-  if (!protectedPage && meta.database !== undefined && meta.database !== database) throw new Error(`Legacy membership disagrees with the folder in ${name}; review the database transfer before editing.`);
+  if (!explicit && !protectedPage && meta.database !== undefined && meta.database !== database) throw new Error(`Legacy membership disagrees with the folder in ${name}; review the database transfer before editing.`);
   const id = meta.id || 'note-' + createHash('sha256').update(name).digest('hex').slice(0, 24);
   if (!schema.identity(id)) throw new Error(`Invalid identity in ${name}.`);
   const record = { bento_version: 1, ...meta, id, title: meta.title ?? path.posix.basename(name, '.md'), tags: meta.tags ?? [], properties: meta.properties ?? {}, references: meta.references ?? {}, body: parsed.body };
@@ -92,8 +100,11 @@ class WorkspaceRepository {
     let recoveryIssue = null;
     try { await transaction.recover(this.root); }
     catch (error) { recoveryIssue = error.message; }
-    const files = await snapshot(this.root), info = manifest(files);
+    const folders = [], files = await snapshot(this.root, folders), info = manifest(files);
+    const explicit = info.organization_version === 2;
     const workspace = { version: 4, home: info.id, defaultTaskDatabase: info.default_task_database ?? null, databases: {}, records: {}, issues: [], paths: {}, databasePaths: {} };
+    workspace.folders = folders.filter(folder => !explicit || folder !== 'databases' && !folder.startsWith('databases/'));
+    if (explicit) { workspace.organizationVersion = 2; workspace.defaultPageFolder = info.default_page_folder || 'notes'; }
     if (info.tag_colors !== undefined) workspace.tagColors = info.tag_colors;
     const loaded = loadDefinitions(files, info);
     workspace.databases = loaded.databases; workspace.databasePaths = loaded.databasePaths;
@@ -105,14 +116,18 @@ class WorkspaceRepository {
     workspace.records[info.id] = workspacePage(files, info); workspace.paths[info.id] = 'workspace.md';
     model.assertWorkspace(workspace);
     const errors = [...loaded.errors, ...(recoveryIssue ? [{ path: '.bento-local/pending.json', message: recoveryIssue }] : [])];
-    const controls = new Set(['workspace.md', ...info.databases.map(entry => `${entry.path}/database.md`)]);
+    const controls = new Set(['workspace.md', ...info.databases.map(definitionPath)]);
     const identities = new Map([[info.id, 'workspace.md']]);
     for (const [name] of files) {
       if (controls.has(name)) continue;
       try {
-        const protectedPage = loaded.unavailableFolders.some(folder => name.startsWith(folder + '/'));
-        const database = membership(name, info.databases);
-        const record = contentRecord(name, parseFile(files, name), protectedPage ? undefined : database, workspace.databases, protectedPage);
+        if (explicit && name.startsWith('databases/')) throw new Error('Move content pages out of the managed databases folder.');
+        const parsed = parseFile(files, name);
+        if (explicit && parsed.metadata.database != null && !schema.identity(parsed.metadata.database)) throw new Error('Invalid database membership.');
+        const database = explicit ? parsed.metadata.database ?? undefined : membership(name, info.databases);
+        const protectedPage = explicit ? !!database && !workspace.databases[database] : loaded.unavailableFolders.some(folder => name.startsWith(folder + '/'));
+        const record = contentRecord(name, parsed, protectedPage ? undefined : database, workspace.databases, protectedPage, explicit);
+        if (protectedPage && explicit) errors.push({ path: name, message: `Database ${database} is unavailable. This page is protected; its metadata is retained.` });
         if (protectedPage) workspace.readOnlyRecords.push(record.id);
         if (identities.has(record.id)) throw new Error(`Duplicate document ID ${record.id} in ${identities.get(record.id)} and ${name}.`);
         identities.set(record.id, name);
@@ -137,15 +152,15 @@ class WorkspaceRepository {
     }
     try { model.assertWorkspace(workspace); }
     catch (error) { this.readOnly = true; errors.push({ path: 'workspace.md', message: error.message }); }
-    this.files = files; this.workspace = workspace; this.info = info; this.errors = errors;
+    this.folders = folders; this.files = files; this.workspace = workspace; this.info = info; this.errors = errors;
     return this.view();
   }
   view() {
-    return { workspace: model.clone(this.workspace), title: this.info.title, folder: this.root, walkthrough: this.info.walkthrough ?? null, errors: this.errors, readOnly: this.readOnly };
+    return { workspace: model.clone(this.workspace), title: this.info.title, folder: this.root, walkthrough: this.info.walkthrough ?? null, errors: this.errors, readOnly: this.readOnly, needsUpgrade: this.info.organization_version !== 2 };
   }
   async verify() {
-    const current = await snapshot(this.root);
-    if (!isDeepStrictEqual(current, this.files)) throw new Error('Workspace changed on disk. Your draft is kept; reload and review the external changes before saving.');
+    const folders = [], current = await snapshot(this.root, folders);
+    if (!isDeepStrictEqual(current, this.files) || !isDeepStrictEqual(folders, this.folders)) throw new Error('Workspace changed on disk. Your draft is kept; reload and review the external changes before saving.');
   }
   async save(workspace) {
     if (this.busy) throw new Error('A workspace save is already in progress.');
@@ -155,22 +170,32 @@ class WorkspaceRepository {
       model.assertWorkspace(workspace);
       if (!isDeepStrictEqual(workspace.databases, this.workspace.databases) || workspace.defaultTaskDatabase !== this.workspace.defaultTaskDatabase || workspace.home !== this.workspace.home || !isDeepStrictEqual(workspace.readOnlyRecords, this.workspace.readOnlyRecords)) throw new Error('Schema changes must be made in their Markdown definitions and reloaded.');
       const next = model.clone(workspace), entries = [];
+      const explicit = this.info.organization_version === 2;
+      if (next.organizationVersion !== this.workspace.organizationVersion) throw new Error('Upgrade organization through its dedicated operation.');
+      if (explicit && (!isDeepStrictEqual(next.folders, this.workspace.folders) || next.defaultPageFolder !== this.workspace.defaultPageFolder)) throw new Error('Folder settings are repository-owned.');
       for (const id of this.workspace.readOnlyRecords) if (!isDeepStrictEqual(next.records[id], this.workspace.records[id])) throw new Error('This page belongs to an unavailable database. Restore or migrate its definition before editing.');
       for (const id of Object.keys(this.workspace.records)) if (!next.records[id]) throw new Error('Deleting documents through a snapshot is not supported.');
-      // Paths and folder membership come exclusively from the repository, never the renderer.
+      // Existing paths and creation defaults remain repository-owned.
       next.paths = { ...this.workspace.paths }; next.databasePaths = { ...this.workspace.databasePaths };
       for (const record of Object.values(next.records)) {
         if (record.id === next.home) continue;
         const before = this.workspace.records[record.id];
-        if (before && record.database !== before.database) throw new Error('Move files between folders to transfer database membership.');
+        if (before && record.database !== before.database) throw new Error('Database transfers require an explicit schema mapping operation.');
         if (!before) {
           if (record.database !== undefined && !Object.hasOwn(next.databases, record.database)) throw new Error('Choose a database for the new document.');
-          next.paths[record.id] = record.database ? `${next.databasePaths[record.database]}/${record.id}.md` : `${record.id}.md`;
+          if (explicit) {
+            const requested = workspace.paths?.[record.id];
+            paths.relative(requested);
+            if (path.posix.basename(requested) !== `${record.id}.md`) throw new Error('Invalid new document filename.');
+            const folder = path.posix.dirname(requested) === '.' ? '' : path.posix.dirname(requested);
+            publicFolder(folder); if (folder && !this.folders.includes(folder)) throw new Error('Choose an existing folder.');
+            await vacant(this, requested); next.paths[record.id] = requested;
+          } else next.paths[record.id] = record.database ? `${next.databasePaths[record.database]}/${record.id}.md` : `${record.id}.md`;
           if (this.files.has(next.paths[record.id])) throw new Error('New document path already exists.');
         }
         if (isDeepStrictEqual(record, before)) continue;
         const name = next.paths[record.id], original = this.files.get(name) ?? null;
-        entries.push({ path: name, before: original, after: markdown.serialize(record, original) });
+        entries.push({ path: name, before: original, after: markdown.serialize(record, original, { explicitMembership: explicit }) });
       }
       const manifest = workspaceEntry(this, next); if (manifest) entries.push(manifest);
       entries.sort((a, b) => Number(a.before !== null) - Number(b.before !== null));
@@ -183,6 +208,26 @@ class WorkspaceRepository {
       return this.view();
     } finally { this.busy = false; }
   }
+  async organize(operation) {
+    if (this.busy) throw new Error('Wait for the current save to finish.');
+    if (this.readOnly) throw new Error('Repair the workspace before organizing files.');
+    this.busy = true;
+    try {
+      const plan = await operation();
+      await transaction.commit(this.root, plan.entries, () => this.verify(), this.options.beforeWrite, plan.directories);
+      return await this.reload();
+    } finally { this.busy = false; }
+  }
+  upgrade() { return this.organize(() => this.info.organization_version === 2 ? { entries: [], directories: [] } : upgradePlan(this)); }
+  createFolder(parent, name) {
+    if (this.info.organization_version !== 2) throw new Error('Upgrade workspace organization first.');
+    return this.organize(() => folderPlan(this, parent, name));
+  }
+  moveDocument(id, folder) {
+    if (this.info.organization_version !== 2) throw new Error('Upgrade workspace organization first.');
+    return this.organize(() => movePlan(this, id, folder));
+  }
+
 }
 async function copyTemplate(source, destination) {
   // readFile/readdir work inside Electron's app.asar; fs.cp internals do not.
@@ -202,11 +247,13 @@ async function create(directory, title = 'My workspace', { example = false, toda
   const parsed = markdown.parse(raw); parsed.document.set('id', `workspace-${randomUUID()}`); parsed.document.set('title', title);
   await fs.writeFile(file, '---\n' + parsed.document.toString() + '---\n' + parsed.body, 'utf8');
   const repository = await WorkspaceRepository.open(root);
+  await repository.upgrade();
   if (!example) return repository;
   const seeded = exampleWorkspace(repository.workspace, today);
   await repository.save(seeded.workspace);
-  parsed.document.set('walkthrough', seeded.walkthrough);
-  await transaction.commit(root, [{ path: 'workspace.md', before: repository.files.get('workspace.md'), after: '---\n' + parsed.document.toString() + '---\n' + parsed.body }], () => repository.verify());
+  const seededManifest = markdown.parse(repository.files.get('workspace.md'));
+  seededManifest.document.set('walkthrough', seeded.walkthrough);
+  await transaction.commit(root, [{ path: 'workspace.md', before: repository.files.get('workspace.md'), after: '---\n' + seededManifest.document.toString() + '---\n' + seededManifest.body }], () => repository.verify());
   await repository.reload();
   return repository;
 }

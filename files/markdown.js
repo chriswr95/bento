@@ -21,12 +21,13 @@ function updateMap(document, path, before, after) {
   } else document.setIn(path, after);
 }
 
-function serialize(record, original) {
+function serialize(record, original, { explicitMembership = false } = {}) {
   const parsed = parse(original || '');
   const { body, database, ...metadata } = record;
   const next = { ...parsed.metadata, ...metadata, bento_version: 1 };
-  // Folder location is authoritative. A matching legacy membership is retired on save.
-  delete next.database;
+  // Upgraded workspaces persist membership; legacy workspaces still derive it from folders.
+  if (explicitMembership) next.database = database ?? null;
+  else delete next.database;
   updateMap(parsed.document, [], parsed.metadata, next);
   const eol = original?.includes('\r\n') ? '\r\n' : '\n';
   const header = parsed.document.toString({ lineWidth: 0 }).replace(/\r?\n/g, eol);
