@@ -14,6 +14,7 @@ import { publicFolder, folderPlan, movePlan, vacant } from './organization.js';
 import { loadDefinitions, definitionPath } from './database-definitions.js';
 import { folderDatabase, folderAvailable } from '../prototype/folders.js';
 import { deletePlan, restorePlan, latestDeletion } from './trash.js';
+import { propertyLayoutPlan } from './property-layout.js';
 
 async function snapshot(root, folders = []) {
   const names = await paths.walk(root, '', [], folders);
@@ -222,6 +223,7 @@ class WorkspaceRepository {
   }
   deleteDocument(id) { return this.organize(() => deletePlan(this, id)); }
   restoreDocument(token) { return this.organize(() => restorePlan(this, token)); }
+  setPropertyLayout(database, layout) { return this.organize(() => propertyLayoutPlan(this, database, layout)); }
   validateRestored(filename, raw, id, database) {
     const parsed = markdown.parse(raw);
     if (parsed.metadata.database !== undefined) throw new Error('The deleted file contains redundant membership metadata. Nothing was restored.');

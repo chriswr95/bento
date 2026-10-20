@@ -1,4 +1,5 @@
 import { validColor } from './colors.js';
+import { validateLayout } from './property-layout.js';
 const types = ['text', 'number', 'boolean', 'date', 'select', 'multi-select', 'status', 'relation'];
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const identity = value => typeof value === 'string' && /^[a-zA-Z0-9][\w-]*$/.test(value) && !['constructor', 'prototype', '__proto__'].includes(value);
@@ -29,6 +30,7 @@ function definition(database, databases) {
     }
     if ('default' in field) value(field, field.default);
   }
+  if (database.property_layout !== undefined) validateLayout(database, database.property_layout);
   return fields;
 }
 function capabilities(database) {

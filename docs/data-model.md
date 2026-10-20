@@ -78,6 +78,20 @@ Bento supports only organization version 3. Templates and the checked-in example
 
 Each field has a stable `id`, user-facing `name`, `type`, optional `required` flag, and optional `default`. Type-specific configuration belongs in the database definition, not every record.
 
+Database definitions may also contain `property_layout`, with ordered `important` and `detail` lists of field IDs. `$color` and `$tags` identify shared document properties. Required schema fields are pinned above the fold and must not appear in either list; changing presentation never changes their `required` validation. Page title and todo completion remain fixed document controls. Missing layout entries default to Important; without an authored layout, Color and Tags default to Details. Unknown IDs, duplicate IDs, unknown layout keys and required-field entries are rejected.
+
+```yaml
+property_layout:
+  important:
+    - field-meeting-date
+    - field-meeting-projects
+  detail:
+    - $color
+    - $tags
+```
+
+Layout belongs to the database definition and applies to all its records. It does not increment `schema_version` or rewrite content documents. The dedicated layout write uses the repository journal, external-change checks and authored YAML preservation. Snapshot saves cannot change other schema metadata.
+
 | UI type | Encoding | Configuration and values |
 | --- | --- | --- |
 | Text / String | `text` | A string |
