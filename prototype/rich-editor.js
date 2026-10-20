@@ -146,6 +146,11 @@ export default class RichEditor {
     }
     if (tr.docChanged) this.view.updateState(this.view.state.apply(tr.setMeta('addToHistory', false)));
   }
+  navigationState() { return { selection: this.view.state.selection.toJSON(), focused: this.view.hasFocus() }; }
+  restoreNavigationState(value) {
+    try { this.view.dispatch(this.view.state.tr.setSelection(Selection.fromJSON(this.view.state.doc, value.selection))); } catch { /* Content may have changed since this visit. */ }
+    if (value.focused) this.view.focus();
+  }
   focus() { this.view.focus(); }
   destroy() { this.destroyed = true; this.view.destroy(); }
 }

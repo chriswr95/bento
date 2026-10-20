@@ -1,3 +1,4 @@
+import { checkShortcuts } from './shortcuts.js';
 import { checkColors } from './colors.js';
 import { checkThemes } from './themes.js';
 import { checkProperties } from './properties.js';
@@ -191,5 +192,6 @@ async function paste(editor, text, html = '') {
  await checkProperties(browser, url);
  await checkThemes(browser, url, screenshots);
  await checkColors(browser, url, screenshots);
+ await checkShortcuts(browser, url, screenshots);
 
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close(); await server.close();});

@@ -37,6 +37,10 @@ The document is a formatted, directly editable page powered by ProseMirror. Clic
 
 Markdown remains the storage format. Opening a document does not rewrite it. The bridge retains original source for untouched blocks; edited blocks can normalize Markdown syntax. Raw HTML and unsupported block types remain preserved, non-executable atoms; images stay placeholders. Tables, fenced code, nested lists, and rich todo labels are supported. Todo metadata stores a plain title while source labels retain inline formatting.
 
+## Keyboard shortcuts
+
+Use **Cmd+[ / Cmd+]** on macOS (**Ctrl+[ / Ctrl+]** or **Alt+Left / Alt+Right** on Windows/Linux) to go back and forward without undoing edits. **Cmd/Ctrl+,** opens Settings. **Cmd/Ctrl+K, then Cmd/Ctrl+S** opens its searchable Keyboard shortcuts section. See the [shortcut reference](docs/keyboard-shortcuts.md).
+
 ## Colors
 
 Open a page’s **Color** property to pick one of eight theme-aware accents. Project markers, cards and relation chips follow that choice. In Tags, click a tag’s small dot to set its workspace-wide color. **Automatic** restores a stable default. Assignments survive theme changes and save in Markdown.

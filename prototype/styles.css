@@ -211,3 +211,11 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow [data-color="blue"] { --b-item-color:var(--b-color-blue); --b-item-wash:var(--b-color-blue-wash); }
 #bento-workflow [data-color="purple"] { --b-item-color:var(--b-color-purple); --b-item-wash:var(--b-color-purple-wash); }
 #bento-workflow [data-color="pink"] { --b-item-color:var(--b-color-pink); --b-item-wash:var(--b-color-pink-wash); }
+
+#bento-workflow #b-keyboard-shortcuts {margin-top:32px;border-top:1px solid var(--b-line);padding-top:4px;scroll-margin-top:20px}
+#bento-workflow #b-shortcut-search {display:block;width:100%;max-width:680px;padding:8px 10px;border:1px solid var(--b-line);border-radius:6px;background:var(--b-paper);color:var(--b-ink);font:inherit}
+#bento-workflow .b-shortcut-table {overflow-x:auto;margin-top:12px}
+#bento-workflow .b-shortcut-table table {width:100%;border-collapse:collapse;font-size:12px}
+#bento-workflow .b-shortcut-table th,#bento-workflow .b-shortcut-table td {padding:10px 8px;border-bottom:1px solid var(--b-line);text-align:left;vertical-align:top}
+#bento-workflow .b-shortcut-table th {font-weight:500;color:var(--b-soft)}
+#bento-workflow .b-shortcut-table kbd {display:inline-block;margin:1px 0;padding:2px 5px;border:1px solid var(--b-line);border-radius:4px;background:var(--b-side);font:inherit;white-space:nowrap}

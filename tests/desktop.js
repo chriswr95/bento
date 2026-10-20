@@ -109,6 +109,20 @@ async function addTag(page, value) {
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('My first project');
   await page.getByRole('button', { name: 'Create project', exact: true }).click();
   await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'My first project', exact: true }).waitFor();
+  assert.equal(await page.locator('#b-task-count').count(), 0);
+  await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+,');
+  await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+  await page.keyboard.press('ControlOrMeta+k'); await page.keyboard.press('ControlOrMeta+s');
+  const shortcutSearch = page.getByRole('searchbox', { name: 'Search keyboard shortcuts', exact: true });
+  assert.equal(await shortcutSearch.evaluate(element => document.activeElement === element), true);
+  await shortcutSearch.fill('go back'); assert.equal(await page.locator('[data-shortcut-command]').count(), 1);
+  await page.keyboard.press('ControlOrMeta+[');
+  await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
+  await page.keyboard.press('ControlOrMeta+]'); await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+  await page.keyboard.press(process.platform === 'darwin' ? 'ControlOrMeta+[' : 'Alt+ArrowLeft');
+  await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
+
   await saved(page);
   await setStatus(page, 'option-completed');
   await addTag(page, 'Civil engineering');
@@ -128,11 +142,24 @@ async function addTag(page, value) {
   const projectId = projectFiles[0].slice(0, -3);
   assert.match(await fs.readFile(path.join(workspace, 'projects', projectFiles[0]), 'utf8'), /title: My first project/);
   assert.match(await fs.readFile(path.join(workspace, 'projects', projectFiles[0]), 'utf8'), /color: purple/);
+  await editProperty(page, 'Page title');
+  await page.getByRole('textbox', { name: 'Page title', exact: true }).fill('Temporary project title');
+  await page.keyboard.press('ControlOrMeta+s'); await saved(page);
+  assert.match(await fs.readFile(path.join(workspace, 'projects', projectFiles[0]), 'utf8'), /title: Temporary project title/);
+  await editProperty(page, 'Page title');
+  await page.getByRole('textbox', { name: 'Page title', exact: true }).fill('My first project');
+  await page.keyboard.press('Enter'); await saved(page);
   assert.match(await fs.readFile(path.join(workspace, 'workspace.md'), 'utf8'), /Civil engineering: teal/);
   assert.equal(await page.locator('aside').getByRole('button', { name: 'My first project', exact: true }).count(), 1);
   await page.locator('aside').getByRole('button', { name: 'New project', exact: true }).click();
   await page.getByRole('textbox', { name: 'Document title', exact: true }).fill('Canceled project');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'New project', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+,');
+  await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+  await page.keyboard.press('ControlOrMeta+['); await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
+  await page.keyboard.press('ControlOrMeta+]'); await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+  await page.keyboard.press('ControlOrMeta+['); await page.getByRole('textbox', { name: 'Project Markdown', exact: true }).waitFor();
   assert.equal((await fs.readdir(path.join(workspace, 'projects'))).filter(name => name.startsWith('project-')).length, 1);
   // Reload after an external directory move: folders remain navigation, not membership changes.
   await fs.mkdir(path.join(workspace, 'projects', 'Design'));

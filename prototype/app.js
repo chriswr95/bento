@@ -1,3 +1,6 @@
+import NavigationHistory, { sameLocation } from './navigation-history.js';
+import { ShortcutController } from './shortcuts.js';
+import ShortcutReference from './shortcut-reference.js';
 import { recordColor } from './colors.js';
 import ThemePicker from './theme-picker.js';
 import { applyColorTheme, validateThemePreferences, readThemePreferences, saveThemePreferences, themePreferencesKey } from './themes.js';
@@ -115,7 +118,9 @@ import BentoFileSession from './file-session.js';
   const dueLabel = due => !due ? 'No date' : due === planDate ? 'Today'
     : new Date(due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  let liveEditor = null, propertyEditor = null, creation = null;
+  let liveEditor = null, propertyEditor = null, shortcutReference = null, creation = null;
+  const location = () => ({ view: state.view, project: state.project, document: state.document });
+  const navigation = new NavigationHistory(location());
 
   function notify(message) { status.textContent = storageWarning ? `${message} ${storageWarning}` : message; }
   function persist() {
@@ -146,7 +151,11 @@ import BentoFileSession from './file-session.js';
     editingSnapshot = null;
     render(); persist(); notify(message);
   }
-  function navigate(view, project = null, documentId = state.document) {
+  function rememberPresentation() {
+    if (state.view !== 'create' && sameLocation(navigation.entries[navigation.index].location, location())) navigation.remember({ scrollY: window.scrollY, editor: liveEditor?.navigationState() || null });
+  }
+  function showLocation(destination) {
+    const { view, project, document: documentId } = destination;
     state.view = view; state.project = project; state.document = documentId;
     if (view === 'document') directoryState?.reveal(workspace().paths?.[documentId]);
     if (workspace().records[documentId]?.database === 'db-meetings') state.note = documentId;
@@ -154,6 +163,31 @@ import BentoFileSession from './file-session.js';
     render(); persist();
     if (desktop) desktop.rememberLocation({ view, project, document: documentId || null }).then(result => { if (!result.ok) notify('Your last page could not be saved. Workspace edits are unaffected.'); });
   }
+  function navigate(view, project = null, documentId = state.document) {
+    if (propertyEditor && !propertyEditor.commit()) return;
+    rememberPresentation();
+    const destination = { view, project, document: documentId };
+    if (sameLocation(location(), destination)) return;
+    navigation.visit(destination); creation = null; showLocation(destination); window.scrollTo(0, 0);
+  }
+  function travel(direction) {
+    if (propertyEditor && !propertyEditor.commit()) return;
+    if (state.view === 'create' && creation) { const previous = creation.previous; creation = null; showLocation(previous); return; }
+    rememberPresentation();
+    const entry = navigation.move(direction, destination => (destination.view !== 'document' || !!workspace().records[destination.document]) && (!destination.project || !!model.capability(workspace(), workspace().records[destination.project], 'project')));
+    if (!entry) return;
+    showLocation(entry.location);
+    main.tabIndex = -1; main.focus({ preventScroll: true });
+    if (entry.presentation.editor) liveEditor?.restoreNavigationState(entry.presentation.editor);
+    window.scrollTo(0, entry.presentation.scrollY || 0);
+  }
+  const shortcutController = new ShortcutController({
+    back: () => travel(-1), forward: () => travel(1), settings: () => navigate('profile'),
+    shortcuts: () => { navigate('profile'); shortcutReference?.focus(); },
+    save: () => { if (propertyEditor && !propertyEditor.commit()) return; if (desktop) files?.save(); else { persist(); notify('Changes saved in this browser.'); } }
+  }, { available: () => !desktop || !!files?.view });
+  document.addEventListener('keydown', event => shortcutController.handle(event), true);
+  window.addEventListener('blur', () => shortcutController.clear());
   function openRecord(documentId) {
     if (Object.hasOwn(workspace().records, documentId)) navigate('document', null, documentId);
   }
@@ -171,6 +205,8 @@ import BentoFileSession from './file-session.js';
     return database.capabilities.project ? 'New project' : database.capabilities.task ? 'New todo' : database.id === meetingDatabase()?.id ? 'New meeting note' : `New page in ${database.title}`;
   }
   function showCreate(databaseId, project = null) {
+    if (propertyEditor && !propertyEditor.commit()) return;
+    rememberPresentation();
     if (files?.view?.readOnly) return notify('Repair this workspace before creating documents.');
     creation = { database: databaseId, project, previous: { view: state.view, project: state.project, document: state.document } };
     state.view = 'create'; render();
@@ -272,9 +308,6 @@ import BentoFileSession from './file-session.js';
   }
 
   function refreshDocument() {
-    const parsed = model.parse(record().body);
-    const targets = new Set(parsed.tasks.map(task => task.todoId).filter(id => record().references[id]));
-    main.querySelector('#b-task-count').textContent = `${targets.size} linked todos in this document`;
     const issues = workspace().issues.filter(item => item.document === record().id);
     const panel = main.querySelector('#b-document-issues');
     panel.hidden = !issues.length;
@@ -295,7 +328,7 @@ import BentoFileSession from './file-session.js';
       ${desktop || task ? '<section id="b-document-properties" aria-label="Document properties"></section>' : ''}
       ${task ? `<nav class="b-source-links" aria-label="Source notes">${model.sourcesFor(workspace(), task.id).map(source => `<button type="button" data-record="${source.id}">Back to ${escape(source.title)}</button>`).join('')}</nav>` : ''}
       <article id="b-reading" class="b-reading" aria-label="Editable Markdown document"></article>
-      <p id="b-task-count" class="b-muted" role="status" aria-live="polite"></p><p id="b-document-issues" class="b-issues" role="alert" hidden></p>
+      <p id="b-document-issues" class="b-issues" role="alert" hidden></p>
       ${doc.id === 'coordination' ? `<div class="b-actions"><button class="b-button cursor-interaction" type="button" data-propose>Preview agent suggestion</button></div>
         <section id="b-proposal" class="b-proposal" hidden><h3>Sample agent suggestion</h3><p id="b-suggestion-text"></p><p class="b-muted">From this note · no due date specified · simulated assistance</p>
           <div class="b-actions"><button type="button" class="b-button b-primary cursor-interaction" data-apply>Insert Markdown checkbox</button><button type="button" class="b-button cursor-interaction" data-dismiss>Dismiss</button></div></section>` : ''}`;
@@ -345,7 +378,8 @@ import BentoFileSession from './file-session.js';
         <label class="b-field">Last name<input name="lastName" autocomplete="family-name" maxlength="80" value="${escape(profile.lastName)}"></label>
         <label class="b-field">Birthday (optional)<input name="birthday" type="date" aria-label="Birthday" max="${BentoProfile.dateKey()}" value="${escape(profile.birthday)}"></label></div>
         <p class="b-muted" style="margin-top:16px">Your birthday adds a little celebration to your daily greeting.</p>
-        <div class="b-actions"><button type="submit" class="b-button b-primary cursor-interaction">Save profile</button><button type="button" class="b-button cursor-interaction" data-view="daily">Back to overview</button></div></form>`;
+        <div class="b-actions"><button type="submit" class="b-button b-primary cursor-interaction">Save profile</button><button type="button" class="b-button cursor-interaction" data-view="daily">Back to overview</button></div></form><section id="b-keyboard-shortcuts" aria-label="Keyboard shortcuts"></section>`;
+    shortcutReference = new ShortcutReference(main.querySelector('#b-keyboard-shortcuts'));
     themePicker = new ThemePicker(main.querySelector('#b-theme-settings'), {
       preferences: () => themePreferences, appearance: () => appearance.theme,
       dark: () => isDark(appearance.theme, systemAppearance.matches),
@@ -359,7 +393,7 @@ import BentoFileSession from './file-session.js';
     });
   }
   function render() {
-    themePicker = null;
+    themePicker = null; shortcutReference = null;
     propertyEditor?.destroy(); propertyEditor = null;
     liveEditor?.destroy(); liveEditor = null;
     if (desktop && !files?.view) {
@@ -406,7 +440,8 @@ import BentoFileSession from './file-session.js';
       else if (button.dataset.record) openRecord(button.dataset.record);
       else if (button.dataset.project) navigate('daily', button.dataset.project);
       else if (button.hasAttribute('data-undo') && previous) {
-        const snapshot = previous; previous = null; state = snapshot; editingSnapshot = null; proposal = false;
+        rememberPresentation();
+        const snapshot = previous; previous = null; state = snapshot; editingSnapshot = null; proposal = false; navigation.visit(location());
         render(); persist(); notify('Last document change undone.');
       } else if (button.hasAttribute('data-export')) exportDocument();
       else if (button.hasAttribute('data-propose')) { proposal = true; showProposal(); }
@@ -471,7 +506,7 @@ import BentoFileSession from './file-session.js';
   setInterval(refreshGreeting, 60_000);
   window.addEventListener('openai:set_globals', event => {
     const saved = event.detail?.globals?.widgetState?.privateContent;
-    if (!desktop && validSnapshot(saved) && saved.savedAt > state.savedAt && !editingSnapshot) { state = clone(saved); previous = null; proposal = false; render(); }
+    if (!desktop && validSnapshot(saved) && saved.savedAt > state.savedAt && !editingSnapshot) { state = clone(saved); previous = null; proposal = false; navigation.reset(location()); render(); }
   });
   if (desktop) {
     await loadPersonal();
@@ -497,6 +532,7 @@ import BentoFileSession from './file-session.js';
         state.document = Object.hasOwn(workspace().records, state.document) ? state.document : Object.keys(workspace().records)[0];
         state.note = Object.values(workspace().records).find(doc => doc.database === 'db-meetings')?.id;
         previous = null; editingSnapshot = null; proposal = false;
+        navigation.reset(location()); shortcutController.clear();
         errors.hidden = !view.errors.length; errors.textContent = view.errors.map(error => `${error.path}: ${error.message}`).join(' ');
         render();
       },
@@ -529,9 +565,6 @@ import BentoFileSession from './file-session.js';
       else if (action === 'save') files.save();
       else if (action === 'restore') files.restore();
       else if (action === 'draft') files.downloadDraft();
-    });
-    document.addEventListener('keydown', event => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); files.save(); }
     });
     window.addEventListener('beforeunload', event => { if (files.dirty && !confirm('Keep your unsaved draft in Bento and close?')) { event.preventDefault(); event.returnValue = false; } });
     await files.open(async () => {
