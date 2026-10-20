@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "sakura",
+  "name": "Sakura",
+  "description": "A soft cherry-blossom accent over pastel light and dark surfaces.",
+  "light": {
+    "paper": "#eff1f5",
+    "side": "#e6e9ef",
+    "ink": "#4c4f69",
+    "soft": "#5c5f77",
+    "line": "#bcc0cc",
+    "accent": "#9b4260",
+    "wash": "#e2d6f6",
+    "warn": "#9b4817"
+  },
+  "dark": {
+    "paper": "#1e1e2e",
+    "side": "#181825",
+    "ink": "#cdd6f4",
+    "soft": "#bac2de",
+    "line": "#45475a",
+    "accent": "#f5b6d2",
+    "wash": "#313244",
+    "warn": "#fab387"
+  },
+  "author": "Bento example"
+}

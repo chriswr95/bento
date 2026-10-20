@@ -1,3 +1,4 @@
+import { checkThemes } from './themes.js';
 import { checkProperties } from './properties.js';
 import { serve } from '../../scripts/serve.js';
 import { chromium } from 'playwright';
@@ -98,7 +99,7 @@ async function paste(editor, text, html = '') {
  await profilePage.addInitScript(()=>{window.bentoSent=[];window.openai={setWidgetState:async value=>{window.bentoSent.push(value);}};});
  await profilePage.goto(url);
  await profilePage.getByRole('heading',{name:'Hello, Makena',exact:true}).waitFor();
- await profilePage.getByRole('button',{name:'Profile',exact:true}).click();
+ await profilePage.getByRole('button',{name:'Settings',exact:true}).click();
  assert.equal(await profilePage.getByLabel('Last name',{exact:true}).inputValue(),'');
  assert.equal(await profilePage.getByLabel('Birthday',{exact:true}).inputValue(),'');
  await profilePage.getByLabel('First name',{exact:true}).fill('Makena');
@@ -129,12 +130,12 @@ async function paste(editor, text, html = '') {
    ];
  });
  assert.deepEqual(dateCases,['hbd Sam!','Hello, Sam',false,false,false]);
- await profilePage.getByRole('button',{name:'Profile',exact:true}).click();
+ await profilePage.getByRole('button',{name:'Settings',exact:true}).click();
  await profilePage.getByLabel('First name',{exact:true}).fill('Maki');
  await profilePage.getByLabel('Birthday',{exact:true}).fill('');
  await profilePage.getByRole('button',{name:'Save profile',exact:true}).click();
  await profilePage.getByRole('heading',{name:'Hello, Maki',exact:true}).waitFor();
- await profilePage.getByRole('button',{name:'Profile',exact:true}).click();
+ await profilePage.getByRole('button',{name:'Settings',exact:true}).click();
  for(const width of [320,736,1024]){
    await profilePage.setViewportSize({width,height:900});
    assert.equal(await profilePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Profile overflow '+width);
@@ -145,7 +146,7 @@ async function paste(editor, text, html = '') {
  const blocked=await context.newPage();
  await blocked.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new Error('Unavailable');}}));
  await blocked.goto(url);
- await blocked.getByRole('button',{name:'Profile',exact:true}).click();
+ await blocked.getByRole('button',{name:'Settings',exact:true}).click();
  await blocked.getByLabel('First name',{exact:true}).fill('Session user');
  await blocked.getByRole('button',{name:'Save profile',exact:true}).click();
  await blocked.getByRole('heading',{name:'Hello, Session user',exact:true}).waitFor();
@@ -187,5 +188,6 @@ async function paste(editor, text, html = '') {
  console.log('Passed saved-workspace migration with original backup, stable todo identity, and retained notes.');
  await context.close();
  await checkProperties(browser, url);
+ await checkThemes(browser, url, screenshots);
 
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close(); await server.close();});

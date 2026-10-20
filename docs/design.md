@@ -20,7 +20,7 @@ Support Makena's meeting-to-follow-up workflow through both the UI and agent ass
 | Everyday editing | Single formatted ProseMirror surface with a Markdown bridge |
 | Content agent | Proposed: scoped query and command interface sharing application services |
 | Application agent | Proposed: external coding-agent integration with isolated trial and explicit adoption |
-| Theme system | Proposed: declarative theme packages over shared design tokens |
+| Theme system | Implemented: paired light/dark palettes, declarative JSON imports, personal Markdown persistence |
 | Agent providers and transport | Proposed: locally installed agent on Windows; provider, transport, and model processing location remain open |
 | Daily overview | Required: cross-project upcoming work and summaries for every active project |
 | Personal profile | Required: local first name, last name, optional birthday, and personalized greetings |
@@ -96,9 +96,9 @@ Use project capability mappings to create a summary for every active project, in
 
 ### Personal profile and greetings
 
-The desktop application stores profile and appearance in `settings.md` under Electron's per-user application-data directory, separately from workspace Markdown and source control. The Profile page displays the resolved path and offers Reload settings. YAML frontmatter uses `bento_version: 1`, `kind: user-settings`, `appearance: system|light|dark`, and `profile` fields `first_name`, `last_name`, and `birthday` (`YYYY-MM-DD`, or blank). Missing values use defaults. Unknown fields, comments, and body text survive saves.
+The desktop application stores profile and appearance in `settings.md` under Electron's per-user application-data directory, separately from workspace Markdown and source control. The Settings page displays the resolved path and offers Reload settings. YAML frontmatter uses `bento_version: 1`, `kind: user-settings`, `appearance: system|light|dark`, and `profile` fields `first_name`, `last_name`, and `birthday` (`YYYY-MM-DD`, or blank). Missing values use defaults. Unknown fields, comments, and body text survive saves.
 
-On first creation, import valid legacy renderer preferences without deleting the originals. Existing settings files always win over legacy values. Use the existing local journal/lock/recovery mechanism for writes, and compare the original file before saving to avoid overwriting agent edits. Malformed files and recovery conflicts disable settings writes while leaving workspace access available; the Profile page explains how to repair/reload. Drafts, directory expansion, and operational journals remain local operational state. Workspace-level `settings.md` remains deferred until a workspace-specific preference is introduced.
+On first creation, import valid legacy renderer preferences without deleting the originals. Existing settings files always win over legacy values. Use the existing local journal/lock/recovery mechanism for writes, and compare the original file before saving to avoid overwriting agent edits. Malformed files and recovery conflicts disable settings writes while leaving workspace access available; the Settings page explains how to repair/reload. Drafts, directory expansion, and operational journals remain local operational state. Workspace-level `settings.md` remains deferred until a workspace-specific preference is introduced.
 
 The browser prototype stores the versioned profile under `bento.prototype.profile.v1` in local browser storage. It saves only after an explicit Save profile action. If storage is unavailable, keep the profile for the session and disclose that it was not saved. Invalid stored values fall back to editable defaults. The browser profile is not included in host widget-state snapshots, workspace Markdown, or agent context by default.
 
@@ -275,3 +275,9 @@ Startup opens the previous workspace through the normal repository, including re
 ProseMirror replaces the former block-source textarea implementation. `prototype/rich-editor.js` owns view/history/input rules and keyboard commands. `prototype/rich-markdown.js` owns the schema, parser and source-preserving serializer. `scripts/build-editor.js` creates a local ES module from pinned packages. The runtime has no editor network service or CDN dependency.
 
 Supported visual editing covers headings, paragraphs, inline marks, links, lists/todos, quotes, code, horizontal rules and tables. Unknown/HTML blocks remain explicit preserved atoms. A user edit can normalize its enclosing top-level Markdown block; unsupported extension syntax does not silently disappear. Task projections preserve safe inline labels when their plain text matches the record title. Renaming the record to different plain text replaces the label projection. Clipboard task attributes preserve the linked identity; plain checkboxes capture new records through the same domain command as before.
+
+### Installed themes
+
+`prototype/themes.js` validates paired palettes and maps their eight semantic colors to app variables. Appearance mode remains independent from the selected color theme, so system changes and the sun/moon button select the appropriate palette. `theme-picker.js` handles selection/import/template export/removal in Settings. Custom files are JSON with fixed metadata and hexadecimal colors; no arbitrary CSS or executable assets are accepted. Import uses the browser's file picker in both Electron and the sample, without expanding the filesystem preload API.
+
+Desktop settings persist the selected `color_theme` and installed `themes` together through the existing transactional `SettingsStore`. Installation is a copy into personal settings, independent from the original file and workspace data. Built-in IDs are protected; reimporting a custom ID updates its definition. Missing selected IDs fall back to Bento. Browser preferences use a separate local-storage key. See [themes](themes.md) for the format and palette references.

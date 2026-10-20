@@ -1,3 +1,4 @@
+import { builtinThemes } from '../prototype/themes.js';
 import electronPath from 'electron';
 import { fileURLToPath } from 'node:url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -87,12 +88,21 @@ async function addTag(page, value) {
   assert.equal(await page.getByRole('button', { name: 'Save files', exact: true }).isVisible(), true);
   await page.keyboard.press('Escape');
   console.log('Created workspace through the native dialog.');
-  await page.getByRole('button', { name: 'Profile', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByLabel('First name', { exact: true }).fill('Maki');
   await page.getByRole('button', { name: 'Save profile', exact: true }).click();
   await page.getByRole('heading', { name: 'Hello, Maki', exact: true }).waitFor();
   assert.match(await fs.readFile(settingsPath, 'utf8'), /first_name: Maki/);
   assert.equal((await fs.readdir(workspace)).includes('settings.md'), false);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Color theme', exact: true }).selectOption('catppuccin');
+  await page.waitForFunction(() => document.querySelector('#bento-workflow').dataset.colorTheme === 'catppuccin');
+  const customTheme = { ...structuredClone(builtinThemes[0]), id: 'desktop-custom', name: 'Desktop custom', dark: { ...builtinThemes[0].dark, paper: '#112233' } };
+  const themeFile = path.join(temporary, 'custom.bento-theme.json'); await fs.writeFile(themeFile, JSON.stringify(customTheme));
+  await page.locator('[data-theme-file]').setInputFiles(themeFile);
+  await page.waitForFunction(() => document.querySelector('#bento-workflow').dataset.colorTheme === 'desktop-custom');
+  assert.match(await fs.readFile(settingsPath, 'utf8'), /color_theme: desktop-custom/);
+  await page.getByRole('button', { name: 'Back to overview', exact: true }).click();
 
   assert.equal(await page.locator('aside').getByRole('button', { name: 'Creekside improvements', exact: true }).count(), 0);
   await page.getByRole('button', { name: 'Create your first project', exact: true }).click();
@@ -205,6 +215,7 @@ async function addTag(page, value) {
   await page.getByRole('article', { name: 'Editable Markdown document' }).getByRole('heading', { name: 'Weekly coordination', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Daily overview', exact: true }).click();
   await page.getByRole('heading', { name: 'Hello, Maki', exact: true }).waitFor();
+  assert.equal(await page.locator('#bento-workflow').getAttribute('data-color-theme'), 'desktop-custom');
   assert.equal(await page.locator('#bento-workflow').getAttribute('data-theme'), 'dark');
   assert.equal(await page.getByRole('button', { name: 'Dark mode', exact: true }).getAttribute('aria-pressed'), 'true');
   await page.getByRole('button', { name: 'Dark mode', exact: true }).click();

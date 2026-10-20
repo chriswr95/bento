@@ -256,3 +256,7 @@ Record usability observations and unresolved friction. Do not substitute a passi
 - Is existing content migration, backup, or use across multiple computers needed for her first trial?
 
 Technical decisions and their tradeoffs belong in the [design document](design.md). The [data-model walkthrough](data-model.md) works through document-backed databases and meeting-checkbox references; its serialization is proposed rather than frozen.
+
+### Theme installation
+
+Users can select a built-in theme or install a custom Bento color theme from a JSON file through Settings. Light, Dark, and Follow system modes are independent of the chosen theme. Users can export a template to customize/share, update an installed custom theme by ID, and remove it. Theme preferences are personal and apply across workspaces. Current built-ins include Bento adaptations of GitHub, One Dark, Darcula, Tokyo Night, and Catppuccin. Arbitrary editor extension packages are outside this implementation.
