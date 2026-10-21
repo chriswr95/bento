@@ -16,13 +16,15 @@ Open **Settings → Keyboard shortcuts**, or press **Cmd+K, then Cmd+S** on macO
 | Inline code | Cmd+Backtick | Ctrl+Backtick |
 | Undo | Cmd+Z | Ctrl+Z |
 | Redo | Cmd+Shift+Z or Cmd+Y | Ctrl+Shift+Z or Ctrl+Y |
-| Indent list / next table cell | Tab | Tab |
-| Outdent list / previous table cell | Shift+Tab | Shift+Tab |
+| Indent list or code / next table cell | Tab | Tab |
+| Outdent list or code / previous table cell | Shift+Tab | Shift+Tab |
 | Exit code block | Cmd+Enter | Ctrl+Enter |
 | Apply property edit | Enter or leave field | Enter or leave field |
 | Cancel property edit / close menu | Escape | Escape |
 
 The context column in Settings distinguishes workspace commands from editor, list/table, and property commands. App shortcuts work while typing in the editor and property fields. Save first applies a valid pending property edit. Formatting and undo/redo remain owned by the Markdown editor; form fields retain native text behavior.
+
+Tab nests list items and todos beneath the previous item; Shift+Tab lifts nested items one level. At the root, Shift+Tab keeps the item and its checkbox. Inside code blocks, Tab inserts two spaces or indents selected lines; Shift+Tab removes up to two leading spaces or one tab from each selected line. Ordinary paragraphs retain normal focus navigation. Table cells and open property suggestions keep their existing Tab behavior.
 
 Back/forward history tracks page locations and document caret/scroll positions separately from content. It never rolls back document edits. Reopening an already active page does not add a history entry. Visiting a different page after going back discards the forward branch. History is bounded to 100 locations and resets on reload, restart, or workspace activation. The last selected page is still restored by the existing desktop session mechanism.
 

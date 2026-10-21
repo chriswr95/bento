@@ -4,7 +4,7 @@ import { baseKeymap, toggleMark, chainCommands, exitCode } from 'prosemirror-com
 import { keymap } from 'prosemirror-keymap';
 import { history, undo, redo, closeHistory } from 'prosemirror-history';
 import { inputRules, InputRule, textblockTypeInputRule, wrappingInputRule, undoInputRule } from 'prosemirror-inputrules';
-import { splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
+import { splitListItem, liftListItem } from 'prosemirror-schema-list';
 import { tableEditing, goToNextCell } from 'prosemirror-tables';
 import { Slice } from 'prosemirror-model';
 import { editorSchema as schema, MarkdownBridge, taskPositions } from './rich-markdown.js';
@@ -13,6 +13,7 @@ import PageLinkPicker from './page-link-picker.js';
 import SlashPicker from './slash-picker.js';
 import MicroPropertyPicker from './micro-property-picker.js';
 import { propertyQuery, entryFields, fieldValue, microLabel } from './micro-syntax.js';
+import { indentCode, indentList } from './editor-indent.js';
 
 function taskRule(state, match, start, end) {
   const $from = state.doc.resolve(start); if ($from.parent.type !== schema.nodes.paragraph) return null;
@@ -100,7 +101,7 @@ export default class RichEditor {
     this.element = element; this.options = options; this.bridge = new MarkdownBridge(options.body()); this.microTokens = [];
     this.mount = document.createElement('div'); element.append(this.mount);
     this.view = new EditorView(this.mount, {
-      state: EditorState.create({ schema, doc: this.bridge.doc, plugins: [history(), rules(), keymap({ 'Mod-End': documentEdge(true), 'Mod-Home': documentEdge(false), 'Mod-ArrowDown': documentEdge(true), 'Mod-ArrowUp': documentEdge(false), 'Mod-z': undo, 'Mod-y': redo, 'Mod-Shift-z': redo, 'Mod-b': toggleMark(schema.marks.strong), 'Mod-i': toggleMark(schema.marks.em), 'Mod-`': toggleMark(schema.marks.code), Enter: enterList, Tab: chainCommands(goToNextCell(1), sinkListItem(schema.nodes.list_item)), 'Shift-Tab': chainCommands(goToNextCell(-1), liftListItem(schema.nodes.list_item)), Backspace: undoInputRule, 'Mod-Enter': exitCode }), keymap(baseKeymap), tableEditing()] }),
+      state: EditorState.create({ schema, doc: this.bridge.doc, plugins: [history(), rules(), keymap({ 'Mod-End': documentEdge(true), 'Mod-Home': documentEdge(false), 'Mod-ArrowDown': documentEdge(true), 'Mod-ArrowUp': documentEdge(false), 'Mod-z': undo, 'Mod-y': redo, 'Mod-Shift-z': redo, 'Mod-b': toggleMark(schema.marks.strong), 'Mod-i': toggleMark(schema.marks.em), 'Mod-`': toggleMark(schema.marks.code), Enter: enterList, Tab: chainCommands(indentCode(), goToNextCell(1), indentList()), 'Shift-Tab': chainCommands(indentCode(true), goToNextCell(-1), indentList(true)), Backspace: undoInputRule, 'Mod-Enter': exitCode }), keymap(baseKeymap), tableEditing()] }),
       editable: () => !options.readOnly,
       attributes: { 'aria-readonly': String(!!options.readOnly), class: 'b-rich-document', role: 'textbox', 'aria-label': options.label, 'aria-multiline': 'true', spellcheck: 'true' },
       dispatchTransaction: tr => this.dispatch(tr),

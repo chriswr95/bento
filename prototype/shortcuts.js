@@ -17,8 +17,8 @@ export const shortcuts = Object.freeze([
   { id: 'code', command: 'Toggle Inline Code', bindings: [['Mod+`']], context: 'Markdown editor' },
   { id: 'undo', command: 'Undo', bindings: [['Mod+z']], context: 'Markdown editor' },
   { id: 'redo', command: 'Redo', bindings: [['Mod+Shift+z'], ['Mod+y']], context: 'Markdown editor' },
-  { id: 'indent', command: 'Indent List / Next Table Cell', bindings: [['Tab']], context: 'List or table' },
-  { id: 'outdent', command: 'Outdent List / Previous Table Cell', bindings: [['Shift+Tab']], context: 'List or table' },
+  { id: 'indent', command: 'Indent List or Code / Next Table Cell', bindings: [['Tab']], context: 'List, code block or table' },
+  { id: 'outdent', command: 'Outdent List or Code / Previous Table Cell', bindings: [['Shift+Tab']], context: 'List, code block or table' },
   { id: 'exit-code', command: 'Exit Code Block', bindings: [['Mod+Enter']], context: 'Code block' },
   { id: 'commit-property', command: 'Apply Property Edit', bindings: [['Enter'], ['Tab']], context: 'Property editor' },
   { id: 'cancel', command: 'Cancel Property Edit / Close Menu', bindings: [['Escape']], context: 'Property editor or menu' }
