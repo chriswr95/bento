@@ -270,6 +270,10 @@ A first-time user can try a populated example, start an empty workspace, or open
 
 The example lives in an empty folder chosen by the user and uses the same Markdown documents and autosave as everyday work. Two projects, two meetings, and four initial actions show work due today, upcoming work, undated work, and a completed action. Dates are relative to creation so a fresh example stays useful. Content is clearly fictional and freely editable. Example creation never adds sample records to an existing workspace or fills in personal profile details.
 
+First launch offers a themed welcome with one primary example action and secondary New/Open workspace actions. A three-step progress indicator, concrete Try it prompts, Back, Skip, and replay make the tour navigable without requiring tasks to be completed. Finishing offers Create my workspace or Keep exploring; creating a personal workspace keeps the example separate. The welcome illustration is decorative, respects reduced motion, and does not delay access to actions.
+
+Users can download native preview packages without installing developer tools: a Mac Apple silicon disk image with an Applications shortcut and a portable Windows x64 ZIP. Setup instructions explain choosing an empty workspace folder, OS approval prompts for unsigned previews, and replacing the app separately from workspace files. Signed/notarized builds, Intel Mac/Windows ARM downloads, and automatic updates remain follow-up work.
+
 The workspace menu also offers Try an example workspace for users who already have a workspace open. Walkthrough progress and dismissal are remembered on this computer, and the example’s workspace menu can replay it. Restarting preserves edits and the current page. Skipping or finishing hides the guide and keeps all documents. Empty workspaces retain the existing create-first-project flow.
 
 ### Theme installation

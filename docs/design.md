@@ -307,6 +307,10 @@ The existing creation IPC accepts only the optional `example` mode. Both creatio
 
 `prototype/walkthrough.js` owns three nonmodal steps and validates referenced pages before rendering. Step progress/dismissal is local presentation state keyed by the example project ID, independently from shared content and personal profile settings. It survives restart, tolerates unavailable browser storage for the session, and supports replay. Navigation uses the existing app commands; the guide never edits documents, checks actions automatically, or locks the user into a required sequence. The workspace menu shows Replay walkthrough only for a recognized example. Desktop integration tests remain hidden according to the existing test policy.
 
+`welcome.js` renders a theme-aware two-column welcome, with a decorative Bento tray built from HTML/CSS and the existing icon. Small windows prioritize actions over the illustration; its entrance is optional under reduced motion. The walkthrough adds Back, step markers, Try it prompts, and a transient completion card that invokes the existing workspace chooser. No new content model or workspace migration is required.
+
+`scripts/distribute.js` wraps a packaged app as a verified macOS disk image (with an Applications symlink) or Windows portable ZIP, includes setup instructions, and emits SHA-256 checksums. Preview downloads CI builds and tests natively on both platforms, smoke-tests packaged onboarding, and creates a draft prerelease with those assets for review. Publishing is a separate release action. Packages are currently unsigned; signing, notarization, and automatic updates require additional release infrastructure.
+
 ## 11. Future ideas
 
 This is the shared idea backlog for Bento. **Captured** means worth exploring, not approved scope, a delivery promise, or a priority order. Keep new ideas here; promote agreed product behavior into the spec and concrete implementation decisions into the relevant design sections. When an idea ships, update its status and link the implementation.

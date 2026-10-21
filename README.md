@@ -4,7 +4,13 @@ A Markdown workspace for notes, projects, and todos, inspired by Obsidian and No
 
 Each record has its own Markdown file. A workspace contains `workspace.md`, database folders with a `database.md` schema and record files, and regular folders for notes. The enclosing database folder determines a page’s zero-or-one membership. Projects and Todos are customizable defaults built from typed fields.
 
-## Run the desktop app
+## Download Bento
+
+Get the app from [GitHub Releases](https://github.com/chriswr95/bento/releases): **Bento-macos-arm64.dmg** for Apple silicon Macs, or **Bento-windows-x64.zip** for Windows PCs. No developer tools or account are needed. These early previews are unsigned; see the [installation guide](docs/install.md) for setup, OS approval prompts, and updates.
+
+Open Bento, choose **Try an example workspace**, and select a new empty folder. A short Project → Meeting → Daily review tour introduces two fictional projects. Use Back, skip, or replay at any time; finish with Create my workspace when you're ready for your own work.
+
+## Run from source
 
 Requires Node.js 22.13+ and pnpm 11.25.0. From this repository:
 

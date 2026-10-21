@@ -21,6 +21,8 @@
     "test:desktop:properties": "node scripts/build-editor.js && node tests/desktop.js --properties",
     "test:desktop:sidebar": "node scripts/build-editor.js && node tests/desktop.js --sidebar",
     "package": "node scripts/package.js",
+    "distribute": "node scripts/distribute.js",
+    "test:desktop:onboarding": "node scripts/build-editor.js && node tests/desktop.js --onboarding",
     "demo": "node scripts/build-editor.js && node scripts/serve.js",
     "build": "node scripts/build-editor.js",
     "assets:icons": "node scripts/build-icons.js"

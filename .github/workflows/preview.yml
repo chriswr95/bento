@@ -1,0 +1,74 @@
+name: Preview downloads
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Preview tag (for example v0.1.0-preview.1)
+        required: true
+        default: v0.1.0-preview.1
+permissions:
+  contents: read
+concurrency:
+  group: preview-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --global pnpm@11.25.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm setup:desktop
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm test:desktop
+      - run: pnpm package
+      - name: Smoke test packaged first launch
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            export BENTO_PACKAGED_EXECUTABLE="$PWD/dist/Bento-darwin-$(node -p process.arch)/Bento.app/Contents/MacOS/Bento"
+          else
+            export BENTO_PACKAGED_EXECUTABLE="$PWD/dist/Bento-win32-$(node -p process.arch)/Bento.exe"
+          fi
+          node tests/desktop.js --onboarding
+      - run: pnpm distribute
+      - uses: actions/upload-artifact@v4
+        with:
+          name: download-${{ runner.os }}
+          path: dist/downloads/*
+          if-no-files-found: error
+  draft:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: download-*
+          path: downloads
+          merge-multiple: true
+      - name: Prepare reviewable preview release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          REVISION: ${{ github.sha }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]] || exit 1
+          if gh release view "$TAG" --json isDraft --jq .isDraft > /tmp/bento-release-state; then
+            [[ "$(cat /tmp/bento-release-state)" == "true" ]] || exit 1
+            gh release edit "$TAG" --target "$REVISION"
+          else
+            gh release create "$TAG" --target "$REVISION" --draft --prerelease --title "Bento $TAG" --notes-file docs/preview-release.md
+          fi
+          gh release upload "$TAG" downloads/* --clobber
