@@ -18,6 +18,7 @@ async function distribute() {
   const destination = path.join(output, name);
   try {
     if (process.platform === 'darwin') {
+      await run('codesign', ['--verify', '--deep', '--strict', path.join(bundle, 'Bento.app')]);
       await run('ditto', [path.join(bundle, 'Bento.app'), path.join(staging, 'Bento.app')]);
       await fs.symlink('/Applications', path.join(staging, 'Applications'));
       await fs.copyFile(path.join(root, 'docs/install.md'), path.join(staging, 'START HERE.md'));

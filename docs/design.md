@@ -311,6 +311,8 @@ The existing creation IPC accepts only the optional `example` mode. Both creatio
 
 `scripts/distribute.js` wraps a packaged app as a verified macOS disk image (with an Applications symlink) or Windows portable ZIP, includes setup instructions, and emits SHA-256 checksums. Preview downloads CI builds and tests natively on both platforms, smoke-tests packaged onboarding, and creates a draft prerelease with those assets for review. Publishing is a separate release action. Packages are currently unsigned; signing, notarization, and automatic updates require additional release infrastructure.
 
+macOS packaging uses Electron's signing helper with an ad-hoc identity to seal the renamed bundle and its nested code; signing failure stops packaging. Distribution independently checks `codesign --verify --deep --strict` before copying it into the DMG. This is integrity signing only: it supplies neither Developer ID verification nor notarization and does not remove OS approval prompts.
+
 ## 11. Future ideas
 
 This is the shared idea backlog for Bento. **Captured** means worth exploring, not approved scope, a delivery promise, or a priority order. Keep new ideas here; promote agreed product behavior into the spec and concrete implementation decisions into the relevant design sections. When an idea ships, update its status and link the implementation.

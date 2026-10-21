@@ -33,7 +33,8 @@ async function build() {
     const { devDependencies, scripts, packageManager, ...runtime } = metadata;
     await fs.writeFile(path.join(staging, 'package.json'), JSON.stringify(runtime, null, 2));
     const iconFile = { darwin: 'bento.icns', win32: 'bento.ico' }[process.platform];
-    const output = await packager({ dir: staging, name: 'Bento', icon: iconFile ? path.join(root, 'assets', iconFile) : undefined, out: path.join(root, 'dist'), electronVersion: devDependencies.electron, platform: process.platform, arch: process.arch, overwrite: true, asar: true, prune: false });
+    const output = await packager({ dir: staging, name: 'Bento', icon: iconFile ? path.join(root, 'assets', iconFile) : undefined, out: path.join(root, 'dist'), electronVersion: devDependencies.electron, platform: process.platform, arch: process.arch, overwrite: true, asar: true, prune: false,
+      ...(process.platform === 'darwin' ? { osxSign: { identity: '-', identityValidation: false, hardenedRuntime: false, preEmbedProvisioningProfile: false, continueOnError: false } } : {}) });
     output.forEach(folder => console.log(folder));
   } finally { await fs.rm(staging, { recursive: true, force: true }); }
 }

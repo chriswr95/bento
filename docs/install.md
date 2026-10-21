@@ -4,6 +4,8 @@ Download Bento from [GitHub Releases](https://github.com/chriswr95/bento/release
 
 These are **unsigned preview builds**, intended for an early trial. Work-managed computers may require IT approval. Signing and macOS notarization are still needed for a smooth public installation.
 
+The Mac app has an ad-hoc signature for bundle integrity, verified during packaging. It does not establish a verified developer identity or replace Apple notarization.
+
 ## Mac with Apple silicon
 
 1. Download **Bento-macos-arm64.dmg**. This is for Macs with an Apple M-series chip; check About This Mac if unsure.
