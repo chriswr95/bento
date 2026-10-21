@@ -294,6 +294,7 @@ async function addTag(page, value) {
   await page.locator('aside [data-record]').filter({ hasText: /^Workspace$/ }).waitFor({ state: 'hidden' });
   await page.waitForFunction(key => JSON.parse(localStorage.getItem(key) || '{}')[''] === false, 'bento.sidebar.tree.v1:' + await fs.realpath(workspace));
   await workspaceRoot.locator(':scope>summary').press('Enter');
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('aside details[data-directory=""]'), '::details-content').opacity === '1');
   if (await projectsFolder.getAttribute('open') !== null) await projectsFolder.locator(':scope>summary').press('Enter');
   await page.waitForFunction(key => JSON.parse(localStorage.getItem(key) || '{}').projects === false, 'bento.sidebar.tree.v1:' + await fs.realpath(workspace));
   await application.close(); application = null;

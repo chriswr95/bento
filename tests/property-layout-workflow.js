@@ -25,7 +25,7 @@ export async function checkPropertyLayout({ launch, stop, temporary, root }) {
     const more = () => page.locator('[data-more-properties]>summary');
     assert.equal(await more().innerText(), 'More');
     await more().click(); assert.equal(await more().innerText(), 'Less');
-    assert.equal(await page.getByRole('button', { name: 'Edit Tags', exact: true }).isVisible(), true);
+    await page.getByRole('button', { name: 'Edit Tags', exact: true }).waitFor({ state: 'visible' });
     await more().click();
     await arrange();
     await page.keyboard.press('ControlOrMeta+p');
