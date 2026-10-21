@@ -22,6 +22,8 @@ For an unverified-developer warning, first attempt to open Bento, then use **Sys
 
 This is a portable app, so there is no installer or administrator step. You can make a shortcut to Bento.exe for next time. Windows may identify the publisher as unknown because the preview is unsigned. If your organization blocks it, ask IT rather than changing security policies. See [Microsoft's ZIP extraction guide](https://support.microsoft.com/en-gb/windows/experience/storage-filemanagement/zip-and-unzip-files).
 
+If SmartScreen shows **Windows protected your PC**, and you trust the preview you downloaded from this project's release page, choose **More info → Run anyway** when available. If that option is absent or your work laptop blocks the app, ask IT. This is the first-run prompt described in [Microsoft's app publishing guide](https://github.com/MicrosoftDocs/windows-dev-docs/blob/docs/hub/apps/package-and-deploy/publish-first-app.md).
+
 ## Your first two minutes
 
 1. Choose **Try an example workspace** on the welcome screen.
