@@ -8,7 +8,7 @@ A calmer place for projects, meeting notes, and the next steps that follow them.
 
 Give your coding agent this prompt:
 
-> Set up Bento on this computer following https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md. Build v0.1.0-preview.1 from source, run the hidden checks, install a local app with an easy way to launch it, then open it for me. Preserve existing installations, settings, and workspace files.
+> Set up Bento on this computer following <https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md>. Build v0.1.0-preview.1 from source, run the hidden checks, install a local app with an easy way to launch it, then open it for me. Preserve existing installations, settings, and workspace files.
 
 ## Experimental download assets
 

@@ -8,7 +8,7 @@ Each record has its own Markdown file. A workspace contains `workspace.md`, data
 
 For this first trial, have a coding agent build and install Bento locally. The unsigned preview downloads can be blocked by the OS; signed downloads are deferred. Give your agent this prompt:
 
-> Set up Bento on this computer following https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md. Build the tested v0.1.0-preview.1 source tag, run the hidden checks, install a local app with an easy way to launch it, then open it for me. Preserve existing installations, settings, and workspace files.
+> Set up Bento on this computer following <https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md>. Build the tested v0.1.0-preview.1 source tag, run the hidden checks, install a local app with an easy way to launch it, then open it for me. Preserve existing installations, settings, and workspace files.
 
 See the [first-trial setup guide](docs/install.md) and [agent runbook](docs/agent-setup.md) for Windows and Mac. This public repository can be cloned without a GitHub account; using a signed-in GitHub or coding-agent account is fine.
 
