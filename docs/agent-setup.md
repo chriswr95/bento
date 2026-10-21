@@ -16,12 +16,12 @@ Use this runbook to build and install Bento for a first trial on the user's Wind
 Choose an unused development directory, such as a `bento` folder under the user's projects directory, then run:
 
 ```sh
-git clone --branch v0.1.0-preview.1 --depth 1 https://github.com/chriswr95/bento.git bento
+git clone --branch v0.1.0-preview.2 --depth 1 https://github.com/chriswr95/bento.git bento
 cd bento
 git rev-parse HEAD
 ```
 
-This tag includes the refreshed welcome and walkthrough. It should resolve to `7731e8225234e152bd5b805205f5567119711733`. A detached checkout is expected. Follow this runbook even though the README at that older tag leads with downloads. Read the checkout's `AGENTS.md` before working in it.
+This source-only tag includes the refreshed welcome/walkthrough, editor indentation, and sidebar theme control. It has no new download assets. It should resolve to `587b5e38c88af1786dbd94ebbba8335ffce59b3e`. A detached checkout is expected. Follow this runbook if the README at the pinned snapshot refers to an earlier setup tag. Read the checkout's `AGENTS.md` before working in it.
 
 If reusing a checkout, preserve its changes and use a separate checkout for the tagged build if necessary. Record the revision; do not silently substitute a newer branch. Do not clone into or build inside the user's Bento workspace.
 

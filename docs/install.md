@@ -4,7 +4,7 @@ For now, **have a coding agent build and install Bento from source** on the comp
 
 Give your agent this prompt:
 
-> Set up Bento on this computer for a first trial. Follow <https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md>. Build the tested v0.1.0-preview.1 source tag, install a local app, and make it easy to launch again. Preserve existing installations, settings, and workspaces. Run the documented checks with test windows hidden, then open the installed app for me. Report the source revision, install location, and how to launch it.
+> Set up Bento on this computer for a first trial. Follow <https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md>. Build the tested v0.1.0-preview.2 source tag, install a local app, and make it easy to launch again. Preserve existing installations, settings, and workspaces. Run the documented checks with test windows hidden, then open the installed app for me. Report the source revision, install location, and how to launch it.
 
 The [agent setup guide](agent-setup.md) covers prerequisites, exact build commands, native installation locations, shortcuts, verification, and updates on Windows and Mac. GitHub sign-in is fine if your agent uses it, but this public repository can also be cloned without a GitHub account. Your coding agent may require its own account.
 
