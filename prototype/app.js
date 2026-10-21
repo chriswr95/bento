@@ -30,6 +30,7 @@ import { welcome } from './welcome.js';
 (async () => {
   const root = document.getElementById('bento-workflow');
   const main = root.querySelector('#b-main'), status = root.querySelector('#b-status');
+  const themeToggle = root.querySelector('.b-theme-toggle');
   const model = BentoWorkspace, clone = model.clone, storageKey = 'bento.prototype.workspace.v4';
   let planDate = window.bentoDesktop ? BentoProfile.dateKey() : '2026-10-19';
   const reviewGroups = [['Overdue', 'overdue'], ['Today', 'today'], ['Upcoming', 'upcoming'], ['Without a date', 'undated']];
@@ -428,6 +429,7 @@ import { welcome } from './welcome.js';
     sidebar.innerHTML = `<nav class="b-nav" aria-label="Workspace"><button type="button" data-view="daily" ${state.view === 'daily' ? 'aria-current="page"' : ''}>Daily overview</button></nav>
       <nav class="b-directory-tree" aria-label="Workspace files"><ul class="b-tree-children">${directoryFolder(directoryTree(workspace()))}</ul></nav>
       <nav class="b-nav b-sidebar-settings" aria-label="Settings"><button type="button" data-view="profile" ${state.view === 'profile' ? 'aria-current="page"' : ''}>Settings</button></nav>`;
+    sidebar.querySelector('.b-sidebar-settings').append(themeToggle);
     const tree = sidebar.querySelector('.b-directory-tree'); tree.scrollTop = scroll;
     sidebarExplorer?.refresh();
     const selected = tree.querySelector('[aria-current="page"]');
@@ -633,6 +635,7 @@ import { welcome } from './welcome.js';
     liveEditor?.destroy(); liveEditor = null;
     root.toggleAttribute('data-welcome', !!desktop && !files?.view);
     if (desktop && !files?.view) {
+      root.querySelector('.b-chrome').append(themeToggle);
       root.querySelector('aside').hidden = true;
       root.querySelector('.b-shell').classList.add('b-welcome-shell');
       root.querySelector('.b-file-controls').hidden = true;
@@ -641,6 +644,7 @@ import { welcome } from './welcome.js';
       return;
     }
     if (desktop) { root.querySelector('.b-shell').classList.remove('b-welcome-shell'); root.querySelector('.b-file-controls').hidden = false; renderSidebar(); }
+    else root.querySelector('.b-sidebar-settings').append(themeToggle);
     applyAppearance();
     root.querySelectorAll('[data-view]').forEach(button => {
       const selected = button.dataset.view === state.view || button.dataset.view === 'meeting' && state.view === 'document' && record()?.id === state.note;

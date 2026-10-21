@@ -39,7 +39,7 @@ The sidebar shows one collapsible workspace folder containing its home page, nam
 
 External edits are checked before save. If files changed, Bento keeps its local draft and stops instead of overwriting them. Reload files reads external changes; Restore draft is available only against an unchanged baseline. Download draft preserves the draft for manual comparison when files diverge. Opening a workspace does not rewrite untouched files, except to recover an earlier interrupted save.
 
-Use **Dark mode** in the header to switch between light and dark appearance. The preference is remembered on this computer, separately from workspace files; the initial appearance follows the system.
+Use the sun/moon icon beside **Settings** in the sidebar to switch between light and dark appearance. The welcome screen keeps it in the header while the sidebar is hidden. The preference is remembered on this computer, separately from workspace files; the initial appearance follows the system.
 
 Open a project document and choose **Review project work**, or use **Review work** on its daily-overview card, to see related notes and overdue/today/upcoming/undated/completed todos together. Every note and todo opens its own Markdown document. Notes linked to several projects appear in each review; existing todo ownership stays unchanged.
 

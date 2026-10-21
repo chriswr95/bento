@@ -9,6 +9,8 @@ export async function checkWindowChrome({ launch, stop, temporary, root }) {
   try {
     await page.locator('#b-save-state').filter({ hasText: /^Saved$/ }).waitFor();
     assert.equal(await page.evaluate(() => window.bentoDesktop.platform), process.platform);
+    assert.equal(await page.locator('.b-sidebar-settings .b-theme-toggle').count(), 1);
+    assert.equal(await page.locator('.b-chrome .b-theme-toggle').count(), 0);
     if (process.platform === 'darwin') {
       assert.deepEqual(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getWindowButtonPosition()), { x: 16, y: 26 });
       assert.equal(await page.locator('.b-chrome').evaluate(element => getComputedStyle(element).webkitAppRegion), 'drag');

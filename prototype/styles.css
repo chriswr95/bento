@@ -135,6 +135,12 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-theme-toggle {margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:10px}
 #bento-workflow .b-theme-toggle [hidden] {display:none}
 #bento-workflow .b-theme-toggle[aria-pressed="true"] {background:var(--b-wash);border-color:var(--b-accent);color:var(--b-accent)}
+#bento-workflow .b-theme-toggle {-webkit-app-region:no-drag}
+#bento-workflow .b-sidebar-settings {flex-direction:row;align-items:center}
+#bento-workflow .b-sidebar-settings>[data-view="profile"] {flex:1}
+#bento-workflow .b-sidebar-settings .b-theme-toggle {width:32px;height:32px;min-width:32px;margin:0;padding:6px;border:0;border-radius:6px;background:none;color:var(--b-soft)}
+#bento-workflow .b-sidebar-settings .b-theme-toggle:hover {background:var(--b-wash);color:var(--b-accent)}
+#bento-workflow .b-sidebar-settings .b-theme-toggle svg {width:18px;height:18px}
 
 #bento-workflow .b-review-note {display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--b-line)}
 #bento-workflow .b-review-note>span {font-size:12px;flex:none}
