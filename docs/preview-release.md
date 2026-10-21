@@ -1,13 +1,21 @@
 # Bento preview
 
+**Setup update:** the unsigned downloads below can be blocked by OS signing checks and are not the recommended first-trial path. For now, ask a coding agent to [build and install the tested source tag](https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md). Signed downloads are deferred.
+
 A calmer place for projects, meeting notes, and the next steps that follow them.
 
-## Download
+## Recommended setup: ask an agent
+
+Give your coding agent this prompt:
+
+> Set up Bento on this computer following https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md. Build v0.1.0-preview.1 from source, run the hidden checks, install a local app with an easy way to launch it, then open it for me. Preserve existing installations, settings, and workspace files.
+
+## Experimental download assets
 
 - **Mac with Apple silicon:** Bento-macos-arm64.dmg — open it and drag Bento to Applications.
 - **Windows Intel/AMD 64-bit:** Bento-windows-x64.zip — Extract All, then open Bento.exe inside the extracted Bento folder.
 
-Choose these files under **Assets**, not Source code. No Node.js, pnpm, account, or terminal is needed. These builds are unsigned; macOS may require approval in Privacy & Security, and managed Windows laptops may require IT approval. Intel Mac and Windows ARM builds are not included in this preview.
+These files remain under **Assets** for development testing. They are unsigned and may be blocked at first launch; use the source setup above for this trial. Intel Mac and Windows ARM builds are not included in this preview.
 
 Read the [installation guide](https://github.com/chriswr95/bento/blob/main/docs/install.md) for OS prompts, updates, and file locations. SHA-256 checksums are included beside each download.
 

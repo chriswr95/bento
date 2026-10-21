@@ -4,9 +4,13 @@ A Markdown workspace for notes, projects, and todos, inspired by Obsidian and No
 
 Each record has its own Markdown file. A workspace contains `workspace.md`, database folders with a `database.md` schema and record files, and regular folders for notes. The enclosing database folder determines a page’s zero-or-one membership. Projects and Todos are customizable defaults built from typed fields.
 
-## Download Bento
+## Set up Bento with an agent
 
-Get the app from [GitHub Releases](https://github.com/chriswr95/bento/releases): **Bento-macos-arm64.dmg** for Apple silicon Macs, or **Bento-windows-x64.zip** for Windows PCs. No developer tools or account are needed. These early previews are unsigned; see the [installation guide](docs/install.md) for setup, OS approval prompts, and updates.
+For this first trial, have a coding agent build and install Bento locally. The unsigned preview downloads can be blocked by the OS; signed downloads are deferred. Give your agent this prompt:
+
+> Set up Bento on this computer following https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md. Build the tested v0.1.0-preview.1 source tag, run the hidden checks, install a local app with an easy way to launch it, then open it for me. Preserve existing installations, settings, and workspace files.
+
+See the [first-trial setup guide](docs/install.md) and [agent runbook](docs/agent-setup.md) for Windows and Mac. This public repository can be cloned without a GitHub account; using a signed-in GitHub or coding-agent account is fine.
 
 Open Bento, choose **Try an example workspace**, and select a new empty folder. A short Project → Meeting → Daily review tour introduces two fictional projects. Use Back, skip, or replay at any time; finish with Create my workspace when you're ready for your own work.
 

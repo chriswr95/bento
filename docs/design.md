@@ -313,6 +313,8 @@ The existing creation IPC accepts only the optional `example` mode. Both creatio
 
 macOS packaging uses Electron's signing helper with an ad-hoc identity to seal the renamed bundle and its nested code; signing failure stops packaging. Distribution independently checks `codesign --verify --deep --strict` before copying it into the DMG. This is integrity signing only: it supplies neither Developer ID verification nor notarization and does not remove OS approval prompts.
 
+The unsigned preview was blocked in the first installation attempt. The current handoff uses [agent-guided source setup](agent-setup.md): clone the known working preview tag, build locally, smoke-test the packaged app, and copy it to a per-user installation directory with a repeatable launch path. Keep the source checkout, installed app, personal settings, and workspace distinct. Direct signed downloads remain deferred as IDEA-012; source setup does not bypass managed-device policy.
+
 ## 11. Future ideas
 
 This is the shared idea backlog for Bento. **Captured** means worth exploring, not approved scope, a delivery promise, or a priority order. Keep new ideas here; promote agreed product behavior into the spec and concrete implementation decisions into the relevant design sections. When an idea ships, update its status and link the implementation.
@@ -330,6 +332,7 @@ This is the shared idea backlog for Bento. **Captured** means worth exploring, n
 | IDEA-009 | Sidebar file management | Implemented | Folder/file context menus, exact-parent creation, focused-row Delete/Backspace, keyboard explorer navigation, compatible moves, and recoverable file deletion with restart restoration. |
 | IDEA-010 | Further explorer management | Captured | Add filename/title-aware Rename with link repair, drag-and-drop moves, multi-selection, recoverable folder deletion, and a trash browser/retention controls. Keep database transfers separate from ordinary moves. |
 | IDEA-011 | Readable Markdown filenames | Deferred | Prefer title-derived filenames such as `Tree trimming permit.md`, keeping stable IDs in metadata. Requires portable collision handling and link repair on rename. The current ID-based filenames remain sufficient for now. |
+| IDEA-012 | Signed downloads and straightforward installation | Deferred | Mac Developer ID signing/notarization and Windows publisher signing, followed by download/install/launch checks on fresh computers. The unsigned preview did not provide a usable install for the first trial. Use the [agent-guided source setup](agent-setup.md) for now; ad-hoc integrity signing does not establish publisher trust. |
 
 Captured entries remain proposals. Implemented entries link the delivered behavior above.
 

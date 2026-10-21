@@ -1,40 +1,22 @@
-# Get started with Bento
+# Set up Bento for a first trial
 
-Download Bento from [GitHub Releases](https://github.com/chriswr95/bento/releases). Choose a file under **Assets** below the release notes, rather than Source code. You do not need Node.js, pnpm, a terminal, or an account to use the app.
+For now, **have a coding agent build and install Bento from source** on the computer where you'll use it. The preview downloads can be blocked by OS signing checks; they are not the recommended setup path. Signed downloads are deferred.
 
-These are **unsigned preview builds**, intended for an early trial. Work-managed computers may require IT approval. Signing and macOS notarization are still needed for a smooth public installation.
+Give your agent this prompt:
 
-The Mac app has an ad-hoc signature for bundle integrity, verified during packaging. It does not establish a verified developer identity or replace Apple notarization.
+> Set up Bento on this computer for a first trial. Follow https://github.com/chriswr95/bento/blob/main/docs/agent-setup.md. Build the tested v0.1.0-preview.1 source tag, install a local app, and make it easy to launch again. Preserve existing installations, settings, and workspaces. Run the documented checks with test windows hidden, then open the installed app for me. Report the source revision, install location, and how to launch it.
 
-## Mac with Apple silicon
-
-1. Download **Bento-macos-arm64.dmg**. This is for Macs with an Apple M-series chip; check About This Mac if unsure.
-2. Open the disk image and drag **Bento** to **Applications**.
-3. Eject the disk image, then open Bento from Applications.
-
-For an unverified-developer warning, first attempt to open Bento, then use **System Settings → Privacy & Security → Open Anyway** if you choose to trust this preview. See [Apple's instructions](https://support.apple.com/102445). Do not disable system security settings. Intel Mac downloads are not included in this first preview.
-
-## Windows
-
-1. Download **Bento-windows-x64.zip** for an Intel/AMD 64-bit PC.
-2. Right-click the ZIP and choose **Extract All**. Move the extracted Bento folder somewhere you want to keep it.
-3. Open that folder and double-click **Bento.exe**. Keep the other files beside it; do not run it from inside the ZIP.
-
-This is a portable app, so there is no installer or administrator step. You can make a shortcut to Bento.exe for next time. Windows may identify the publisher as unknown because the preview is unsigned. If your organization blocks it, ask IT rather than changing security policies. See [Microsoft's ZIP extraction guide](https://support.microsoft.com/en-gb/windows/experience/storage-filemanagement/zip-and-unzip-files).
-
-If SmartScreen shows **Windows protected your PC**, and you trust the preview you downloaded from this project's release page, choose **More info → Run anyway** when available. If that option is absent or your work laptop blocks the app, ask IT. This is the first-run prompt described in [Microsoft's app publishing guide](https://github.com/MicrosoftDocs/windows-dev-docs/blob/docs/hub/apps/package-and-deploy/publish-first-app.md).
+The [agent setup guide](agent-setup.md) covers prerequisites, exact build commands, native installation locations, shortcuts, verification, and updates on Windows and Mac. GitHub sign-in is fine if your agent uses it, but this public repository can also be cloned without a GitHub account. Your coding agent may require its own account.
 
 ## Your first two minutes
 
 1. Choose **Try an example workspace** on the welcome screen.
 2. Use the folder chooser to create and select an empty folder, such as **Documents/Bento example**. Bento puts two fictional projects, meeting notes, and actions there.
-3. Follow the short Project → Meeting → Daily review tour. Edit freely; every example is ordinary Markdown, and changes save automatically.
-4. At the end, choose **Create my workspace** for your own work, or **Keep exploring**. The example remains in its own folder. You can replay its walkthrough from the workspace-name menu.
+3. Follow the Project → Meeting → Daily review tour. Edit freely; changes save automatically.
+4. At the end, choose **Create my workspace** for your own work, or **Keep exploring**. The example remains separate. Replay its walkthrough from the workspace-name menu.
 
-Already have a Bento folder? Choose **Open workspace** instead. Later launches return to your last workspace and page. The app works without an internet connection; no model service is required.
+Already have a Bento folder? Choose **Open workspace** instead. Later launches return to your last workspace and page. Your Markdown files live in the folder you choose, separately from the installed app.
 
-## Updates and your files
+## Later: direct downloads
 
-Quit Bento before replacing the app with a newer preview. On Mac, replace Bento in Applications. On Windows, extract the new download into a new folder, then use its Bento.exe. Your workspace lives separately in the folder you chose; replacing or deleting the application does not remove those Markdown files.
-
-Preview workspace formats can change before v1. Keep a separate copy of important work before trying a newer preview. Installation packages do not provide workspace backups or automatic updates.
+Mac Developer ID signing and notarization, Windows publisher signing, and installation checks on fresh computers are tracked as IDEA-012 in the [design backlog](design.md#11-future-ideas). The current [preview assets](https://github.com/chriswr95/bento/releases/tag/v0.1.0-preview.1) remain experimental; an ad-hoc Mac signature does not establish a trusted publisher.
