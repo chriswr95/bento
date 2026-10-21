@@ -35,6 +35,7 @@ import BentoFileSession from './file-session.js';
   let dailyGroup = 'all';
   const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const desktop = window.bentoDesktop;
+  if (desktop) root.dataset.platform = desktop.platform;
   let personalSettings = null;
   let themePreferences = readThemePreferences(), themePicker = null;
   const appearance = { theme: readTheme() };

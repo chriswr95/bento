@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('bentoDesktop', Object.freeze({
+  platform: process.platform,
   settingsRead: legacy => ipcRenderer.invoke('settings:read', legacy),
   settingsSave: patch => ipcRenderer.invoke('settings:save', patch),
   rememberLocation: location => ipcRenderer.invoke('workspace:location', location),

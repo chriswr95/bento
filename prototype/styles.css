@@ -157,6 +157,10 @@ html {background:light-dark(#fffefa,#202127)}
 #bento-workflow .b-draft-notice {border:0;background:var(--b-wash);color:var(--b-accent);border-radius:5px;padding:4px 8px;font-size:12px}
 @media(max-width:650px) {#bento-workflow[data-desktop] .b-chrome {padding:12px;gap:8px} #bento-workflow [data-workspace-name] {max-width:90px} #bento-workflow .b-file-controls {flex-wrap:wrap;gap:6px} #bento-workflow #b-save-state {font-size:11px}}
 
+#bento-workflow[data-platform="darwin"] {border:0;border-radius:0;min-height:100dvh}
+#bento-workflow[data-platform="darwin"] .b-chrome {min-height:68px;padding:12px 20px 12px 96px;-webkit-app-region:drag;user-select:none}
+#bento-workflow[data-platform="darwin"] .b-chrome button,#bento-workflow[data-platform="darwin"] .b-chrome details,#bento-workflow[data-platform="darwin"] .b-file-controls {-webkit-app-region:no-drag}
+
 #bento-workflow .b-properties-disclosure {margin:12px 0 0}
 #bento-workflow .b-properties-disclosure>summary {display:flex;align-items:center;gap:7px;width:fit-content;list-style:none;font-size:12px;padding:5px 0}
 #bento-workflow .b-properties-disclosure>summary::-webkit-details-marker {display:none}

@@ -1,4 +1,5 @@
 import { checkOrganizationWorkflow } from './organization-workflow.js';
+import { checkWindowChrome } from './window-chrome.js';
 import { checkPropertyLayout } from './property-layout-workflow.js';
 import { checkMicroSyntax } from './micro-syntax-workflow.js';
 import { checkSidebarManagement } from './sidebar-management-workflow.js';
@@ -79,6 +80,7 @@ async function addTag(page, value) {
 }
 (async () => {
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-desktop-'));
+  if (process.argv.includes('--chrome')) { await checkWindowChrome({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--properties')) { await checkPropertyLayout({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--micro')) { await checkMicroSyntax({ launch, stop, temporary, root }); return; }
@@ -267,7 +269,7 @@ async function addTag(page, value) {
   assert.match(raw, /Keep this project detail/); assert.match(raw, /option-started/);
   assert.doesNotMatch(raw, /^database:/m);
   assert.match(raw, new RegExp(projectId));
-  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'deleteDocument', 'initial', 'moveDocument', 'open', 'reload', 'rememberLocation', 'restoreDocument', 'save', 'setPropertyLayout', 'settingsRead', 'settingsSave'] });
+  assert.deepEqual(await page.evaluate(() => ({ node: typeof process, require: typeof require, bridge: Object.keys(window.bentoDesktop).sort() })), { node: 'undefined', require: 'undefined', bridge: ['create', 'createFolder', 'deleteDocument', 'initial', 'moveDocument', 'open', 'platform', 'reload', 'rememberLocation', 'restoreDocument', 'save', 'setPropertyLayout', 'settingsRead', 'settingsSave'] });
   await fs.mkdir(path.join(root, 'work', 'qa'), { recursive: true });
   await page.locator('#bento-workflow').screenshot({ path: path.join(root, 'work/qa/desktop-todo.png') });
   assert.deepEqual(errors, []);

@@ -47,7 +47,7 @@ async function start() {
   repository = restored.repository; startupWarning = restored.warning; startupLocation = restored.location;
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
-  window = new BrowserWindow({ icon, show: !hiddenTestWindow, skipTaskbar: hiddenTestWindow, width: 1160, height: 900, minWidth: 380, minHeight: 500, title: 'Bento', webPreferences: { offscreen: hiddenTestWindow, backgroundThrottling: !hiddenTestWindow, preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  window = new BrowserWindow({ icon, show: !hiddenTestWindow, skipTaskbar: hiddenTestWindow, width: 1160, height: 900, minWidth: 380, minHeight: 500, title: 'Bento', ...(process.platform === 'darwin' ? { titleBarStyle: 'hidden', trafficLightPosition: { x: 16, y: 26 } } : {}), webPreferences: { offscreen: hiddenTestWindow, backgroundThrottling: !hiddenTestWindow, preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
