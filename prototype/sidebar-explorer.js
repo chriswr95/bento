@@ -30,7 +30,7 @@ export default class SidebarExplorer {
   }
   target(row) { return row.hasAttribute('data-record') ? { kind: 'file', id: row.dataset.record } : { kind: 'folder', path: row.dataset.openFolder }; }
   matches(row, target) { return target?.kind === 'file' ? row.dataset.record === target.id : target?.kind === 'folder' && row.dataset.openFolder === target.path; }
-  rows() { return [...this.sidebar.querySelectorAll('.b-directory-tree [data-record], .b-directory-tree summary [data-open-folder]')].filter(row => row.getClientRects().length && !row.disabled); }
+  rows() { return [...this.sidebar.querySelectorAll('.b-directory-tree [data-record], .b-directory-tree summary [data-open-folder]')].filter(row => row.getClientRects().length && !row.disabled && !row.closest('details:not([open]) > :not(summary)')); }
   selectedRow() { return this.rows().find(row => this.matches(row, this.selection)); }
   select(row) { this.selection = this.target(row); this.refresh(); }
   refresh() {

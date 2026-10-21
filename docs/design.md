@@ -361,9 +361,11 @@ Document navigation fades in the new document over 220 ms after navigation and f
 
 Overview and project-review completion apply and persist the domain change synchronously. The completed row dims, briefly lingers, and collapses over 300 ms before refreshing the projection. Undo remains available during that interval. Refreshing or navigating cancels outstanding presentation callbacks; those callbacks never mutate domain state. Keyboard focus moves to the next action or Undo when a focused row disappears. Document checkboxes keep their position and use a short text-color transition.
 
-Sidebar disclosure chevrons rotate a quarter turn over 220 ms in both directions while their folders toggle immediately.
+Sidebar folders, including the enclosing workspace, expand and collapse over 320 ms so following rows move naturally with the changing height. Children fade in over 220 ms after a short 40 ms lead-in, and fade out over 140 ms on close. Chevrons rotate over the same 320 ms as the height change. Properties and More/Less share this treatment; menus remain immediate.
 
-System reduced motion disables entrances, completion animation, and chevron rotation transitions. Switching the preference during completion cancels motion and immediately refreshes the projection with focus restoration. Headless interaction checks cover persistence before animation finishes, Undo, interruption by navigation, keyboard focus, and both initial and changed reduced-motion preferences.
+Scoped `::details-content` transitions interpolate between zero and intrinsic height, using `content-visibility` with discrete transitions to retain the closing content long enough to animate. Native disclosure state and persisted preferences update immediately. Closing content ignores pointer events and leaves explorer keyboard navigation immediately. CSS handles reversal and content changes without timers, fixed maximum heights, or per-row transforms. Unsupported browsers retain ordinary native disclosure behavior. See Chrome's [details styling guidance](https://developer.chrome.com/blog/styling-details).
+
+System reduced motion disables entrances, completion animation, disclosure height/fade, and chevron rotation transitions. Switching the preference during completion cancels motion and immediately refreshes the projection with focus restoration. Headless interaction checks cover persistence before animation finishes, Undo, interruption by navigation, keyboard focus, and both initial and changed reduced-motion preferences. Hidden sidebar checks sample actual rendered heights, opacity and sibling positions across opening/closing, rapid reversal, workspace nesting, Properties/More, and reduced motion.
 
 ### File organization and linking
 

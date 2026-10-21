@@ -1,5 +1,6 @@
 import { checkOrganizationWorkflow } from './organization-workflow.js';
 import { checkWindowChrome } from './window-chrome.js';
+import { checkSidebarMotion } from './sidebar-motion.js';
 import { checkPropertyLayout } from './property-layout-workflow.js';
 import { checkMicroSyntax } from './micro-syntax-workflow.js';
 import { checkSidebarManagement } from './sidebar-management-workflow.js';
@@ -81,7 +82,8 @@ async function addTag(page, value) {
 (async () => {
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-desktop-'));
   if (process.argv.includes('--chrome')) { await checkWindowChrome({ launch, stop, temporary, root }); return; }
-  if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); return; }
+  if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); await checkSidebarMotion({ launch, stop, temporary, root }); return; }
+  if (process.argv.includes('--motion')) { await checkSidebarMotion({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--properties')) { await checkPropertyLayout({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--micro')) { await checkMicroSyntax({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--daily')) { await checkDailyWorkflow({ launch, stop, temporary, root }); return; }

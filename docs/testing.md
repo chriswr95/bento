@@ -55,6 +55,10 @@ Unit tests cover standalone creation without hierarchy, rejected Parent creation
 
 Unit tests validate block structures, one-step undo, and invalid commands. Browser checks exercise slash headings, tracked todos, database creation choices, absent subpages, and unknown/cancelled commands. Page creation is available through the sidebar, database slash actions and command palette.
 
+### Sidebar disclosure motion
+
+Sidebar motion is included in `pnpm test:desktop:sidebar`; `node tests/desktop.js --motion` runs just that hidden workflow and also supports `BENTO_PACKAGED_EXECUTABLE`. It samples actual rendered height, opacity, and sibling positions across disclosure transitions rather than assuming pseudo-element transitions appear in the Web Animations API. It checks reversal, enclosing workspace disclosure, immediate keyboard exclusion of closing children, Properties/More, and reduced-motion changes.
+
 ### Daily-review focus coverage
 
 Browser workflows verify count filters with mouse and keyboard, unchanged storage on filtering, independent project/source navigation, project-status labels, focus after rescheduling into a hidden group, completion of the last visible action, empty states, Undo, and responsive layouts. Hidden Electron coverage follows meeting capture through restart and next-day review, filters overdue work, reschedules it, checks focus and empty states, and verifies saved dates and preserved source Markdown. Run it independently with `pnpm test:desktop:daily`, or target `BENTO_PACKAGED_EXECUTABLE` for packaged verification. Unit coverage checks custom status mappings and labels alongside grouping, recent notes, and calendar rollover.
