@@ -7,6 +7,13 @@ export async function checkOnboarding({ launch, stop, temporary, root }) {
   const folder = path.join(temporary, 'Example'), userData = path.join(temporary, 'ExampleUser');
   await fs.mkdir(folder);
   let { app, page } = await launch(null, userData);
+  for (const width of [380, 736, 1160]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.getByRole('heading', { name: 'Your projects, notes, and next steps.' }).waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Welcome overflow ' + width);
+    await page.locator('.b-welcome-art').evaluate(element => element.getAnimations().forEach(animation => animation.finish()));
+    await page.screenshot({ path: path.join(root, `work/qa/welcome-${width}.png`) });
+  }
   const openExample = () => page.getByRole('button', { name: 'Try an example workspace', exact: true }).click();
   await app.evaluate(({ dialog }) => { dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] }); });
   await openExample();
@@ -23,6 +30,9 @@ export async function checkOnboarding({ launch, stop, temporary, root }) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Walkthrough overflow ' + width);
   }
+  await guide().getByRole('button', { name: 'Try meeting notes', exact: true }).click();
+  await guide().getByRole('button', { name: 'Back', exact: true }).click();
+  await guide().getByRole('button', { name: 'Start with a project', exact: true }).waitFor();
   await guide().getByRole('button', { name: 'Try meeting notes', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Page Markdown', exact: true });
   await editor.click(); await editor.press('ControlOrMeta+End'); await editor.press('Enter');
@@ -45,6 +55,8 @@ export async function checkOnboarding({ launch, stop, temporary, root }) {
   assert.match(repository.workspace.records[repository.info.walkthrough.meeting].body, /\[x\] \[Review the marked-up path comments\]/);
   await guide().getByRole('button', { name: 'Finish walkthrough', exact: true }).click();
   assert.equal(await guide().count(), 0);
+  await page.getByRole('region', { name: 'Walkthrough complete', exact: true }).getByRole('button', { name: 'Keep exploring', exact: true }).click();
+  assert.equal(await page.getByRole('region', { name: 'Walkthrough complete', exact: true }).count(), 0);
   await app.close(); ({ app, page } = await launch(null, userData));
   await page.getByRole('heading', { name: 'Active projects', exact: true }).waitFor();
   assert.equal(await guide().count(), 0);

@@ -26,6 +26,7 @@ import BentoWorkspace from './workspace.js';
 import BentoProfile from './profile.js';
 import RichEditor from './vendor/rich-editor.js';
 import BentoFileSession from './file-session.js';
+import { welcome } from './welcome.js';
 (async () => {
   const root = document.getElementById('bento-workflow');
   const main = root.querySelector('#b-main'), status = root.querySelector('#b-status');
@@ -630,13 +631,13 @@ import BentoFileSession from './file-session.js';
     propertyEditor?.destroy(); propertyEditor = null;
     creationComposer?.destroy(); creationComposer = null;
     liveEditor?.destroy(); liveEditor = null;
+    root.toggleAttribute('data-welcome', !!desktop && !files?.view);
     if (desktop && !files?.view) {
       root.querySelector('aside').hidden = true;
       root.querySelector('.b-shell').classList.add('b-welcome-shell');
       root.querySelector('.b-file-controls').hidden = true;
-      main.innerHTML = `<section class="b-welcome"><p class="b-eyebrow">Welcome to Bento</p><h1>Your projects, notes, and next steps.</h1><p>Take meeting notes, track your actions, and see what needs attention.</p>
-        <div class="b-actions"><button type="button" class="b-button b-primary" data-files="example">Try an example workspace</button><button type="button" class="b-button" data-files="create">New workspace</button><button type="button" class="b-button" data-files="open">Open workspace</button></div>
-        <p class="b-muted">Try two fictional projects, meeting notes, and a short walkthrough. Choose an empty folder for the example or a new workspace. Your Markdown files stay in that folder.</p></section>`;
+      main.innerHTML = welcome();
+      main.querySelector('[data-files="example"]').focus({ preventScroll: true });
       return;
     }
     if (desktop) { root.querySelector('.b-shell').classList.remove('b-welcome-shell'); root.querySelector('.b-file-controls').hidden = false; renderSidebar(); }
@@ -653,12 +654,19 @@ import BentoFileSession from './file-session.js';
 
   function handleWalkthrough(action) {
     if (!walkthrough?.valid || (propertyEditor && !propertyEditor.commit())) return;
+    if (action === 'close-finish') { main.querySelector('.b-tour-finish')?.remove(); return; }
     root.querySelector('.b-workspace-menu').open = false;
     if (action === 'dismiss') { walkthrough.dismiss(); main.querySelector('.b-walkthrough')?.remove(); return; }
     rememberPresentation();
     if (action === 'next') walkthrough.next();
+    if (action === 'back') walkthrough.back();
     if (action === 'replay') walkthrough.replay();
-    if (!walkthrough.active) { main.querySelector('.b-walkthrough')?.remove(); notify('You’re ready. Keep exploring, or create a new workspace from the workspace menu.'); return; }
+    if (!walkthrough.active) {
+      main.querySelector('.b-walkthrough')?.remove();
+      main.insertAdjacentHTML('afterbegin', walkthrough.completion());
+      main.querySelector('.b-tour-finish h2').focus({ preventScroll: true });
+      notify('Walkthrough complete. Your example stays available to explore.'); return;
+    }
     const target = walkthrough.location();
     navigate(target.view, null, target.document);
     // Reopening the current location does not trigger navigation/render.

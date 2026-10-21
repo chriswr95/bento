@@ -46,7 +46,8 @@ test('walkthrough progress is personal, replayable and tolerates unavailable sto
   const view = { walkthrough: { version: 1, project: 'p', meeting: 'm' }, workspace: { records: { p: {}, m: {} } } };
   const values = new Map(), storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) };
   const guide = new Walkthrough(view, storage);
-  assert.equal(guide.location().document, 'p'); guide.next();
+  guide.back(); assert.equal(guide.step, 0);
+  assert.equal(guide.location().document, 'p'); guide.next(); guide.back(); assert.equal(guide.location().document, 'p'); guide.next();
   assert.equal(new Walkthrough(view, storage).location().document, 'm');
   guide.next(); assert.equal(guide.location().view, 'daily'); guide.next();
   assert.equal(new Walkthrough(view, storage).active, false);

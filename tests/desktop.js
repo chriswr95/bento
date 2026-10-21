@@ -82,6 +82,7 @@ async function addTag(page, value) {
 (async () => {
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-desktop-'));
   if (process.argv.includes('--chrome')) { await checkWindowChrome({ launch, stop, temporary, root }); return; }
+  if (process.argv.includes('--onboarding')) { await checkOnboarding({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); await checkSidebarMotion({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--motion')) { await checkSidebarMotion({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--properties')) { await checkPropertyLayout({ launch, stop, temporary, root }); return; }
