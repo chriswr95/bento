@@ -4,6 +4,7 @@ import { checkSidebarMotion } from './sidebar-motion.js';
 import { checkPropertyLayout } from './property-layout-workflow.js';
 import { checkMicroSyntax } from './micro-syntax-workflow.js';
 import { checkSidebarManagement } from './sidebar-management-workflow.js';
+import { checkFolderCardsAndDrag } from './folder-cards-drag.js';
 import { checkInlineMenuWorkflow } from './inline-menu-workflow.js';
 import { checkDailyWorkflow } from './daily-workflow.js';
 import { checkPageWorkflow } from './page-workflow.js';
@@ -83,7 +84,8 @@ async function addTag(page, value) {
   temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'bento-desktop-'));
   if (process.argv.includes('--chrome')) { await checkWindowChrome({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--onboarding')) { await checkOnboarding({ launch, stop, temporary, root }); return; }
-  if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); await checkSidebarMotion({ launch, stop, temporary, root }); return; }
+  if (process.argv.includes('--folders')) { await checkFolderCardsAndDrag({ launch, stop, temporary, root }); return; }
+  if (process.argv.includes('--sidebar')) { await checkSidebarManagement({ launch, stop, temporary, root }); await checkSidebarMotion({ launch, stop, temporary, root }); await checkFolderCardsAndDrag({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--motion')) { await checkSidebarMotion({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--properties')) { await checkPropertyLayout({ launch, stop, temporary, root }); return; }
   if (process.argv.includes('--micro')) { await checkMicroSyntax({ launch, stop, temporary, root }); return; }

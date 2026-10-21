@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import model from '../prototype/workspace.js';
-import { projectReview } from '../prototype/project-review.js';
+import { projectReview, databaseProjectReviews } from '../prototype/project-review.js';
 
 function fixture() {
   let workspace = model.createWorkspace({ coordination: '# Meeting\n', drainage: '# Drainage\n' });
@@ -10,6 +10,20 @@ function fixture() {
   }
   return workspace;
 }
+test('project database cards include inactive and empty projects, use capabilities, and stay within their database', () => {
+  const workspace = fixture();
+  workspace.databases['custom-projects'] = { ...workspace.databases['db-projects'], id: 'custom-projects', title: 'Client work' };
+  workspace.records.park.database = 'custom-projects';
+  workspace.records.elm.properties['field-project-status'] = 'option-completed';
+  const before = structuredClone(workspace);
+  const reviews = databaseProjectReviews(workspace, 'db-projects', '2026-10-19');
+  assert.deepEqual(reviews.map(review => review.project.id).sort(), ['creek', 'elm']);
+  assert.equal(reviews.find(review => review.project.id === 'elm').status, 'Completed');
+  assert.equal(reviews.find(review => review.project.id === 'creek').open, 4);
+  assert.equal(databaseProjectReviews(workspace, 'custom-projects', '2026-10-19')[0].open, 0);
+  assert.deepEqual(databaseProjectReviews(workspace, 'db-meetings', '2026-10-19'), []);
+  assert.deepEqual(workspace, before);
+});
 test('review partitions personal work by calendar day and completion with no duplicates', () => {
   const workspace = fixture(), before = structuredClone(workspace), review = projectReview(workspace, 'creek', '2026-10-19');
   for (const [group, title] of [['overdue', 'Past'], ['today', 'Today'], ['upcoming', 'Future'], ['undated', 'No date'], ['completed', 'Completed']]) assert.deepEqual(review.groups[group].map(task => task.title), [title]);

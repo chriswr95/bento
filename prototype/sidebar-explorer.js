@@ -13,6 +13,11 @@ export default class SidebarExplorer {
     });
     sidebar.addEventListener('focusin', event => { const row = this.rowAt(event.target); if (row) this.select(row); });
     sidebar.addEventListener('keydown', event => this.keydown(event));
+    sidebar.addEventListener('dragstart', event => this.startDrag(event));
+    sidebar.addEventListener('dragover', event => this.dragOver(event));
+    sidebar.addEventListener('drop', event => this.drop(event));
+    sidebar.addEventListener('dragend', () => this.cancelDrag());
+    sidebar.addEventListener('dragleave', event => { if (!sidebar.contains(event.relatedTarget)) this.markDrop(null); });
     this.menu.addEventListener('keydown', event => this.menuKeydown(event));
     this.menu.addEventListener('click', event => {
       const button = event.target.closest('[data-explorer-action]');
@@ -21,7 +26,40 @@ export default class SidebarExplorer {
     document.addEventListener('pointerdown', event => { if (!this.menu.contains(event.target)) this.close(false); }, true);
     document.addEventListener('scroll', event => { if (this.open && !this.menu.contains(event.target) && this.anchor !== this.position()) this.close(false); }, true);
     window.addEventListener('resize', () => { if (this.open && this.anchor !== this.position()) this.close(false); });
-    window.addEventListener('blur', () => this.close(false));
+    window.addEventListener('blur', () => { this.close(false); this.cancelDrag(); });
+  }
+  startDrag(event) {
+    this.cancelDrag();
+    const row = this.rowAt(event.target), id = row?.dataset.record;
+    if (!id || !this.options.available() || !this.options.canDrag(id)) { event.preventDefault(); return; }
+    this.close(false); this.select(row); this.dragged = id;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('application/x-bento-note', id);
+  }
+  dropRow(event) {
+    const row = this.rowAt(event.target);
+    return this.dragged && this.options.available() && row?.hasAttribute('data-open-folder') &&
+      this.options.canDrop(this.dragged, row.dataset.openFolder) ? row : null;
+  }
+  markDrop(row) {
+    this.dropTarget?.removeAttribute('data-drop-target');
+    this.dropTarget = row?.closest('summary') || null;
+    this.dropTarget?.setAttribute('data-drop-target', '');
+  }
+  cancelDrag() { this.markDrop(null); this.dragged = null; }
+  dragOver(event) {
+    const row = this.dropRow(event); this.markDrop(row);
+    if (row) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }
+    else if (this.dragged) event.dataTransfer.dropEffect = 'none';
+  }
+  async drop(event) {
+    const row = this.dropRow(event), id = this.dragged;
+    const valid = row && event.dataTransfer.getData('application/x-bento-note') === id;
+    this.cancelDrag();
+    if (!valid) return;
+    event.preventDefault(); event.stopPropagation();
+    try { await this.options.moveNote(id, row.dataset.openFolder); }
+    catch (error) { this.options.error(error.message); }
   }
   get open() { return !this.menu.hidden; }
   rowAt(target) {

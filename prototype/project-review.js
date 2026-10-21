@@ -44,6 +44,13 @@ export function projectReview(workspace, projectId, today) {
   if (!model.validDate(today)) throw new Error('Invalid review date.');
   return summarize(workspace, reviewIndex(workspace).projects.get(projectId), today);
 }
+export function databaseProjectReviews(workspace, databaseId, today) {
+  if (!model.validDate(today)) throw new Error('Invalid review date.');
+  return [...reviewIndex(workspace).projects.values()]
+    .filter(entry => entry.project.database === databaseId)
+    .sort((a, b) => a.project.title.localeCompare(b.project.title) || a.project.id.localeCompare(b.project.id))
+    .map(entry => summarize(workspace, entry, today));
+}
 export function dailyReview(workspace, today) {
   if (!model.validDate(today)) throw new Error('Invalid review date.');
   const index = reviewIndex(workspace), groups = groupTasks(index.tasks, today);

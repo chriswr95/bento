@@ -8,7 +8,8 @@ import ShortcutReference from './shortcut-reference.js';
 import { recordColor } from './colors.js';
 import ThemePicker from './theme-picker.js';
 import { applyColorTheme, validateThemePreferences, readThemePreferences, saveThemePreferences, themePreferencesKey } from './themes.js';
-import { projectReview, dailyReview } from './project-review.js';
+import { projectReview, dailyReview, databaseProjectReviews } from './project-review.js';
+import { movableNote, noteDestination } from './note-move.js';
 import DueDatePicker from './due-date-picker.js';
 import FolderDialog from './folder-dialog.js';
 import { legacyPreferences } from './personal-settings.js';
@@ -345,6 +346,10 @@ import { welcome } from './welcome.js';
   function databaseList(id) {
     const database = workspace().databases[id];
     if (!database) return '<p class="b-issues">Restore this database’s definition to edit its records.</p>';
+    if (database.capabilities.project) {
+      const reviews = databaseProjectReviews(workspace(), id, planDate);
+      return `<div class="b-project-grid" aria-label="${escape(database.title)} records">${reviews.map(projectCard).join('') || '<p class="b-muted">No projects yet.</p>'}</div>`;
+    }
     const records = Object.values(workspace().records).filter(record => record.database === id).sort((a, b) => a.title.localeCompare(b.title));
     return `<div class="b-database-table"><table aria-label="${escape(database.title)} records"><thead><tr><th scope="col">Page</th>${database.fields.map(field => `<th scope="col">${escape(field.name)}</th>`).join('')}</tr></thead><tbody>${records.map(record => `<tr><th scope="row"><button type="button" data-record="${escape(record.id)}">${escape(record.title)}</button></th>${database.fields.map(field => `<td>${escape(databaseValue(field, record))}</td>`).join('')}</tr>`).join('')}</tbody></table>${records.length ? '' : '<p class="b-muted">No records yet.</p>'}</div>`;
   }
@@ -408,7 +413,7 @@ import { welcome } from './welcome.js';
   }
   function directoryContents(node) {
     const folders = node.folders.map(directoryFolder).join('');
-    const documents = node.documents.map(doc => `<li><button type="button" class="b-tree-document" data-record="${escape(doc.id)}" title="${escape(doc.path)}" ${state.view === 'document' && state.document === doc.id ? 'aria-current="page"' : ''}><span>${escape(doc.title)}</span></button></li>`).join('');
+    const documents = node.documents.map(doc => `<li><button type="button" class="b-tree-document" draggable="${!files.view.readOnly && movableNote(workspace(), doc.id)}" data-record="${escape(doc.id)}" title="${escape(doc.path)}" ${state.view === 'document' && state.document === doc.id ? 'aria-current="page"' : ''}><span>${escape(doc.title)}</span></button></li>`).join('');
     return `<ul class="b-tree-children">${folders}${documents}${folders || documents ? '' : '<li class="b-tree-empty">No pages yet</li>'}</ul>`;
   }
   function directoryFolder(node) {
@@ -422,6 +427,7 @@ import { welcome } from './welcome.js';
     return `<svg class="b-folder-icon${database ? ' b-database-icon' : ''}" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">${database ? '<rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 6v8"/>' : '<path d="M1.5 5V3h5l2 2h6v8h-13V5Z"/>'}</svg>`;
   }
   function renderSidebar() {
+    sidebarExplorer?.cancelDrag();
     const sidebar = root.querySelector('aside');
     sidebar.hidden = !files?.view;
     if (sidebar.hidden) return;
@@ -898,6 +904,19 @@ import { welcome } from './welcome.js';
       available: () => !!files.view && !files.operating && !folderDialog.dialog.open && !duePicker.dialog.open && !root.querySelector('dialog[open]'),
       canCreate: folder => !files.view.readOnly && folderAvailable(workspace(), folder) && (!folderDatabase(workspace(), folder) || !!workspace().databases[folderDatabase(workspace(), folder)]),
       canDelete: id => !!workspace().records[id] && id !== workspace().home && !readOnly(workspace().records[id]),
+      canDrag: id => !files.view.readOnly && movableNote(workspace(), id),
+      canDrop: (id, folder) => !files.view.readOnly && noteDestination(workspace(), id, folder),
+      moveNote: async (id, folder) => {
+        if (propertyEditor && !propertyEditor.commit()) return;
+        if (!noteDestination(workspace(), id, folder)) return;
+        const result = await files.mutate(() => desktop.moveDocument(id, folder));
+        if (!result) return;
+        const row = [...root.querySelectorAll('.b-directory-tree [data-record]')].find(row => row.dataset.record === id);
+        for (let parent = row?.parentElement; parent; parent = parent.parentElement) if (parent.tagName === 'DETAILS') parent.open = true;
+        if (row) sidebarExplorer.select(row);
+        sidebarExplorer.focusFile(id);
+        notify('Note moved.');
+      },
       canRestore: () => !!files.view.lastDeletion && !files.view.readOnly, restoreFile: restoreDeletedFile,
       openFile: openRecord, openFolder: folder => navigate('folder', null, null, folder),
       createFile: folder => showCreate(folderDatabase(workspace(), folder) || null, null, folder),
